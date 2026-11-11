@@ -1,0 +1,58 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Mock exam 2 — questions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>@page{size:A4;margin:16mm 15mm 16mm 15mm}
+body{font-family:'Source Serif 4',Georgia,serif;font-size:11pt;line-height:1.45;color:#000}
+h1{font-family:Archivo,Arial,sans-serif;font-size:16pt;margin:0 0 4pt}
+h3{font-family:Archivo,Arial,sans-serif;font-size:13pt}
+.gp{border-top:1.2px solid #000;padding-top:6pt;margin-top:10pt;break-inside:auto}
+.head b{font-family:Archivo,Arial,sans-serif;font-size:11.5pt}.chip{font:600 8pt Arial;border:1px solid #888;border-radius:3px;padding:1px 4px;margin-left:5px}
+.marks,.chk{display:none}.added{font:8pt Arial;color:#444}
+.work{height:62mm;border:1px dashed #999;margin:6pt 0 2pt;border-radius:3px}
+details>summary{display:none}details{display:block}
+.note{font:9pt Arial;color:#333;border:1px solid #999;padding:6pt;margin:6pt 0}</style>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'},startup:{pageReady:()=>MathJax.startup.defaultPageReady().then(()=>{document.body.dataset.ready='1'})}};</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script></head>
+<body><h1>ENN581 Robot Motion, Control and Planning · Mock exam 2 — questions</h1><p class="note">Indicative marks in [brackets] (the real paper’s marks are not published). 2 hours. Calculator and printed notes allowed. Write all working.</p><h3 id="mock2">Mock exam 2 <span class="pgs">indicative total 64 marks · 2 hours</span></h3>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q1 · DH table of an RRP arm</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q1" data-topic="mock"></span></div>
+<p>A base joint rotates about the vertical z<sub>0</sub>. At height H = 0.5 m, a second revolute joint with a horizontal axis tilts a boom away from the vertical by θ<sub>2</sub>. The boom points straight <i>up</i> at θ<sub>2</sub> = 0, and positive θ<sub>2</sub> tilts it outwards, in the direction set by θ<sub>1</sub>. Both joint axes meet at one point. A prismatic joint extends the tool along the boom by d<sub>3</sub>. (a) Give a proximal DH table [3]. (b) Find the tool position at θ<sub>1</sub> = 40°, θ<sub>2</sub> = 30°, d<sub>3</sub> = 0.6 m [3].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q2 · Inverse kinematics of the RRP arm</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q2" data-topic="mock"></span></div>
+<p>For the arm of Q1, derive the IK and evaluate it for p = (0.3, 0.4, 0.9) m. How many solutions are there?</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q3 · Four-bar: assembly modes</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="chip explain">explain</span><span class="chip">8 marks</span><span class="marks" data-id="m2-q3" data-topic="mock"></span></div>
+<p>A four-bar has ground L<sub>0</sub> = 0.8 m, input crank L<sub>1</sub> = 0.3 m (angle θ<sub>1</sub> at {S} = (0, 0)), coupler L<sub>2</sub> = 0.7 m, rocker L<sub>3</sub> = 0.5 m pivoted at (0.8, 0). (a) Find both positions of the coupler–rocker joint B at θ<sub>1</sub> = 60° and the coupler angle φ for each [5]. (b) Can the crank rotate fully? Justify [2]. (c) What is the mobility? [1]</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q4 · Linear segment with parabolic blends</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q4" data-topic="mock"></span></div>
+<p>A joint moves from 10° to 70° in 3 s using LSPB with blend acceleration 30 °/s². (a) Check that the acceleration is large enough [1]. (b) Find the blend time, the linear-segment speed, and the angle at the end of the first blend [3]. (c) Sketch θ, \(\dot\theta\), \(\ddot\theta\) against time [2].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q5 · Jacobian of the W13 RRR arm</b><span class="chip derive">derive</span><span class="chip explain">explain</span><span class="chip">7 marks</span><span class="marks" data-id="m2-q5" data-topic="mock"></span></div>
+<p>For the RRR arm of Sample Q1 (position x = c<sub>1</sub>r, y = s<sub>1</sub>r, z = L<sub>1</sub> + L<sub>2</sub> + L<sub>3</sub>s<sub>2</sub> + L<sub>4</sub>s<sub>23</sub>, with r = L<sub>3</sub>c<sub>2</sub> + L<sub>4</sub>c<sub>23</sub>): (a) derive the 3×3 position Jacobian [3]; (b) show that det J = −L<sub>3</sub>L<sub>4</sub> sin θ<sub>3</sub> · r and interpret each factor [3]; (c) evaluate det J for L<sub>3</sub> = 0.4, L<sub>4</sub> = 0.3 m at θ = (30°, 20°, 40°) [1].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q6 · Two-link arm with uniform rods</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">8 marks</span><span class="marks" data-id="m2-q6" data-topic="mock"></span></div>
+<p>A planar 2R arm in a vertical plane (q<sub>1</sub> measured from the horizontal, q<sub>2</sub> relative to link 1, gravity along −y) has uniform rods: m<sub>1</sub> = 3 kg, l<sub>1</sub> = 0.6 m; m<sub>2</sub> = 2 kg, l<sub>2</sub> = 0.4 m (COM at mid-length, \(I_c=ml^2/12\)). (a) Write M(q) and g(q) [5]. (b) The arm is momentarily at rest at q = (45°, −30°) with \(\ddot{\mathbf q}\) = (1, 2) rad/s². Find the joint torques [3].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q7 · PID gains and stability</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">7 marks</span><span class="marks" data-id="m2-q7" data-topic="mock"></span></div>
+<p>A partitioned joint uses \(f'=\ddot x_d+k_v\dot E+k_pE+k_i\int E\,dt\). (a) With k<sub>p</sub> = 49 s⁻², choose k<sub>v</sub> for critical damping of the PD part [1]. (b) Derive the third-order error equation and the characteristic polynomial [3]. (c) For which k<sub>i</sub> is the loop stable? Is k<sub>i</sub> = 100 stable? [2] (d) What is the steady-state error under a constant disturbance? [1]</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q8 · Mecanum (Swedish 45°) robot</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q8" data-topic="mock"></span></div>
+<p>Four wheels (r = 0.05 m) at (±0.20, ±0.15) m all drive along x<sub>C</sub> (β = 0). Front-left and rear-right rollers have γ = −45°; front-right and rear-left have γ = +45°. (a) Using the generalised model, write the four wheel rows [3]. (b) Find the wheel speeds for pure sideways motion v = 0.2 m/s [2]. (c) Is the robot holonomic? [1]</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q9 · Planning concepts</b><span class="chip explain">explain</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q9" data-topic="mock"></span></div>
+<p>(a) Why are grid planners impractical for a 6-DoF arm? Quantify with 100 cells per joint [2]. (b) Compare PRM and RRT: what they build, when to use each, and their completeness [3]. (c) When is A* guaranteed optimal? [1]</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q10 · Mechanisms: actuation and G–K failure</b><span class="chip explain">explain</span><span class="chip">4 marks</span><span class="marks" data-id="m2-q10" data-topic="mock"></span></div>
+<p>(a) Define fully actuated, under-actuated and (kinematically) redundant, with one example each [2]. (b) A planar body is hung from the ground by three equal parallel links. G–K gives M = 0, yet it moves. Explain [2].</p>
+<div class="work"></div></div>
+
+
+</body></html>

@@ -1,0 +1,161 @@
+<p class="eyebrow">Mock exams · new papers in the style of the W13 revision questions</p>
+<h2>Two full papers: two hours each, on paper, timed</h2>
+<p class="lead">Each paper covers every week, with derive, sketch, calculate and explain questions like the sample. Marks are <b>indicative only</b> (marks not published; roughly 1 mark per method step). Do a paper in one sitting with a calculator and your printed booklet, then mark it with the scheme under each question.</p>
+
+<div class="box exam-box"><span class="tag">How to use</span>
+<ol><li>Download the question PDF and print it, or write on blank paper. Set a 2-hour timer. Allow about 1.8 minutes per mark.</li>
+<li>Booklet allowed (it is open book); no website.</li>
+<li>Mark with the scheme: give the method marks even when the arithmetic slips. Tick ✓/✗ per question below; your ✗ count shows on the Study plan.</li>
+<li>Rework every ✗ from the matching topic tab.</li></ol>
+<div class="acts" style="display:flex;gap:.4rem;flex-wrap:wrap">
+<button type="button" class="btn" data-dl="mock-1-questions.pdf">⬇ Mock 1 questions (PDF)</button>
+<button type="button" class="btn" data-dl="mock-1-solutions.pdf">⬇ Mock 1 solutions (PDF)</button>
+<button type="button" class="btn" data-dl="mock-2-questions.pdf">⬇ Mock 2 questions (PDF)</button>
+<button type="button" class="btn" data-dl="mock-2-solutions.pdf">⬇ Mock 2 solutions (PDF)</button></div>
+</div>
+
+<h3 id="mock1">Mock exam 1 <span class="pgs">indicative total 64 marks · 2 hours</span></h3>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q1 · Forward kinematics of a SCARA arm</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q1" data-topic="mock"></span></div>
+<p>A SCARA arm stands on a column of height H = 0.40 m. Joint 1 rotates about the vertical axis of the column. A horizontal link of length a<sub>1</sub> = 0.35 m leads to joint 2, which also rotates about a vertical axis. A second horizontal link a<sub>2</sub> = 0.25 m carries joint 3, a prismatic joint that extends the tool <i>downwards</i> by d<sub>3</sub>. The tool frame {T} has z<sub>T</sub> pointing down and x<sub>T</sub> along link 2.</p>
+<p>(a) Write an elementary transform sequence for \({}^0\mathbf T_T\) and a proximal DH table for the arm. [3] &nbsp; (b) Evaluate \({}^0\mathbf T_T\) at θ<sub>1</sub> = 30°, θ<sub>2</sub> = −60°, d<sub>3</sub> = 0.10 m. [3]</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) ETS: \(t_z(H)\,R_z(\theta_1)\,t_x(a_1)\,R_z(\theta_2)\,t_x(a_2)\,t_z(-d_3)\,R_x(180^\circ)\) [1 for the order, 1 for the final flip]. Proximal DH (α<sub>i−1</sub>, a<sub>i−1</sub>, θ<sub>i</sub>, d<sub>i</sub>): (0, 0, θ<sub>1</sub>, H), (0, a<sub>1</sub>, θ<sub>2</sub>, 0), (180°, a<sub>2</sub>, 0, d<sub>3</sub>) [1]. The 180° twist makes z<sub>3</sub> point down, so d<sub>3</sub> is positive downwards. <span class="chk">DH product equals the ETS</span></p>
+<p>(b) Position \(x=a_1c_1+a_2c_{12}=0.3031+0.2165=0.5196\), \(y=a_1s_1+a_2s_{12}=0.175-0.125=0.050\), \(z=H-d_3=0.30\) m [2]. Rotation \(R_z(\theta_1+\theta_2)R_x(180^\circ)\) [1]:</p>
+\[ {}^0\mathbf T_T=\begin{bmatrix}0.8660&-0.5000&0&0.5196\\-0.5000&-0.8660&0&0.0500\\0&0&-1&0.3000\\0&0&0&1\end{bmatrix} \]
+<p><span class="chk">checked</span></p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q2 · Inverse kinematics and workspace of the SCARA</b><span class="chip derive">derive</span><span class="chip sketch">sketch</span><span class="chip">8 marks</span><span class="marks" data-id="m1-q2" data-topic="mock"></span></div>
+<p>For the arm of Q1: (a) derive θ<sub>1</sub>, θ<sub>2</sub>, d<sub>3</sub> for a desired tool position (x, y, z) and state how many solutions exist [4]; (b) evaluate them for (0.45, 0.20, 0.25) m [2]; (c) sketch the workspace if 0 ≤ d<sub>3</sub> ≤ 0.20 m and the revolute joints are unlimited [2].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) d<sub>3</sub> = H − z [1]. The rest is a planar 2R problem in the horizontal plane: \(\cos\theta_2=\dfrac{x^2+y^2-a_1^2-a_2^2}{2a_1a_2}\), \(\theta_2=\operatorname{atan2}(\pm\sqrt{1-c_2^2},c_2)\) [1], \(\theta_1=\operatorname{atan2}(y,x)-\operatorname{atan2}(a_2s_2,\,a_1+a_2c_2)\) [1]. Two solutions (elbow left/right); none if \(|c_2|&gt;1\) or z is out of the d<sub>3</sub> range [1].</p>
+<p>(b) d<sub>3</sub> = 0.15 m; c<sub>2</sub> = 0.3286; (θ<sub>1</sub>, θ<sub>2</sub>) = (−4.689°, 70.818°) or (52.614°, −70.818°) [2]. <span class="chk">both reproduce the point</span></p>
+<p>(c) A hollow cylinder (thick-walled tube): radial range |a<sub>1</sub> − a<sub>2</sub>| = 0.10 m to a<sub>1</sub> + a<sub>2</sub> = 0.60 m, height range z = 0.20 to 0.40 m. Sketch a top view (annulus) and a side view (two rectangles), with dimensions [2].</p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q3 · Mobility</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q3" data-topic="mock"></span></div>
+<p>Find the mobility of: (a) a planar five-bar linkage (five links including ground, five revolute joints) [1]; (b) a 3-RPS parallel platform (each leg: revolute at the base, prismatic, spherical at the platform) [2]; (c) a 3-SPS platform (spherical joints at both ends of each prismatic leg). Explain any correction you apply [3].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) 3(5 − 5 − 1) + 5 = 2 [1].</p>
+<p>(b) Spatial, D = 6; N = 1 + 1 + 3 × 2 = 8; J = 9; ΣF = 3(1) + 3(1) + 3(3) = 15; M = 6(8 − 9 − 1) + 15 = 3 [2].</p>
+<p>(c) ΣF = 3(3) + 3(1) + 3(3) = 21; plain M = 6(−2) + 21 = 9 [1]. Each S–P–S leg can spin about its own axis without moving the platform: local mobility R<sub>M</sub> = 3 [1]. Extended G–K: M = 9 + 0 − 3 = 6 [1]. (The platform has 6 DoF but only 3 actuators, so it is under-actuated.) <span class="chk">all counts checked</span></p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q4 · Two cubic segments through a via point</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q4" data-topic="mock"></span></div>
+<p>A joint starts at rest at θ<sub>0</sub> = 0°, passes through θ<sub>v</sub> = 40° and stops at θ<sub>g</sub> = 30°. Each segment lasts 1 s and the acceleration is continuous at the via point. (a) List the conditions [2]. (b) Find all eight coefficients [3]. (c) What is the joint speed at the via point? [1]</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) θ<sub>1</sub>(0) = 0, \(\dot\theta_1(0)\) = 0, θ<sub>1</sub>(1) = 40, θ<sub>2</sub>(0) = 40, θ<sub>2</sub>(1) = 30, \(\dot\theta_2(1)\) = 0, \(\dot\theta_1(1)=\dot\theta_2(0)\), \(\ddot\theta_1(1)=\ddot\theta_2(0)\) [2].</p>
+<p>(b) Using the equal-duration closed form (Sample Q8): segment 1: 0, 0, 97.5, −57.5; segment 2: 40, 22.5, −75, 42.5 (degrees, seconds) [3]. <span class="chk">all 8 conditions checked</span></p>
+<p>(c) a<sub>21</sub> = 3(θ<sub>g</sub> − θ<sub>0</sub>)/(4t<sub>f</sub>) = 22.5 °/s [1]. (Peak speed in segment 1 is 55.109 °/s at t = 0.565 s.)</p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q5 · Jacobian, singularity and static force</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">7 marks</span><span class="marks" data-id="m1-q5" data-topic="mock"></span></div>
+<p>A planar 2R arm has L<sub>1</sub> = 0.5 m, L<sub>2</sub> = 0.4 m. (a) Derive its 2×2 position Jacobian and its singular configurations [3]. (b) At q = (30°, 60°), find the joint torques needed to hold a tip force F = (0, −10) N, and explain why τ<sub>2</sub> comes out as it does [2]. (c) Find \(\dot{\mathbf q}\) for a tip velocity (0.1, 0) m/s at that pose [2].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) \(\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}\), det J = L<sub>1</sub>L<sub>2</sub> sin q<sub>2</sub>. Singular at q<sub>2</sub> = 0 (stretched) and π (folded): the boundaries of the workspace [3].</p>
+<p>(b) \(\mathbf J=\begin{bmatrix}-0.6500&-0.4000\\0.4330&0\end{bmatrix}\), \(\boldsymbol\tau=\mathbf J^\top\mathbf F=(-4.330,\;0)\) N·m, reading F as the force the tip applies to the environment [1]. If F is instead an external load acting on the tip, the holding torques are \(-\mathbf J^\top\mathbf F=(+4.330,\;0)\) N·m. State your reading: either earns the mark. τ<sub>2</sub> = 0 because q<sub>1</sub> + q<sub>2</sub> = 90°: link 2 points straight up, so the vertical force acts along link 2 and has no moment about joint 2 [1].</p>
+<p>(c) det J = 0.1732; \(\dot{\mathbf q}=\mathbf J^{-1}(0.1,0)=(0,\;-0.25)\) rad/s [2]. Only joint 2 moves: link 2 is vertical, so rotating it moves the tip horizontally. <span class="chk">checked</span></p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q6 · Equations of motion of an RP arm</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">8 marks</span><span class="marks" data-id="m1-q6" data-topic="mock"></span></div>
+<p>An RP arm moves in a vertical plane. Joint 1 rotates the arm by θ from the horizontal. Joint 2 slides a point mass m along the arm to distance d from joint 1. The arm itself is massless; gravity acts along −y. (a) Derive the equations of motion by Lagrange and identify M, C (velocity terms) and g [6]. (b) Evaluate τ<sub>1</sub> and f<sub>2</sub> for m = 2 kg at θ = 30°, d = 0.6 m, \(\dot\theta\) = 0.5 rad/s, \(\dot d\) = 0.2 m/s, \(\ddot\theta\) = 1.0 rad/s², \(\ddot d\) = −0.3 m/s² [2].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) Position (d cos θ, d sin θ); \(v^2=\dot d^2+d^2\dot\theta^2\) [1]. \(K=\tfrac12m(\dot d^2+d^2\dot\theta^2)\), \(P=mgd\sin\theta\) [1]. Euler–Lagrange [2]:</p>
+\[ \tau_1=md^2\ddot\theta+2md\dot d\dot\theta+mgd\cos\theta,\qquad f_2=m\ddot d-md\dot\theta^2+mg\sin\theta \]
+<p>M = diag(md², m); C = (2md\(\dot d\dot\theta\) [Coriolis], −md\(\dot\theta^2\) [centrifugal]); g = (mgd cos θ, mg sin θ) [2].</p>
+<p>(b) τ<sub>1</sub> = 2(0.36)(1.0) + 2(2)(0.6)(0.2)(0.5) + 2(9.81)(0.6)cos 30° = 0.72 + 0.24 + 10.1949 = 11.1549 N·m; f<sub>2</sub> = 2(−0.3) − 2(0.6)(0.25) + 2(9.81)(0.5) = −0.6 − 0.3 + 9.81 = 8.9100 N [2]. <span class="chk">checked against Lagrange in sympy</span></p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q7 · Partitioned control of one joint</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">7 marks</span><span class="marks" data-id="m1-q7" data-topic="mock"></span></div>
+<p>A joint obeys \(m\ddot x+b\dot x+kx=f\) with m = 2 kg, b = 0.5 N·s/m, k = 4 N/m. (a) Write a partitioned control law for trajectory following and the closed-loop error equation [3]. (b) Choose k<sub>p</sub>, k<sub>v</sub> for critical damping with ω<sub>n</sub> = 8 rad/s [1]. (c) Find the steady-state error under a constant 5 N disturbance, and say how to remove it [2]. (d) Compute f at x = 0.10 m, \(\dot x\) = −0.20 m/s when x<sub>d</sub> = 0.15 m, \(\dot x_d=\ddot x_d=0\) [1].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) f = αf′ + β with α = m, β = b\(\dot x\) + kx; f′ = \(\ddot x_d+k_v\dot E+k_pE\), E = x<sub>d</sub> − x; closed loop \(\ddot E+k_v\dot E+k_pE=0\) [3].</p>
+<p>(b) k<sub>p</sub> = ω<sub>n</sub>² = 64 s⁻², k<sub>v</sub> = 2ω<sub>n</sub> = 16 s⁻¹ [1].</p>
+<p>(c) |E<sub>ss</sub>| = f<sub>dist</sub>/(k<sub>p</sub>m) = 5/(64 × 2) = 0.0391 m. The sign depends on which way the disturbance pushes: the joint sags in the disturbance’s direction. Add integral action (PID), keeping k<sub>i</sub> &lt; k<sub>v</sub>k<sub>p</sub> = 1024 for stability [2].</p>
+<p>(d) E = 0.05, \(\dot E\) = 0.20: f′ = 16(0.2) + 64(0.05) = 6.4 m/s²; f = 2(6.4) + 0.5(−0.2) + 4(0.1) = 13.1 N [1]. <span class="chk">checked</span></p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q8 · Differential-drive robot</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q8" data-topic="mock"></span></div>
+<p>Wheels of radius r = 0.08 m sit at (0, ±a) with a = 0.20 m (left wheel 1 at +a). (a) From the generalised wheel model, derive the chassis velocity from the wheel speeds [2]. (b) For \(\dot\varphi\) = (5, 7.5) rad/s find u, θ̇ and the ICR [2]. (c) Find the wheel speeds for u = 0.3 m/s, θ̇ = −0.5 rad/s [1]. (d) Write the robot’s non-holonomic constraint in the inertial frame [1].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) Rows \(r\dot\varphi_1=u-a\dot\theta\), \(r\dot\varphi_2=u+a\dot\theta\); no-slide gives v = 0; so \(u=r(\dot\varphi_1+\dot\varphi_2)/2\), \(\dot\theta=r(\dot\varphi_2-\dot\varphi_1)/(2a)\) [2].</p>
+<p>(b) u = 0.5 m/s, θ̇ = 0.5 rad/s, ICR at (0, u/θ̇) = (0, 1.0) m, i.e. 1 m to the left [2].</p>
+<p>(c) \(\dot\varphi_1=(0.3+0.1)/0.08=5.0\), \(\dot\varphi_2=(0.3-0.1)/0.08=2.5\) rad/s [1].</p>
+<p>(d) \(-\dot x\sin\theta+\dot y\cos\theta=0\): no sideways velocity, not integrable to a position constraint [1]. <span class="chk">checked</span></p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q9 · A* by hand</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q9" data-topic="mock"></span></div>
+<p>Undirected edges with costs: S–A 2, S–B 5, A–C 4, A–D 7, B–D 3, C–G 6, D–G 2. Heuristic h: S 7, A 6, B 4, C 5, D 2, G 0. (a) Run A* from S to G; give the expansion order with g, h, f, and the path and cost [4]. (b) Is h admissible? Consistent? [2]</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) Expand S (g 0, f 7) → open A (2+6 = 8), B (5+4 = 9). Expand A (f 8) → C (6+5 = 11), D (9+2 = 11). Expand B (f 9) → D improves to g 8, f 10 (parent B). Expand D (f 10) → G (10+0 = 10). Expand G (f 10): stop [3]. Path S–B–D–G, cost 10 [1].</p>
+<p>(b) True costs to G: S 10, A 9, B 5, C 6, D 2; every h ≤ true, so admissible. Every edge satisfies h(n) ≤ c(n, m) + h(m), so consistent [2]. <span class="chk">checked by search</span></p></details></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q10 · Wheeled-robot dynamics (short)</b><span class="chip explain">explain</span><span class="chip">4 marks</span><span class="marks" data-id="m1-q10" data-topic="mock"></span></div>
+<p>The chassis frame {C} moves with velocity (u, v) and turns at θ̇. Show that the acceleration of the chassis origin, written in {C}, is \((\dot u-v\dot\theta,\;\dot v+u\dot\theta)\), and explain why a robot driving in a circle at constant u needs a sideways force even though v = 0.</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>Velocity in {O}: \(\mathbf v=R(\theta)[u,v]^\top\). Differentiate: \(\dot{\mathbf v}=R(\theta)[\dot u,\dot v]^\top+\dot R(\theta)[u,v]^\top\) with \(\dot R=R\,[\![0,-\dot\theta],[\dot\theta,0]\!]\). In {C}: \((\dot u-v\dot\theta,\;\dot v+u\dot\theta)\) [2]. With v = 0 and constant u, the sideways acceleration is uθ̇ = u²/R: the centripetal acceleration of circular motion. The wheels’ no-slip friction must supply that force [2]. (This is the term printed as vθ̇ on W11 slides 24–25; see the W11 tab.)</p></details></div>
+
+<h3 id="mock2">Mock exam 2 <span class="pgs">indicative total 64 marks · 2 hours</span></h3>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q1 · DH table of an RRP arm</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q1" data-topic="mock"></span></div>
+<p>A base joint rotates about the vertical z<sub>0</sub>. At height H = 0.5 m, a second revolute joint with a horizontal axis tilts a boom away from the vertical by θ<sub>2</sub>. The boom points straight <i>up</i> at θ<sub>2</sub> = 0, and positive θ<sub>2</sub> tilts it outwards, in the direction set by θ<sub>1</sub>. Both joint axes meet at one point. A prismatic joint extends the tool along the boom by d<sub>3</sub>. (a) Give a proximal DH table [3]. (b) Find the tool position at θ<sub>1</sub> = 40°, θ<sub>2</sub> = 30°, d<sub>3</sub> = 0.6 m [3].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) Rows (α<sub>i−1</sub>, a<sub>i−1</sub>, θ<sub>i</sub>, d<sub>i</sub>): (0, 0, θ<sub>1</sub>, H), (−90°, 0, θ<sub>2</sub>, 0), (+90°, 0, 0, d<sub>3</sub>). The axes intersect, so all a = 0 [3].</p>
+<p>(b) Tip = (c<sub>1</sub>d<sub>3</sub>s<sub>2</sub>, s<sub>1</sub>d<sub>3</sub>s<sub>2</sub>, H + d<sub>3</sub>c<sub>2</sub>) = (0.2298, 0.1928, 1.0196) m [3]. <span class="chk">DH product checked</span></p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q2 · Inverse kinematics of the RRP arm</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q2" data-topic="mock"></span></div>
+<p>For the arm of Q1, derive the IK and evaluate it for p = (0.3, 0.4, 0.9) m. How many solutions are there?</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>θ<sub>1</sub> = atan2(y, x); r = √(x² + y²), z′ = z − H; d<sub>3</sub> = √(r² + z′²); θ<sub>2</sub> = atan2(r, z′) [3]. Numbers: θ<sub>1</sub> = 53.130°, r = 0.5, z′ = 0.4, d<sub>3</sub> = 0.6403 m, θ<sub>2</sub> = 51.340° [2]. Second solution (θ<sub>1</sub> + 180°, −θ<sub>2</sub>, d<sub>3</sub>); with d<sub>3</sub> &gt; 0 there are exactly two [1]. <span class="chk">both checked</span></p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q3 · Four-bar: assembly modes</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="chip explain">explain</span><span class="chip">8 marks</span><span class="marks" data-id="m2-q3" data-topic="mock"></span></div>
+<p>A four-bar has ground L<sub>0</sub> = 0.8 m, input crank L<sub>1</sub> = 0.3 m (angle θ<sub>1</sub> at {S} = (0, 0)), coupler L<sub>2</sub> = 0.7 m, rocker L<sub>3</sub> = 0.5 m pivoted at (0.8, 0). (a) Find both positions of the coupler–rocker joint B at θ<sub>1</sub> = 60° and the coupler angle φ for each [5]. (b) Can the crank rotate fully? Justify [2]. (c) What is the mobility? [1]</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) A = (0.15, 0.2598); |AD| = 0.7000 m. Intersect circle (A, 0.7) with circle (D, 0.5) [2]: B = (0.8075, 0.4999) with φ = 20.063°, φ<sub>1</sub> = 89.138°; or B = (0.4608, −0.3674) with φ = −63.636°, φ<sub>1</sub> = −132.712° [3]. <span class="chk">both satisfy |BD| = 0.5</span></p>
+<p>(b) Grashof: s + l = 0.3 + 0.8 = 1.1 ≤ p + q = 0.5 + 0.7 = 1.2, and the shortest link is the crank, so it turns fully (crank-rocker) [2].</p>
+<p>(c) 3(4 − 4 − 1) + 4 = 1 [1].</p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q4 · Linear segment with parabolic blends</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q4" data-topic="mock"></span></div>
+<p>A joint moves from 10° to 70° in 3 s using LSPB with blend acceleration 30 °/s². (a) Check that the acceleration is large enough [1]. (b) Find the blend time, the linear-segment speed, and the angle at the end of the first blend [3]. (c) Sketch θ, \(\dot\theta\), \(\ddot\theta\) against time [2].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) Need \(\ddot\theta\ge4\Delta/t_f^2=4(60)/9=26.67\) °/s²; 30 is enough [1].</p>
+<p>(b) \(t_b=\tfrac{t_f}2-\dfrac{\sqrt{\ddot\theta^2t_f^2-4\ddot\theta\Delta}}{2\ddot\theta}=1.5-\dfrac{\sqrt{8100-7200}}{60}=1.0\) s; speed \(\ddot\theta t_b=30\) °/s; θ(t<sub>b</sub>) = 10 + ½(30)(1²) = 25° [3]. <span class="chk">ends at 70°, checked</span></p>
+<p>(c) θ: parabola 10→25° (0–1 s), straight line 25→55° (1–2 s), parabola 55→70° (2–3 s). \(\dot\theta\): ramp 0→30, flat 30, ramp 30→0. \(\ddot\theta\): +30, 0, −30 (steps) [2].</p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q5 · Jacobian of the W13 RRR arm</b><span class="chip derive">derive</span><span class="chip explain">explain</span><span class="chip">7 marks</span><span class="marks" data-id="m2-q5" data-topic="mock"></span></div>
+<p>For the RRR arm of Sample Q1 (position x = c<sub>1</sub>r, y = s<sub>1</sub>r, z = L<sub>1</sub> + L<sub>2</sub> + L<sub>3</sub>s<sub>2</sub> + L<sub>4</sub>s<sub>23</sub>, with r = L<sub>3</sub>c<sub>2</sub> + L<sub>4</sub>c<sub>23</sub>): (a) derive the 3×3 position Jacobian [3]; (b) show that det J = −L<sub>3</sub>L<sub>4</sub> sin θ<sub>3</sub> · r and interpret each factor [3]; (c) evaluate det J for L<sub>3</sub> = 0.4, L<sub>4</sub> = 0.3 m at θ = (30°, 20°, 40°) [1].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) With \(\rho=L_3s_2+L_4s_{23}\): \(\mathbf J=\begin{bmatrix}-s_1r&-c_1\rho&-c_1L_4s_{23}\\c_1r&-s_1\rho&-s_1L_4s_{23}\\0&r&L_4c_{23}\end{bmatrix}\) [3].</p>
+<p>(b) Expanding gives \(-L_3L_4\sin\theta_3\,(L_3c_2+L_4c_{23})\) [1]. sin θ<sub>3</sub> = 0: the elbow is straight or folded, at the workspace boundary [1]. r = 0: the wrist point lies on the base axis, so joint 1 cannot move it [1]. <span class="chk">checked at 200 random poses</span></p>
+<p>(c) r = 0.5259 m, det J = −0.12 sin 40° × 0.5259 = −0.04056 [1].</p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q6 · Two-link arm with uniform rods</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">8 marks</span><span class="marks" data-id="m2-q6" data-topic="mock"></span></div>
+<p>A planar 2R arm in a vertical plane (q<sub>1</sub> measured from the horizontal, q<sub>2</sub> relative to link 1, gravity along −y) has uniform rods: m<sub>1</sub> = 3 kg, l<sub>1</sub> = 0.6 m; m<sub>2</sub> = 2 kg, l<sub>2</sub> = 0.4 m (COM at mid-length, \(I_c=ml^2/12\)). (a) Write M(q) and g(q) [5]. (b) The arm is momentarily at rest at q = (45°, −30°) with \(\ddot{\mathbf q}\) = (1, 2) rad/s². Find the joint torques [3].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) \(M_{11}=I_1+m_1\tfrac{l_1^2}4+I_2+m_2\big(l_1^2+\tfrac{l_2^2}4+l_1l_2c_2\big)\), \(M_{12}=I_2+m_2\big(\tfrac{l_2^2}4+\tfrac{l_1l_2}2c_2\big)\), \(M_{22}=I_2+m_2\tfrac{l_2^2}4\) [3]; \(g_1=(m_1\tfrac{l_1}2+m_2l_1)gc_1+m_2\tfrac{l_2}2gc_{12}\), \(g_2=m_2\tfrac{l_2}2gc_{12}\) [2].</p>
+<p>(b) M = [[1.6024, 0.3145], [0.3145, 0.1067]] kg·m², g = (18.3574, 3.7903) N·m; at rest C = 0, so τ = M\(\ddot{\mathbf q}\) + g = (20.5888, 4.3181) N·m [3]. <span class="chk">checked against Lagrange</span></p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q7 · PID gains and stability</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">7 marks</span><span class="marks" data-id="m2-q7" data-topic="mock"></span></div>
+<p>A partitioned joint uses \(f'=\ddot x_d+k_v\dot E+k_pE+k_i\int E\,dt\). (a) With k<sub>p</sub> = 49 s⁻², choose k<sub>v</sub> for critical damping of the PD part [1]. (b) Derive the third-order error equation and the characteristic polynomial [3]. (c) For which k<sub>i</sub> is the loop stable? Is k<sub>i</sub> = 100 stable? [2] (d) What is the steady-state error under a constant disturbance? [1]</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) k<sub>v</sub> = 2√49 = 14 s⁻¹ [1].</p>
+<p>(b) \(\ddot E+k_v\dot E+k_pE+k_i\!\int\!E=f_{dist}/m\); differentiate: \(\dddot E+k_v\ddot E+k_p\dot E+k_iE=\dot f_{dist}/m\); polynomial \(s^3+14s^2+49s+k_i\) [3].</p>
+<p>(c) Routh–Hurwitz: stable for 0 &lt; k<sub>i</sub> &lt; k<sub>v</sub>k<sub>p</sub> = 686. With k<sub>i</sub> = 100 the roots are −10.140 and −1.930 ± 2.477j: stable [2]. <span class="chk">checked</span></p>
+<p>(d) Zero: at steady state \(k_iE=0\) [1].</p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q8 · Mecanum (Swedish 45°) robot</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q8" data-topic="mock"></span></div>
+<p>Four wheels (r = 0.05 m) at (±0.20, ±0.15) m all drive along x<sub>C</sub> (β = 0). Front-left and rear-right rollers have γ = −45°; front-right and rear-left have γ = +45°. (a) Using the generalised model, write the four wheel rows [3]. (b) Find the wheel speeds for pure sideways motion v = 0.2 m/s [2]. (c) Is the robot holonomic? [1]</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) \(r\dot\varphi_i=(u-\dot\theta y_i)+\tan\gamma_i\,(v+\dot\theta x_i)\). Rows (per m/s; divide by r = 0.05): FL (0.2, 0.15, −45°): [20, −20, −7]; FR (0.2, −0.15, +45°): [20, 20, 7]; RL (−0.2, 0.15, +45°): [20, 20, −7]; RR (−0.2, −0.15, −45°): [20, −20, 7] [3].</p>
+<p>(b) \(\dot{\boldsymbol\varphi}\) = (−4, 4, 4, −4) rad/s: diagonal pairs turn the same way [2].</p>
+<p>(c) The 4×3 matrix has rank 3, so any (u, v, θ̇) is achievable: holonomic [1]. <span class="chk">checked</span></p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q9 · Planning concepts</b><span class="chip explain">explain</span><span class="chip">6 marks</span><span class="marks" data-id="m2-q9" data-topic="mock"></span></div>
+<p>(a) Why are grid planners impractical for a 6-DoF arm? Quantify with 100 cells per joint [2]. (b) Compare PRM and RRT: what they build, when to use each, and their completeness [3]. (c) When is A* guaranteed optimal? [1]</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) The node count grows exponentially with dimension: 100⁶ = 10¹² cells (curse of dimensionality) [2].</p>
+<p>(b) PRM samples free configurations and connects neighbours into a roadmap, then searches it: multi-query, good for static environments. RRT grows a tree from the start towards random samples: single-query, handles differential constraints. Both are probabilistically complete (success probability tends to 1 as samples grow) and neither is optimal [3].</p>
+<p>(c) With an admissible heuristic (h never overestimates). Consistency also lets the closed set stay closed [1].</p></details></div>
+
+<div class="gp mq" data-topic="mock2"><div class="head"><b>Q10 · Mechanisms: actuation and G–K failure</b><span class="chip explain">explain</span><span class="chip">4 marks</span><span class="marks" data-id="m2-q10" data-topic="mock"></span></div>
+<p>(a) Define fully actuated, under-actuated and (kinematically) redundant, with one example each [2]. (b) A planar body is hung from the ground by three equal parallel links. G–K gives M = 0, yet it moves. Explain [2].</p>
+<details class="sol"><summary>Model answer and marking scheme</summary>
+<p>(a) Fully actuated: actuators = DoF (6R arm with 6 motors). Under-actuated: fewer actuators than DoF (that arm with 4 motors; or 3-SPS from Mock 1). Redundant: more joint DoF than the task needs (7R arm for a 6-DoF pose) [2].</p>
+<p>(b) N = 5, J = 6: 3(5 − 6 − 1) + 6 = 0. G–K assumes independent constraints; with equal parallel links the third link repeats the others’ constraint (one redundant constraint), so the true mobility is 1. Remove one link: 3(4 − 4 − 1) + 4 = 1 [2].</p></details></div>
+
+<script data-after>
+// nothing extra: answer marks and downloads use the shell
+</script>

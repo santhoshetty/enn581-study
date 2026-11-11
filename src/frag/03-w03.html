@@ -1,0 +1,266 @@
+<p class="eyebrow">Week 3 · Inverse kinematics</p>
+<h2>Which joint values put the tool where I want it?</h2>
+<p class="lead">IK runs FK backwards: from a desired pose to joint values. Unlike FK, the answer may not exist, may not be unique, and may need a numerical search. The exam skill is the closed-form derivation: project, apply the cosine rule, use atan2, list every branch.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Inverse Kinematics<small>62 slides · notebook “3 inverse kinematics”</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w03-lec">📖 View here</button>
+    <button type="button" class="btn" data-dl="notes/w03-lec.pdf" data-name="ENN581 W3 Inverse Kinematics.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w03-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>Sample question 3</b> (<a class="pg" data-doc="w13-lec" data-page="7">W13 p.7</a>): “Derive the inverse kinematics. You are given the position of the end effector (x<sub>T</sub>, y<sub>T</sub>, z<sub>T</sub>).” <b>Sample question 2</b> (<a class="pg" data-doc="w13-lec" data-page="6">p.6</a>): sketch the workspace. Both are solved in full on the <a href="#sample" data-goto="sample" data-anchor="sq3">Sample Qs tab</a>.</p>
+  <p><b>Where the marks are (indicative):</b> FK written first; a top-down view giving θ<sub>1</sub>; a side view reducing the rest to a planar 2R problem; the cosine rule for the elbow with ±; atan2 for the shoulder; the number of solutions and when none exist.</p>
+  <p><b>Where marks are lost:</b> tan⁻¹(y/x) instead of atan2 (wrong quadrant); one branch only; mixing an interior triangle angle with a relative joint angle (the sign of a cosine flips); forgetting to subtract the base height or the last link before solving.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (optional)</span>
+  <p>The W3 practical folder holds the PUMA 560 FK scripts (proximal DH and distal ETS), which pair with W2. <code>rrp_ik.py</code> in the lecture folder is, despite its name, a planar 2R arm (L<sub>1</sub> = L<sub>2</sub> = 1). It has the analytic IK (both elbows), its 2×2 Jacobian, and a Newton–Raphson solver. Its cos q2 is clipped to [−1, 1], so an unreachable target silently returns the nearest boundary pose.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>Touch your nose two ways</h4>Keep your fingertip on your nose and move your elbow: the hand stays put while the arm changes. A robot arm has the same freedom at its “elbow”, so most reachable points have an elbow-up and an elbow-down answer.</div>
+    <div class="card"><h4>A triangle does the work</h4>For two links, shoulder, elbow and tip form a triangle with known sides L<sub>1</sub>, L<sub>2</sub> and the distance to the target. The cosine rule gives the elbow angle; the rest is pointing.</div>
+    <div class="card"><h4>Split position from orientation</h4>With a spherical wrist, the first three joints carry the wrist centre (like your shoulder and elbow placing your wrist). The last three only turn the hand. Two small problems instead of one big one.</div>
+    <div class="card"><h4>Numerical IK = walking downhill</h4>Measure how far the tool is from the goal, use the Jacobian as a local map of “which joint moves the tool where”, step, and repeat. Like adjusting a desk lamp by small nudges until the light lands on the page.</div>
+  </div>
+  <div class="vids" data-vids="w03"></div>
+</div>
+
+<div class="widget" data-w3d="ik2r" id="w3-ik2r">
+  <div class="wh"><b>Two-link IK: branches, workspace, Newton–Raphson</b><span class="eyebrow">drawn to scale · L1 = 1.0 m, L2 = 0.7 m (slides pp. 14–16)</span></div>
+  <div class="wbody"><div class="stage"></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> click anywhere to move the target. Both elbow solutions are drawn (solid and dashed). Click inside the inner circle (radius 0.3 m) or outside the outer one (1.7 m) to see “no solution”. Press <b>Newton step</b> repeatedly from the start guess (0.5, 0.5) rad; each step moves the grey arm towards one of the two analytic answers.</div>
+</div>
+
+<!-- 1 -->
+<div class="sub" id="w3-spaces">
+<h3>1 · The IK problem and its spaces <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="7">pp. 7–11</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Configuration (joint) space 𝒞 holds the joint vector q; for two revolute joints \(\mathcal C=\mathbb S^1\times\mathbb S^1\) (each angle in [0, 2π)). Task space 𝒯 holds the tool pose ξ, written as \({}^0\mathbf T_E\), as (x, y, z, roll, pitch, yaw), or as position + quaternion (<a class="pg" data-doc="w03-lec" data-page="9">p.9</a>). FK is \(\xi=\mathcal K(\mathbf q)\); IK is \(\mathbf q=\mathcal K^{-1}(\xi)\) (<a class="pg" data-doc="w03-lec" data-page="11">p.11</a>). 𝒦 is a many-to-one, nonlinear map, which is why its inverse is hard.</p>
+</div>
+<div class="angle">Definitions are cheap marks: be able to say what 𝒞 and 𝒯 are for a given robot, and why IK can have 0, 1, several or infinitely many solutions.</div>
+</div>
+
+<!-- 2 -->
+<div class="sub" id="w3-exist">
+<h3>2 · Does a solution exist? Workspace <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="13">pp. 12–16</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>Reachable workspace:</b> every point the tool can reach in at least one orientation. <b>Dexterous workspace:</b> every point it can reach in <i>every</i> orientation. For a full 3D pose you need the dexterous workspace (notebook Q1).</p>
+<figure class="svg"><svg viewBox="0 0 520 220" role="img" aria-label="Annulus workspace of a 2R arm with L1=1, L2=0.7">
+  <g font-family="IBM Plex Mono, monospace" font-size="12">
+  <circle cx="130" cy="110" r="95" fill="color-mix(in srgb, var(--accent) 20%, transparent)" stroke="var(--accent)" stroke-width="2"/>
+  <circle cx="130" cy="110" r="16.8" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/>
+  <circle cx="130" cy="110" r="3" fill="var(--ink)"/>
+  <line x1="130" y1="110" x2="225" y2="110" stroke="var(--ink)"/><text x="160" y="104" fill="var(--ink)">1.7 m</text>
+  <line x1="130" y1="110" x2="130" y2="93.2" stroke="var(--ink)"/><text x="136" y="96" fill="var(--ink)" font-size="11">0.3</text>
+  <text x="40" y="214" fill="var(--muted)">all joints free: annulus</text>
+  <circle cx="370" cy="110" r="95.0" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+  <path d="M465.0,110.0 L465.0,108.3 L464.9,106.6 L464.9,105.0 L464.8,103.3 L464.6,101.6 L464.5,100.0 L464.3,98.3 L464.1,96.6 L463.8,95.0 L463.5,93.3 L463.2,91.7 L462.9,90.0 L462.5,88.4 L462.1,86.8 L461.7,85.1 L461.2,83.5 L460.8,81.9 L460.2,80.3 L459.7,78.7 L459.1,77.2 L458.5,75.6 L457.9,74.0 L457.3,72.5 L456.6,71.0 L455.9,69.4 L455.2,67.9 L454.4,66.4 L453.6,64.9 L452.8,63.5 L452.0,62.0 L451.1,60.6 L450.2,59.2 L449.3,57.7 L448.4,56.4 L447.4,55.0 L446.5,53.6 L445.5,52.3 L444.4,51.0 L443.4,49.7 L442.3,48.4 L441.2,47.1 L440.1,45.9 L438.9,44.6 L437.8,43.4 L436.6,42.2 L435.4,41.1 L434.1,39.9 L432.9,38.8 L431.6,37.7 L430.3,36.6 L429.0,35.6 L427.7,34.5 L426.4,33.5 L425.0,32.6 L423.6,31.6 L422.3,30.7 L420.8,29.8 L419.4,28.9 L418.0,28.0 L416.5,27.2 L415.1,26.4 L413.6,25.6 L412.1,24.8 L410.6,24.1 L409.0,23.4 L407.5,22.7 L406.0,22.1 L404.4,21.5 L402.8,20.9 L401.3,20.3 L399.7,19.8 L398.1,19.2 L396.5,18.8 L394.9,18.3 L393.2,17.9 L391.6,17.5 L390.0,17.1 L388.3,16.8 L386.7,16.5 L385.0,16.2 L383.4,15.9 L381.7,15.7 L380.0,15.5 L378.4,15.4 L376.7,15.2 L375.0,15.1 L373.4,15.1 L371.7,15.0 L370.0,15.0 L370.0,15.0 L369.3,15.0 L368.6,15.0 L367.9,15.1 L367.2,15.1 L366.6,15.2 L365.9,15.2 L365.2,15.3 L364.5,15.4 L363.8,15.5 L363.1,15.6 L362.5,15.7 L361.8,15.9 L361.1,16.0 L360.4,16.2 L359.8,16.4 L359.1,16.5 L358.4,16.7 L357.8,17.0 L357.1,17.2 L356.5,17.4 L355.8,17.7 L355.2,17.9 L354.6,18.2 L353.9,18.5 L353.3,18.7 L352.7,19.0 L352.1,19.4 L351.4,19.7 L350.8,20.0 L350.2,20.4 L349.6,20.7 L349.1,21.1 L348.5,21.4 L347.9,21.8 L347.3,22.2 L346.8,22.6 L346.2,23.0 L345.7,23.5 L345.2,23.9 L344.6,24.3 L344.1,24.8 L343.6,25.3 L343.1,25.7 L342.6,26.2 L342.1,26.7 L341.6,27.2 L341.1,27.7 L340.7,28.2 L340.2,28.7 L339.8,29.3 L339.4,29.8 L338.9,30.4 L338.5,30.9 L338.1,31.5 L337.7,32.0 L337.3,32.6 L337.0,33.2 L336.6,33.8 L336.2,34.4 L335.9,35.0 L335.6,35.6 L335.2,36.2 L334.9,36.8 L334.6,37.4 L334.3,38.0 L334.1,38.7 L333.8,39.3 L333.5,39.9 L333.3,40.6 L333.1,41.2 L332.8,41.9 L332.6,42.6 L332.4,43.2 L332.2,43.9 L332.1,44.6 L331.9,45.2 L331.8,45.9 L331.6,46.6 L331.5,47.2 L331.4,47.9 L331.3,48.6 L331.2,49.3 L331.1,50.0 L331.0,50.7 L331.0,51.4 L330.9,52.0 L330.9,52.7 L330.9,53.4 L330.9,54.1 L330.9,54.1 L331.9,53.4 L332.9,52.8 L333.9,52.1 L334.9,51.5 L336.0,50.9 L337.0,50.3 L338.1,49.7 L339.1,49.2 L340.2,48.6 L341.3,48.1 L342.4,47.6 L343.5,47.1 L344.6,46.7 L345.7,46.2 L346.9,45.8 L348.0,45.4 L349.1,45.1 L350.3,44.7 L351.5,44.4 L352.6,44.0 L353.8,43.7 L355.0,43.5 L356.1,43.2 L357.3,43.0 L358.5,42.8 L359.7,42.6 L360.9,42.4 L362.1,42.2 L363.3,42.1 L364.5,42.0 L365.7,41.9 L366.9,41.9 L368.1,41.8 L369.3,41.8 L370.5,41.8 L371.7,41.8 L372.9,41.8 L374.1,41.9 L375.3,42.0 L376.5,42.1 L377.7,42.2 L378.9,42.4 L380.1,42.5 L381.3,42.7 L382.4,42.9 L383.6,43.2 L384.8,43.4 L386.0,43.7 L387.1,44.0 L388.3,44.3 L389.5,44.6 L390.6,45.0 L391.8,45.4 L392.9,45.7 L394.0,46.2 L395.2,46.6 L396.3,47.0 L397.4,47.5 L398.5,48.0 L399.6,48.5 L400.6,49.1 L401.7,49.6 L402.8,50.2 L403.8,50.8 L404.9,51.4 L405.9,52.0 L406.9,52.6 L407.9,53.3 L408.9,54.0 L409.9,54.7 L410.9,55.4 L411.8,56.1 L412.8,56.9 L413.7,57.6 L414.6,58.4 L415.5,59.2 L416.4,60.0 L417.3,60.8 L418.1,61.7 L419.0,62.5 L419.8,63.4 L420.6,64.3 L421.4,65.2 L422.2,66.1 L423.0,67.0 L423.7,68.0 L424.5,68.9 L425.2,69.9 L425.9,70.9 L425.9,70.9 L426.6,70.9 L427.3,70.9 L428.0,70.9 L428.6,71.0 L429.3,71.0 L430.0,71.1 L430.7,71.2 L431.4,71.3 L432.1,71.4 L432.8,71.5 L433.4,71.6 L434.1,71.8 L434.8,71.9 L435.4,72.1 L436.1,72.2 L436.8,72.4 L437.4,72.6 L438.1,72.8 L438.8,73.1 L439.4,73.3 L440.1,73.5 L440.7,73.8 L441.3,74.1 L442.0,74.3 L442.6,74.6 L443.2,74.9 L443.8,75.2 L444.4,75.6 L445.0,75.9 L445.6,76.2 L446.2,76.6 L446.8,77.0 L447.4,77.3 L448.0,77.7 L448.5,78.1 L449.1,78.5 L449.6,78.9 L450.2,79.4 L450.7,79.8 L451.3,80.2 L451.8,80.7 L452.3,81.1 L452.8,81.6 L453.3,82.1 L453.8,82.6 L454.3,83.1 L454.7,83.6 L455.2,84.1 L455.7,84.6 L456.1,85.2 L456.5,85.7 L457.0,86.2 L457.4,86.8 L457.8,87.3 L458.2,87.9 L458.6,88.5 L458.9,89.1 L459.3,89.6 L459.6,90.2 L460.0,90.8 L460.3,91.4 L460.6,92.1 L461.0,92.7 L461.3,93.3 L461.5,93.9 L461.8,94.6 L462.1,95.2 L462.3,95.8 L462.6,96.5 L462.8,97.1 L463.0,97.8 L463.3,98.4 L463.5,99.1 L463.6,99.8 L463.8,100.4 L464.0,101.1 L464.1,101.8 L464.3,102.5 L464.4,103.1 L464.5,103.8 L464.6,104.5 L464.7,105.2 L464.8,105.9 L464.8,106.6 L464.9,107.2 L464.9,107.9 L465.0,108.6 L465.0,109.3 L465.0,110.0 Z" fill="color-mix(in srgb, var(--exam) 30%, transparent)" stroke="var(--exam)" stroke-width="2"/>
+  <circle cx="370" cy="110" r="3" fill="var(--ink)"/>
+  <text x="300" y="214" fill="var(--muted)">q1, q2 ∈ [0, π/2]: crescent</text>
+  </g></svg><figcaption>To scale (56 px per metre), L<sub>1</sub> = 1 m, L<sub>2</sub> = 0.7 m (<a class="pg" data-doc="w03-lec" data-page="15">p.15</a>, <a class="pg" data-doc="w03-lec" data-page="16">p.16</a>). Left: radii |L<sub>1</sub>−L<sub>2</sub>| = 0.3 m and L<sub>1</sub>+L<sub>2</sub> = 1.7 m. Right: with both joints limited to [0, π/2], the tip sweeps only the shaded region, computed exactly from the four joint-limit edges. Outer edge: q<sub>2</sub> = 0 (radius 1.7 m). Inner edge: q<sub>2</sub> = π/2 (radius √(1² + 0.7²) = 1.221 m). Side edges: circles of radius 0.7 m traced at q<sub>1</sub> = 0 and q<sub>1</sub> = π/2. The region reaches x = −0.7 m. The dexterous workspace is empty in both cases: a 2R arm’s orientation is fixed by its position.</figcaption></figure>
+</div>
+<div class="angle">“Sketch the workspace” (W13 Q2) is this idea in 3D. Always give the radii and say <i>why</i> (cosine rule: distance ranges from |L<sub>1</sub>−L<sub>2</sub>| to L<sub>1</sub>+L<sub>2</sub>).</div>
+</div>
+
+<!-- 3 -->
+<div class="sub" id="w3-multi">
+<h3>3 · Multiple solutions and how to choose <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="17">pp. 17–20</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A reachable point usually has several joint solutions (<a class="pg" data-doc="w03-lec" data-page="17">p.17</a>). To pick one (<a class="pg" data-doc="w03-lec" data-page="18">p.18</a>): the <b>closest</b> to the current configuration (smallest absolute or weighted joint change; prefer moving small distal joints over large proximal ones), or the one that <b>avoids obstacles</b> (<a class="pg" data-doc="w03-lec" data-page="19">p.19</a>). Solution methods (<a class="pg" data-doc="w03-lec" data-page="20">p.20</a>): <b>closed form</b> (algebraic, geometric, polynomial; non-iterative; all solutions known) or <b>numerical</b> (iterative; slower; handles long chains and returns a close-enough answer when no exact one exists, <a class="pg" data-doc="w03-lec" data-page="54">p.54</a>).</p>
+<p>A 6-DoF arm has no <i>continuous</i> redundancy for a 6-number pose (<a class="pg" data-doc="w03-lec" data-page="33">p.33</a>), but it still has several <i>discrete</i> solutions. The PUMA 560 has up to <b>8</b>: shoulder left/right × elbow up/down × wrist flip. <span class="added">added: standard result, Craig ch. 4</span></p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>Slide 54 lists “unique solution to all positions” for closed form. Read it as “a definite, complete set of solutions”: slides 17 and 20 show that one point can have several solutions.</p></div>
+</div>
+
+<!-- 4 -->
+<div class="sub" id="w3-rp">
+<h3>4 · Planar RP arm <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="23">pp. 23–24</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>A revolute joint q<sub>1</sub> followed by a prismatic extension S along the link: tip \((x,y)=(S\cos q_1,\;S\sin q_1)\). Polar coordinates invert it directly:</p>
+\[ S=\sqrt{x^2+y^2},\qquad q_1=\operatorname{atan2}(y,x) \]
+<p>The slide writes \(\tan^{-1}(y/x)\) (<a class="pg" data-doc="w03-lec" data-page="24">p.24</a>); use atan2 for the quadrant. If S may be negative, (−S, q<sub>1</sub>+π) is a second solution.</p></div>
+<div class="worked"><span class="tag">Worked example</span><p>(x, y) = (0.3, 0.4) m → S = 0.5 m, q<sub>1</sub> = 53.130°. <span class="chk">checked</span></p></div>
+</div>
+
+<!-- 5 -->
+<div class="sub" id="w3-rr">
+<h3>5 · Planar RR arm, algebraic solution, and atan2 <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="25">pp. 25–30</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>FK (<a class="pg" data-doc="w03-lec" data-page="26">p.26</a>): \(x=L_1c_1+L_2c_{12}\), \(y=L_1s_1+L_2s_{12}\). <b>Square and add</b>; cross terms collapse with \(c_1c_{12}+s_1s_{12}=\cos q_2\):</p>
+\[ x^2+y^2=L_1^2+L_2^2+2L_1L_2\cos q_2\;\;\Rightarrow\;\;\cos q_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2} \]
+\[ \sin q_2=\pm\sqrt{1-\cos^2q_2},\qquad q_2=\operatorname{atan2}(\sin q_2,\;\cos q_2) \]
+<p>The ± is the elbow: two solutions (<a class="pg" data-doc="w03-lec" data-page="28">p.28</a>). If \(|\cos q_2|&gt;1\) the point is out of reach.</p>
+<p>For q<sub>1</sub>, expand the compound angles (<a class="pg" data-doc="w03-lec" data-page="30">p.30</a>): \(x=(L_1+L_2c_2)c_1-(L_2s_2)s_1\), \(y=(L_2s_2)c_1+(L_1+L_2c_2)s_1\). This is the point (x, y) seen as the vector \((L_1+L_2c_2,\;L_2s_2)\) rotated by q<sub>1</sub>, so</p>
+\[ q_1=\operatorname{atan2}(y,x)-\operatorname{atan2}\big(L_2\sin q_2,\;L_1+L_2\cos q_2\big) \]
+<p>One q<sub>1</sub> for each q<sub>2</sub>. The slide’s general tool for \(A\cos\varphi+B\sin\varphi=C\) gives the same result: \(\varphi=\operatorname{atan2}(C,\pm\sqrt{A^2+B^2-C^2})-\operatorname{atan2}(A,B)\).</p>
+<p><b>atan2</b> (<a class="pg" data-doc="w03-lec" data-page="29">p.29</a>) returns the angle of the point (x, y) in (−π, π], using both signs. \(\tan^{-1}(y/x)\) cannot tell (1, 1) from (−1, −1): both give 45°, but the second is −135°. <span class="chk">checked</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe (any 2-link planar sub-problem)</span><ol>
+<li>Write FK. Identify the shoulder point and the target in the plane (subtract offsets first).</li>
+<li>\(\cos q_2\) by square-and-add (or the cosine rule). Check \(|\cos q_2|\le1\).</li>
+<li>\(q_2=\operatorname{atan2}(\pm\sqrt{1-c_2^2},\,c_2)\): two branches.</li>
+<li>\(q_1=\operatorname{atan2}(y,x)-\operatorname{atan2}(L_2s_2,\,L_1+L_2c_2)\) for each branch.</li>
+<li>Check one branch by FK.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>L<sub>1</sub> = 1.0 m, L<sub>2</sub> = 0.7 m, target (1.2, 0.8) m. \(\cos q_2=(1.44+0.64-1-0.49)/1.4 = 0.421429\), so q<sub>2</sub> = ±65.075°. atan2(0.8, 1.2) = 33.690°.</p>
+<p>Elbow with q<sub>2</sub> = +65.075°: q<sub>1</sub> = 33.690° − 26.114° = 7.576°. With q<sub>2</sub> = −65.075°: q<sub>1</sub> = 33.690° + 26.114° = 59.804°. Both reproduce (1.2, 0.8). <span class="chk">checked</span></p>
+</div>
+</div>
+
+<!-- 6 -->
+<div class="sub" id="w3-geo">
+<h3>6 · Planar RR arm, geometric solution <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="31">p. 31</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation (triangle OAB)</span>
+<p>O is the base, A the elbow, B the tip at distance \(\sqrt{x^2+y^2}\). The interior angle at A is \(\pi-q_2\) (q<sub>2</sub> is measured from link 1’s extension). Cosine rule:</p>
+\[ x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos(\pi-q_2)=L_1^2+L_2^2+2L_1L_2\cos q_2 \]
+<p>the same as the algebra. Sine rule for the angle μ at O between OA and OB: \(\dfrac{\sin\mu}{L_2}=\dfrac{\sin(\pi-q_2)}{\sqrt{x^2+y^2}}=\dfrac{\sin q_2}{\sqrt{x^2+y^2}}\). With \(\sigma=\operatorname{atan2}(y,x)\), the slide’s answer is \(q_1=\sigma-\mu\).</p>
+<p>Signs: μ takes the sign of q<sub>2</sub>. For the elbow drawn on the slide (q<sub>2</sub> &gt; 0) the tip is anticlockwise of link 1, so link 1 lies below the line OB. For the other branch μ &lt; 0 and q<sub>1</sub> = σ + |μ|. Computing μ = atan2(L<sub>2</sub>s<sub>2</sub>, L<sub>1</sub>+L<sub>2</sub>c<sub>2</sub>) handles both automatically. <span class="chk">checked for both branches</span></p></div>
+<div class="angle">Geometric answers earn full marks if the triangle is drawn and labelled. Write “interior angle at the elbow = π − q<sub>2</sub>” explicitly; that one line prevents the sign error below.</div>
+</div>
+
+<!-- 7 -->
+<div class="sub" id="w3-6dof">
+<h3>7 · Six-DoF arm with a spherical wrist: decouple position and orientation <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="32">pp. 32–38</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A spherical wrist has its last three axes meeting at one point, the wrist centre W (<a class="pg" data-doc="w03-lec" data-page="34">p.34</a>). Rotating joints 4–6 cannot move W, so W’s position depends only on q<sub>1</sub>–q<sub>3</sub>. Solve q<sub>1</sub>–q<sub>3</sub> from W, then q<sub>4</sub>–q<sub>6</sub> from the remaining rotation.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Step 0, wrist centre</b> <span class="added">added</span>: if the tool point lies a distance d<sub>6</sub> beyond W along the approach axis \(\hat z_E\), then \(\mathbf p_W=\mathbf p_E-d_6\,{}^0\mathbf R_E\,[0\;0\;1]^\top\) (the third column of R scaled by d<sub>6</sub>).</p>
+<p><b>Step 1</b> (top view, <a class="pg" data-doc="w03-lec" data-page="35">p.35</a>): \(q_1=\operatorname{atan2}(y_W,x_W)\), second branch q<sub>1</sub>+π.</p>
+<p><b>Step 2</b> (the arm’s vertical plane, <a class="pg" data-doc="w03-lec" data-page="36">p.36</a>): shoulder height H, upper arm G, forearm F, \(r_W^2=x_W^2+y_W^2\). With q<sub>3</sub> the relative elbow angle (anticlockwise positive, same as q<sub>2</sub> in the 2R arm):</p>
+\[ \cos q_3=\frac{r_W^2+(z_W-H)^2-F^2-G^2}{2FG},\qquad q_3=\operatorname{atan2}\big(\pm\sqrt{1-\cos^2q_3},\cos q_3\big) \]
+<p><b>Step 3</b> (<a class="pg" data-doc="w03-lec" data-page="37">p.37</a>): \(\sigma=\operatorname{atan2}(z_W-H,\;r_W)\), \(\mu=\operatorname{atan2}(F\sin q_3,\;G+F\cos q_3)\), and with signed angles \(q_2=\sigma-\mu\).</p>
+<p><b>Step 4, wrist</b> (<a class="pg" data-doc="w03-lec" data-page="38">p.38</a>): compute \({}^0\mathbf R_3\) from q<sub>1</sub>–q<sub>3</sub>, then \({}^3\mathbf R_6=({}^0\mathbf R_3)^\top\,{}^0\mathbf R_6\), and read q<sub>4</sub>–q<sub>6</sub> as Euler angles. For a Z–Y–Z wrist \({}^3\mathbf R_6=R_z(q_4)R_y(q_5)R_z(q_6)\) <span class="added">added</span>:</p>
+\[ q_5=\operatorname{atan2}\!\big(\sqrt{r_{13}^2+r_{23}^2},\,r_{33}\big),\quad q_4=\operatorname{atan2}(r_{23},\,r_{13}),\quad q_6=\operatorname{atan2}(r_{32},\,-r_{31}) \]
+<p>The other sign of q<sub>5</sub> is the wrist flip (q<sub>4</sub>, q<sub>6</sub> each change by π). If q<sub>5</sub> = 0 the wrist is singular: only q<sub>4</sub>+q<sub>6</sub> is determined. <span class="chk">checked: extraction and flip both reproduce R</span></p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs maths: elbow sign on pp. 36–37</span><p>Slide 36 writes \(\cos(\pi-q_3)\) on the left. By the cosine rule (the interior angle at the elbow is π − q<sub>3</sub>), the right-hand side equals \(+\cos q_3\), not \(\cos(\pi-q_3)\) <span class="chk">checked</span>. Slide 37’s \(q_2=\sigma+\mu\) is correct when q<sub>3</sub> is read as a clockwise bend (the drawn elbow-up pose) and μ as a positive angle <span class="chk">checked</span>. In the exam, define your positive direction on the sketch and stay with it. Signed anticlockwise angles give the formulas above.</p></div>
+<div class="worked"><span class="tag">Worked example (position part)</span>
+<p>H = 0.5, G = 0.4, F = 0.3 m; wrist centre W = (0.4813, 0.4039, 0.5974) m. Then q<sub>1</sub> = 40°, r<sub>W</sub> = 0.6283 m, z<sub>W</sub> − H = 0.0974 m, cos q<sub>3</sub> = 0.6428, q<sub>3</sub> = ±50°.</p>
+<p>q<sub>3</sub> = −50° (elbow up) gives q<sub>2</sub> = 30°; q<sub>3</sub> = +50° (elbow down) gives q<sub>2</sub> = −12.378°. With the second q<sub>1</sub> branch (220°) that is 4 position solutions; times 2 wrist flips makes 8. <span class="chk">checked</span></p></div>
+</div>
+
+<!-- 8 -->
+<div class="sub" id="w3-num">
+<h3>8 · Numerical IK: goal potential, Newton–Raphson, pseudo-inverse <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="41">pp. 40–52</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>IK as optimisation (<a class="pg" data-doc="w03-lec" data-page="41">p.41</a>): \(\mathbf q^*=\arg\min_{\mathbf q}|\mathcal K(\mathbf q)\ominus\xi^*|\). The quantity being minimised is the <b>goal potential</b> \(G(\mathbf q)\). For position only (<a class="pg" data-doc="w03-lec" data-page="42">p.42</a>), \(G=(x^*-x)^2+(y^*-y)^2\).</p>
+<p><b>Newton–Raphson</b> (<a class="pg" data-doc="w03-lec" data-page="45">pp. 45–47</a>): linearise \(G(q)\approx G(q^k)+G'(q^k)(q-q^k)\), set it to 0: \(q^{k+1}=q^k-G'(q^k)^{-1}G(q^k)\). Stop when the relative change is below ε.</p>
+<p>For IK (<a class="pg" data-doc="w03-lec" data-page="49">pp. 48–52</a>) the derivative is the <b>Jacobian</b> \(\mathbf J=\partial\mathcal F/\partial\mathbf q\in\mathbb R^{m\times n}\). With error \(\mathbf e=\mathbf x^*-\mathcal F(\mathbf q^i)\), the update is</p>
+\[ \mathbf q^{i+1}=\mathbf q^i+\mathbf J^{\dagger}(\mathbf q^i)\,\mathbf e,\qquad \mathbf J^\dagger=\begin{cases}\mathbf J^{-1} & n=m\\ \mathbf J^\top(\mathbf J\mathbf J^\top)^{-1} & n&gt;m\ (\text{“fat”: infinitely many }\Delta\mathbf q\text{, picks the smallest})\\ (\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top & n&lt;m\ (\text{“tall”: no exact }\Delta\mathbf q\text{, least squares})\end{cases} \]
+<p><span class="chk">pseudo-inverse forms checked against numpy</span> Caveats (notebook Q4–Q6): G = 0 may be impossible (target outside the workspace); the method may stall in a local minimum or diverge near a singularity; the answer found depends on the initial guess.</p></div>
+<div class="worked"><span class="tag">Worked example: one Newton step</span>
+<p>2R arm (1.0, 0.7) m, target (1.2, 0.8), start q<sup>0</sup> = (0.5, 0.5) rad. FK gives (1.2558, 1.0685), so e<sup>0</sup> = (−0.0558, −0.2685).</p>
+\[ \mathbf J(\mathbf q^0)=\begin{bmatrix}-L_1s_1-L_2s_{12} & -L_2s_{12}\\ L_1c_1+L_2c_{12} & L_2c_{12}\end{bmatrix}=\begin{bmatrix}-1.0685&-0.5890\\1.2558&0.3782\end{bmatrix} \]
+<p>\(\Delta\mathbf q=\mathbf J^{-1}\mathbf e^0=(-0.5341,\;1.0635)\), so q<sup>1</sup> = (−0.0341, 1.5635) rad and |e<sup>1</sup>| = 0.2181 (down from 0.2742). It converges to the elbow branch (7.576°, 65.075°) in 5 iterations. <span class="chk">checked</span></p></div>
+<div class="angle">Calculation risk: J is 2×2 here, so invert it by hand: \(\mathbf J^{-1}=\frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}\). The explain-type question asks why numerical IK may fail. Name three reasons (unreachable, local minimum or singular J, initial guess).</div>
+</div>
+
+<!-- 9 -->
+<div class="sub" id="w3-when">
+<h3>9 · When does a closed form exist? <span class="pgs"><a class="pg" data-doc="w03-lec" data-page="56">pp. 55–56</a></span></h3>
+<p>Any 6-DoF serial chain of R and P joints is solvable, but not always analytically. A sufficient condition for a closed form: three neighbouring joint axes intersect at a point (<a class="pg" data-doc="w03-lec" data-page="56">p.56</a>), e.g. a spherical wrist. This is Pieper’s result; three consecutive parallel axes also work <span class="added">added: Craig ch. 4</span>.</p>
+</div>
+
+<h3>Guided problems: solve on paper first</h3>
+<div class="gp" data-topic="w03"><div class="head"><b>P3.1 · Two-link IK, both branches</b><span class="chip calc">calculate</span><span class="marks" data-id="w03-p1" data-topic="w03"></span></div>
+<p>L<sub>1</sub> = 1.0 m, L<sub>2</sub> = 0.7 m. Find all (q<sub>1</sub>, q<sub>2</sub>) that put the tip at (1.2, 0.8) m.</p>
+<details class="hint"><summary>Hint 1</summary><p>Square and add the FK equations to remove q<sub>1</sub>.</p></details>
+<details class="hint"><summary>Hint 2</summary><p>cos q<sub>2</sub> = (x² + y² − L<sub>1</sub>² − L<sub>2</sub>²)/(2L<sub>1</sub>L<sub>2</sub>) = 0.421429.</p></details>
+<details class="hint"><summary>Hint 3</summary><p>q<sub>1</sub> = atan2(0.8, 1.2) − atan2(0.7 sin q<sub>2</sub>, 1 + 0.7 cos q<sub>2</sub>).</p></details>
+<div class="ansrow"><label>q<sub>1</sub> for q<sub>2</sub> &gt; 0 (deg)<input data-ans="7.576" data-tol="0.02" data-label="q1" inputmode="decimal" data-wrong='[{"v":59.804,"msg":"that is the other branch (q2 < 0)."},{"v":33.690,"msg":"that is atan2(y,x) alone; subtract the angle of (L1+L2c2, L2s2)."}]'></label><label>q<sub>2</sub> (deg)<input data-ans="65.075" data-tol="0.02" data-label="q2" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>q<sub>2</sub> = ±65.075°; q<sub>1</sub> = 7.576° (for +65.075°) or 59.804° (for −65.075°). FK check: 1.0 cos 7.576° + 0.7 cos 72.651° = 0.9913 + 0.2087 = 1.2000 ✓.</p></details>
+<p class="blank">Derive cos q<sub>2</sub> and q<sub>1</sub> for a 2R arm from FK in 4 minutes.</p></div>
+
+<div class="gp" data-topic="w03"><div class="head"><b>P3.2 · Planar RRR with tool orientation (notebook Q10)</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w03-p2" data-topic="w03"></span></div>
+<p>A planar 3R arm (links L<sub>1</sub>, L<sub>2</sub>, L<sub>3</sub>, relative angles θ<sub>1</sub>, θ<sub>2</sub>, θ<sub>3</sub>) must place its tip at (x, y) with tool angle φ. Derive the IK. Then evaluate for L = (1.0, 0.7, 0.3) m, (x, y) = (1.2, 0.9) m, φ = 60°.</p>
+<details class="hint"><summary>Hint 1</summary><p>The last link’s direction is known (φ), so its start, the “wrist” point, is known too.</p></details>
+<details class="hint"><summary>Hint 2</summary><p>Wrist point \(=(x-L_3\cos\varphi,\;y-L_3\sin\varphi)\). Solve the 2R problem for θ<sub>1</sub>, θ<sub>2</sub>; then θ<sub>3</sub> = φ − θ<sub>1</sub> − θ<sub>2</sub>.</p></details>
+<div class="ansrow"><label>θ<sub>2</sub> &gt; 0 branch: θ<sub>3</sub> (deg)<input data-ans="-25.766" data-tol="0.03" data-label="θ3" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>Wrist point (1.0500, 0.6402) m. 2R IK gives θ<sub>2</sub> = ±89.085°, θ<sub>1</sub> = −3.319° or 66.061°. Then θ<sub>3</sub> = 60° − θ<sub>1</sub> − θ<sub>2</sub> = −25.766° or 83.024°. Two solutions; both reproduce (1.2, 0.9, 60°). <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w03"><div class="head"><b>P3.3 · One Newton–Raphson step</b><span class="chip calc">calculate</span><span class="marks" data-id="w03-p3" data-topic="w03"></span></div>
+<p>For the 2R arm of P3.1, start at q = (0.5, 0.5) rad and take one Newton step towards (1.2, 0.8). Give Δq.</p>
+<details class="hint"><summary>Hint 1</summary><p>FK at q<sup>0</sup> = (1.2558, 1.0685), so e = target − FK.</p></details>
+<details class="hint"><summary>Hint 2</summary><p>Solve J Δq = e with the 2×2 inverse formula.</p></details>
+<div class="ansrow"><label>Δq<sub>1</sub> (rad)<input data-ans="-0.5341" data-tol="0.002" data-label="Δq1" inputmode="decimal"></label><label>Δq<sub>2</sub> (rad)<input data-ans="1.0635" data-tol="0.002" data-label="Δq2" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>det J = (−1.0685)(0.3782) − (−0.5890)(1.2558) = −0.4041 + 0.7397 = 0.3355. \(\mathbf J^{-1}=\frac{1}{0.3355}\begin{bmatrix}0.3782&0.5890\\-1.2558&-1.0685\end{bmatrix}\); Δq = J⁻¹(−0.0558, −0.2685) = (−0.5341, 1.0635) rad. <span class="chk">checked</span> Common wrong answer: using Jᵀ instead of J⁻¹. That is gradient descent, which moves in a different direction.</p></details></div>
+
+<div class="gp" data-topic="w03"><div class="head"><b>P3.4 · Spherical-wrist arm, position (slides 35–37)</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w03-p4" data-topic="w03"></span></div>
+<p>H = 0.5, G = 0.4, F = 0.3 m. The wrist centre is W = (0.4813, 0.4039, 0.5974) m. Find q<sub>1</sub>, q<sub>3</sub> and q<sub>2</sub> for the elbow-up solution.</p>
+<details class="hint"><summary>Hint 1</summary><p>q<sub>1</sub> from the top view; then work in the (r, z) plane with z measured from the shoulder.</p></details>
+<details class="hint"><summary>Hint 2</summary><p>cos q<sub>3</sub> = (r<sub>W</sub>² + (z<sub>W</sub>−H)² − F² − G²)/(2FG). Elbow up means the forearm bends down: q<sub>3</sub> &lt; 0.</p></details>
+<div class="ansrow"><label>q<sub>2</sub> (deg)<input data-ans="30" data-tol="0.05" data-label="q2" inputmode="decimal" data-wrong='[{"v":-12.378,"msg":"that is the elbow-down branch (q3 = +50°)."}]'></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>q<sub>1</sub> = atan2(0.4039, 0.4813) = 40°. r<sub>W</sub> = 0.6283, z<sub>W</sub>−H = 0.0974. cos q<sub>3</sub> = (0.3948 + 0.0095 − 0.09 − 0.16)/0.24 = 0.6428, so q<sub>3</sub> = −50° (elbow up). σ = atan2(0.0974, 0.6283) = 8.811°; μ = atan2(0.3 sin(−50°), 0.4 + 0.3 cos 50°) = −21.189°; q<sub>2</sub> = σ − μ = 30.0°. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w03"><div class="head"><b>P3.5 · How many solutions? (notebook Q12, Q13)</b><span class="chip explain">explain</span><span class="marks" data-id="w03-p5" data-topic="w03"></span></div>
+<p>(a) The notebook’s 3-DoF arm: base rotation θ<sub>1</sub>, a horizontal joint θ<sub>2</sub> offset by L<sub>2</sub>, and a slider d<sub>3</sub>. How many position solutions? (b) The PUMA 560 for a full pose?</p>
+<details class="sol"><summary>Model answer</summary><p>(a) Count branch by branch. θ<sub>1</sub>: facing the point, or turned by π (2 options). In the arm’s plane the slider axis stays a distance L<sub>2</sub> from the θ<sub>2</sub> axis, so the tip distance ρ from that axis gives \(|d_3|=\sqrt{\rho^2-L_2^2}\) and two (θ<sub>2</sub>, d<sub>3</sub>) pairs. That makes up to 4 if d<sub>3</sub> may be negative, and 2 if the slider only extends (d<sub>3</sub> ≥ 0). State the assumption: the figure’s joint limits decide. <span class="added">our model of the figure</span></p>
+<p>(b) Up to 8: shoulder left/right × elbow up/down × wrist flip. <span class="added">standard result</span></p></details></div>
+
+<div class="gp" data-topic="w03"><div class="head"><b>P3.6 · Spot the error</b><span class="chip spot">spot the error</span><span class="marks" data-id="w03-p6" data-topic="w03"></span></div>
+<p>A student solving a 2R arm writes \(x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos q_2\) and gets q<sub>2</sub> = ±114.9° for the target of P3.1. What went wrong?</p>
+<details class="sol"><summary>Answer</summary><p>They used the cosine rule with the joint angle q<sub>2</sub> instead of the interior angle π − q<sub>2</sub>. This flips the sign of cos q<sub>2</sub>: they found the supplement (180° − 65.075° = 114.925°). The same slip is printed on slide 36.</p></details></div>
+
+<div class="gp" data-topic="w03"><div class="head"><b>P3.7 · Numerical IK caveats (notebook Q4–Q6)</b><span class="chip explain">explain</span><span class="marks" data-id="w03-p7" data-topic="w03"></span></div>
+<p>Is it always possible to reach G(q) = 0? Will the solver always find a solution that exists? Is it unique?</p>
+<details class="sol"><summary>Model answer</summary><p>No: outside the reachable workspace the minimum of G is positive. No: Newton steps can stall in a local minimum or blow up where J is singular, and the result depends on the start. No: a redundant arm has infinitely many solutions, and even a 6-DoF arm has several; the initial guess decides which one is found.</p></details></div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w03"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w03-q1" data-topic="w03"></span></div><p>Why do we need the dexterous rather than the reachable workspace when a full pose is specified?</p><details class="sol"><summary>Answer</summary><p>The reachable workspace only guarantees some orientation; a full pose fixes the orientation too, so the point must be reachable in that orientation.</p></details></div>
+<div class="gp" data-topic="w03"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w03-q2" data-topic="w03"></span></div><p>For L<sub>1</sub> = 1, L<sub>2</sub> = 0.7, is (0, 0.2) reachable?</p><details class="sol"><summary>Answer</summary><p>No. Its distance 0.2 m is below |L<sub>1</sub> − L<sub>2</sub>| = 0.3 m, so cos q<sub>2</sub> = (0.04 − 1.49)/1.4 = −1.036 &lt; −1.</p></details></div>
+<div class="gp" data-topic="w03"><div class="head"><b>Q3</b><span class="chip spot">spot the error</span><span class="marks" data-id="w03-q3" data-topic="w03"></span></div><p>“A tall Jacobian (n &lt; m) uses J<sup>†</sup> = Jᵀ(JJᵀ)⁻¹.” True?</p><details class="sol"><summary>Answer</summary><p>False. For tall J, JJᵀ (m×m) is singular; use (JᵀJ)⁻¹Jᵀ (least squares). Jᵀ(JJᵀ)⁻¹ is for fat J (n &gt; m).</p></details></div>
+
+<div class="box" data-reading="w03"></div>
+
+<script data-after>
+W3D.kinds.ik2r = function (root) {
+  const stage = root.querySelector('.stage'), side = root.querySelector('.side'), id = root.id;
+  const L1 = 1.0, L2 = 0.7, D = Math.PI / 180;
+  let tgt = [1.2, 0.8], guess = [0.5, 0.5], path = [guess.slice()];
+  const cv = document.createElement('canvas'); stage.appendChild(cv); const g = cv.getContext('2d');
+  side.innerHTML = '<div class="out"></div><div style="display:flex;gap:.4rem;flex-wrap:wrap"><button type="button" class="btn small" data-a="step">Newton step</button><button type="button" class="btn small" data-a="reset">Reset guess</button></div>';
+  const fk = (a, b) => [L1 * Math.cos(a) + L2 * Math.cos(a + b), L1 * Math.sin(a) + L2 * Math.sin(a + b)];
+  function ik(x, y) { const c = (x * x + y * y - L1 * L1 - L2 * L2) / (2 * L1 * L2); if (Math.abs(c) > 1) return []; return [1, -1].map(s => { const q2 = Math.atan2(s * Math.sqrt(1 - c * c), c); return [Math.atan2(y, x) - Math.atan2(L2 * Math.sin(q2), L1 + L2 * Math.cos(q2)), q2]; }); }
+  function nstep() { const [a, b] = guess, p = fk(a, b), e = [tgt[0] - p[0], tgt[1] - p[1]];
+    const J = [[-L1 * Math.sin(a) - L2 * Math.sin(a + b), -L2 * Math.sin(a + b)], [L1 * Math.cos(a) + L2 * Math.cos(a + b), L2 * Math.cos(a + b)]];
+    const det = J[0][0] * J[1][1] - J[0][1] * J[1][0]; if (Math.abs(det) < 1e-9) return false;
+    guess = [a + (J[1][1] * e[0] - J[0][1] * e[1]) / det, b + (-J[1][0] * e[0] + J[0][0] * e[1]) / det]; path.push(guess.slice()); return true; }
+  let S = 100, O = [0, 0];
+  function size() { const w = stage.clientWidth, h = Math.max(stage.clientHeight, 340), dpr = Math.min(devicePixelRatio || 1, 2); cv.width = w * dpr; cv.height = h * dpr; cv.style.height = h + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); S = Math.min(w, h) / 4.0; O = [w / 2, h / 2]; draw(); }
+  const P = (x, y) => [O[0] + x * S, O[1] - y * S];
+  function arm(q, col, dash, wdt) { const a = P(0, 0), b = P(L1 * Math.cos(q[0]), L1 * Math.sin(q[0])), c = P(...fk(q[0], q[1]));
+    g.setLineDash(dash); g.strokeStyle = col; g.lineWidth = wdt; g.lineCap = 'round'; g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.lineTo(...c); g.stroke(); g.setLineDash([]);
+    g.fillStyle = col; [a, b].forEach(p => { g.beginPath(); g.arc(p[0], p[1], 4, 0, 7); g.fill(); }); }
+  function draw() {
+    const W3 = W3D.css; g.clearRect(0, 0, cv.width, cv.height);
+    g.fillStyle = 'color-mix(in srgb, ' + W3('--accent') + ' 14%, transparent)'; g.beginPath(); g.arc(O[0], O[1], (L1 + L2) * S, 0, 2 * Math.PI); g.moveTo(O[0] + (L1 - L2) * S, O[1]); g.arc(O[0], O[1], (L1 - L2) * S, 0, 2 * Math.PI); g.fill('evenodd');
+    g.strokeStyle = W3('--line'); g.lineWidth = 1; g.beginPath(); g.moveTo(0, O[1]); g.lineTo(cv.width, O[1]); g.moveTo(O[0], 0); g.lineTo(O[0], cv.height); g.stroke();
+    const sols = ik(...tgt);
+    if (sols[1]) arm(sols[1], W3('--exam'), [6, 5], 4);
+    if (sols[0]) arm(sols[0], W3('--accent'), [], 5);
+    arm(guess, W3('--muted'), [2, 4], 2);
+    g.strokeStyle = W3('--muted'); g.lineWidth = 1; g.beginPath(); path.forEach((q, i) => { const p = P(...fk(...q)); i ? g.lineTo(...p) : g.moveTo(...p); }); g.stroke();
+    const t = P(...tgt); g.strokeStyle = W3('--ink'); g.lineWidth = 2; g.beginPath(); g.arc(t[0], t[1], 7, 0, 7); g.moveTo(t[0] - 10, t[1]); g.lineTo(t[0] + 10, t[1]); g.moveTo(t[0], t[1] - 10); g.lineTo(t[0], t[1] + 10); g.stroke();
+    g.fillStyle = W3('--muted'); g.font = '12px IBM Plex Mono, monospace'; g.fillText('axes through the base · annulus 0.3 m to 1.7 m', 8, cv.height / Math.min(devicePixelRatio || 1, 2) - 8);
+    const e = fk(...guess), err = Math.hypot(tgt[0] - e[0], tgt[1] - e[1]);
+    side.querySelector('.out').innerHTML = '<div class="mono" style="font-size:.82rem;line-height:1.6">target (' + tgt[0].toFixed(3) + ', ' + tgt[1].toFixed(3) + ') m<br>' +
+      (sols.length ? '<span style="color:var(--accent)">━ q2 &gt; 0: q1 = ' + (sols[0][0] / D).toFixed(3) + '°, q2 = ' + (sols[0][1] / D).toFixed(3) + '°</span><br><span style="color:var(--exam)">╍ q2 &lt; 0: q1 = ' + (sols[1][0] / D).toFixed(3) + '°, q2 = ' + (sols[1][1] / D).toFixed(3) + '°</span>' : '<span class="fb bad">no solution: |cos q2| &gt; 1</span>') +
+      '<br>Newton iterate ' + (path.length - 1) + ': q = (' + guess[0].toFixed(4) + ', ' + guess[1].toFixed(4) + ') rad, |e| = ' + err.toFixed(4) + '</div>';
+    window.__state[id] = { tgt: tgt.slice(), sols: sols.map(s => s.map(v => v / D)), guess: guess.slice(), err, iters: path.length - 1 };
+  }
+  cv.addEventListener('click', ev => { const r = cv.getBoundingClientRect(); tgt = [(ev.clientX - r.left - O[0]) / S, -(ev.clientY - r.top - O[1]) / S]; path = [guess.slice()]; draw(); });
+  side.addEventListener('click', ev => { const a = ev.target.closest('button[data-a]'); if (!a) return; if (a.dataset.a === 'step') nstep(); else { guess = [0.5, 0.5]; path = [guess.slice()]; } draw(); });
+  new ResizeObserver(size).observe(stage); window.addEventListener('enn-theme', draw); size();
+  W3D.instances[id] = { setTarget(t) { tgt = t.slice(); guess = [0.5, 0.5]; path = [guess.slice()]; draw(); return window.__state[id]; }, step(n = 1) { for (let i = 0; i < n; i++) nstep(); draw(); return window.__state[id]; } };
+};
+</script>

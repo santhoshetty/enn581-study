@@ -1,0 +1,97 @@
+% ENN581 revision booklet — shared preamble. Colour-coded by role (box colours) and subject (tab colours); labels still carry the meaning in greyscale.
+\documentclass[8pt]{extarticle}
+\usepackage[a4paper,landscape,top=13mm,bottom=9mm,left=9mm,right=15mm,headsep=3mm,headheight=5mm]{geometry}
+\usepackage{amsmath,amssymb,mathtools,multicol,xcolor,enumitem,booktabs,array,tabularx,fancyhdr,lastpage}
+\usepackage{newpxtext,newpxmath}
+\setsansfont{texgyreheros}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic,Scale=0.88]
+\raggedcolumns
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,angles,quotes}
+\usepackage[most]{tcolorbox}
+\usepackage[hidelinks]{hyperref}
+\setlength{\columnsep}{5mm}
+\setlength{\columnseprule}{0.3pt}\renewcommand{\columnseprulecolor}{\color{g2}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.5pt}
+\setlist{nosep,leftmargin=1.2em,labelsep=0.3em}
+\setlength{\abovedisplayskip}{2pt}\setlength{\belowdisplayskip}{2pt}
+\setlength{\abovedisplayshortskip}{1pt}\setlength{\belowdisplayshortskip}{1pt}
+\renewcommand{\arraystretch}{1.12}
+\allowdisplaybreaks
+
+% ---------- colour scheme: each colour means one thing (body text stays black) ----------
+% box roles: blue = formula, green = recipe, red = trap, purple = worked example, amber = slide check
+\definecolor{ink}{gray}{0}
+\definecolor{g1}{gray}{0.93}
+\definecolor{g2}{gray}{0.82}
+\definecolor{g3}{gray}{0.45}
+\definecolor{fblue}{RGB}{28,78,140}     \definecolor{fbluebg}{RGB}{229,238,250}
+\definecolor{rgreen}{RGB}{30,112,66}    \definecolor{rgreenbg}{RGB}{231,244,234}
+\definecolor{tred}{RGB}{184,38,38}      \definecolor{tredbg}{RGB}{253,240,239}
+\definecolor{wpurple}{RGB}{104,62,156}  \definecolor{wpurplebg}{RGB}{245,240,251}
+\definecolor{samber}{RGB}{170,104,0}    \definecolor{samberbg}{RGB}{255,242,208}
+\definecolor{slate}{RGB}{70,82,96}
+% subject colours for the edge tabs and headers
+\definecolor{secfront}{RGB}{70,82,96}      % index, recipes, tables, derivations
+\definecolor{seckin}{RGB}{28,78,140}       % W1-W6 kinematics
+\definecolor{secdyn}{RGB}{196,96,20}       % W7-W9 dynamics and control
+\definecolor{secmob}{RGB}{0,122,122}       % W10-W11 wheeled robots
+\definecolor{secplan}{RGB}{104,62,156}     % W12 planning
+\colorlet{seccolor}{secfront}
+\colorlet{acc}{fblue}
+
+% ---------- running header + thumb index ----------
+\newcommand{\curweek}{}\newcommand{\curtopic}{}\newcommand{\curtab}{0}
+\newcommand{\tabcount}{16} % number of tab positions down the right edge
+\pagestyle{fancy}\fancyhf{}
+\renewcommand{\headrulewidth}{0.6pt}
+\renewcommand{\headrule}{{\color{seccolor}\hrule height \headrulewidth width\headwidth}}
+\fancyhead[L]{\sffamily\bfseries\small\color{seccolor}\curweek\quad\normalfont\color{black}\curtopic}
+\fancyhead[R]{\sffamily\footnotesize\color{slate}ENN581 revision booklet \quad page \thepage\ of \pageref{LastPage}}
+\fancyfoot[C]{}
+\fancyhead[C]{\ifnum\curtab>0\begin{tikzpicture}[remember picture,overlay]
+  \pgfmathsetmacro{\tabh}{(\paperheight-24mm)/\tabcount}
+  \fill[seccolor] ([xshift=-9mm,yshift={-12mm-(\curtab-1)*\tabh*1pt}]current page.north east) rectangle ++(9mm,{-\tabh*1pt+1mm});
+  \node[rotate=-90,font=\sffamily\bfseries\footnotesize,text=white,anchor=center] at ([xshift=-4.5mm,yshift={-12mm-(\curtab-0.5)*\tabh*1pt}]current page.north east) {\curweek};
+\end{tikzpicture}\fi}
+\newcommand{\setsec}[1]{\ifcase#1\colorlet{seccolor}{secfront}\or\colorlet{seccolor}{secfront}\or\colorlet{seccolor}{secfront}%
+  \or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}%
+  \or\colorlet{seccolor}{secdyn}\or\colorlet{seccolor}{secdyn}\or\colorlet{seccolor}{secdyn}%
+  \or\colorlet{seccolor}{secmob}\or\colorlet{seccolor}{secmob}\or\colorlet{seccolor}{secplan}%
+  \else\colorlet{seccolor}{secfront}\fi}
+
+% \section-like page openers
+\newcommand{\bpart}[3]{\clearpage\renewcommand{\curweek}{#1}\renewcommand{\curtopic}{#2}\renewcommand{\curtab}{#3}\setsec{#3}\phantomsection\label{p:#1}}
+% \week{W2}{Forward kinematics}{2}{slide pp.}  — tab position = week number + 2 (front matter uses 1, 2)
+\newcommand{\week}[3]{\bpart{#1}{#2}{\the\numexpr#3+2\relax}}
+
+% ---------- headings ----------
+\newcommand{\hd}[1]{\par\vspace{2pt}{\sffamily\bfseries\normalsize\color{seccolor}#1}\par\vspace{1pt}}
+\newcommand{\sh}[1]{\par\vspace{1.5pt}{\sffamily\bfseries\small\color{seccolor}#1}\par}
+\newcommand{\pg}[1]{\mbox{\sffamily\scriptsize\color{slate}[p.\,#1]}}          % slide page reference
+\newcommand{\added}{\mbox{\sffamily\scriptsize\color{samber}[added]}}             % not on the slides
+\newcommand{\use}[1]{\par{\itshape\footnotesize Use: #1}\par}   % when to use a formula
+\newcommand{\chk}{\mbox{\sffamily\scriptsize\color{rgreen}\,[checked]}}
+
+% ---------- boxes ----------
+\tcbset{base/.style={enhanced,breakable,boxrule=0.5pt,arc=1pt,left=2pt,right=2pt,top=1.5pt,bottom=1.5pt,boxsep=0pt,
+  fonttitle=\sffamily\bfseries\footnotesize,coltitle=black,before skip=2pt,after skip=2pt}}
+% formula: blue frame, light-blue title bar
+\tcbset{fbxstyle/.style={base,colback=white,colframe=fblue,title={#1},colbacktitle=fbluebg,coltitle=fblue,toptitle=0.5pt,bottomtitle=0.5pt}}
+\newtcolorbox{fbx}[1][]{fbxstyle={#1}}
+% recipe: green, numbered steps, thick left rule
+\newtcolorbox{recipe}[1][]{base,colback=rgreenbg,colframe=rgreenbg,borderline west={2.4pt}{0pt}{rgreen},title={RECIPE\ \ #1},colbacktitle=rgreenbg,coltitle=rgreen,toptitle=0.5pt,bottomtitle=0pt}
+% trap: red dashed frame
+\newtcolorbox{trap}[1][]{base,colback=tredbg,colframe=tred,boxrule=0.6pt,borderline={0.7pt}{0pt}{tred,dashed},frame hidden,title={TRAP #1},colbacktitle=tredbg,coltitle=tred,toptitle=0.5pt,bottomtitle=0pt}
+% worked example: purple double left rule
+\newtcolorbox{worked}[1][]{base,colback=wpurplebg,colframe=wpurplebg,borderline west={1pt}{0pt}{wpurple},borderline west={1pt}{2.4pt}{wpurple},title={WORKED #1},colbacktitle=wpurplebg,coltitle=wpurple,toptitle=0.5pt,bottomtitle=0pt}
+% slide error / caution: amber
+\newtcolorbox{slideerr}[1][]{base,colback=samberbg,colframe=samber,title={SLIDE CHECK #1},colbacktitle=samberbg,coltitle=samber,toptitle=0.5pt,bottomtitle=0pt}
+% decision table cell style
+\newcommand{\lookup}[2]{\textbf{#1} \dotfill\ #2\par}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\T}{\mathbf T}
+\newcommand{\Rm}{\mathbf R}
+\newcommand{\tr}[2]{{}^{#1}\mathbf T_{#2}}
+\newcommand{\atantwo}{\operatorname{atan2}}

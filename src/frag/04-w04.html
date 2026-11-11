@@ -1,0 +1,275 @@
+<p class="eyebrow">Week 4 · Parallel manipulators</p>
+<h2>Many legs, one platform: count the freedom, close the loops</h2>
+<p class="lead">A parallel robot holds its end effector with several chains at once. That makes it stiff, light and precise, but every loop adds constraint equations. This week has three exam skills: count mobility (plain and extended Grübler–Kutzbach), write loop-closure equations, and solve IK by splitting the robot into its legs.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Parallel Manipulators<small>76 slides · no notebook this week</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w04-lec">📖 View here</button>
+    <button type="button" class="btn" data-dl="notes/w04-lec.pdf" data-name="ENN581 W4 Parallel Manipulators.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w04-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p>Three of the ten sample questions come from here: <b>Q5</b> four-bar IK (<a class="pg" data-doc="w13-lec" data-page="9">W13 pp. 9–11</a>), <b>Q6</b> planar mobility (<a class="pg" data-doc="w13-lec" data-page="12">pp. 12–13</a>) and <b>Q7</b> delta mobility, plain then extended (<a class="pg" data-doc="w13-lec" data-page="14">pp. 14–17</a>). All three are solved on the <a href="#sample" data-goto="sample" data-anchor="sq5">Sample Qs tab</a>.</p>
+  <p><b>Where the marks are (indicative):</b> numbered links and joints on the figure; D chosen correctly (3 planar, 6 spatial); every joint’s DoF; the formula written before the numbers; for “extended”, naming what R<sub>C</sub> and R<sub>M</sub> are in <i>this</i> mechanism.</p>
+  <p><b>Where marks are lost:</b> forgetting the ground link; a spherical joint counted as 1; D = 6 for a planar mechanism; quoting a mobility without saying whether it is plausible (a delta with 9 DoF should make you reach for R<sub>M</sub>).</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical</span>
+  <p>No practical or notebook for this week. Slide 73 sets a homework (inverse kinematics of the Gough–Stewart platform); it is solved below as P4.5.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>A table vs a crane</h4>A serial arm is a crane: each joint carries everything after it, so errors and weight add up. A parallel robot is a table on several legs: each leg carries a share, so it is stiff and precise, but it cannot reach far.</div>
+    <div class="card"><h4>Counting freedom like a budget</h4>Each free body would have D freedoms (3 in a plane, 6 in space). Each joint takes some away and leaves F<sub>i</sub>. Grübler–Kutzbach is the balance: what is left over is the mobility.</div>
+    <div class="card"><h4>Spinning a pencil</h4>A rod held by a ball joint at each end can spin about its own axis without moving anything else. That idle spin is a <i>local</i> mobility R<sub>M</sub>. The counting formula sees it as a real freedom, so it over-counts.</div>
+    <div class="card"><h4>Cut the loop, then glue it</h4>To analyse a closed loop, cut it at one link. You get two simple serial arms. The “glue” is the condition that both halves end at the same point with the same orientation: the loop-closure equations.</div>
+  </div>
+  <div class="vids" data-vids="w04"></div>
+</div>
+
+<!-- 1 -->
+<div class="sub" id="w4-what">
+<h3>1 · What a parallel mechanism is, and why use one <span class="pgs"><a class="pg" data-doc="w04-lec" data-page="9">pp. 9–19, 74</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>“The end effector is connected to the base by multiple parallel kinematic chains of links” (<a class="pg" data-doc="w04-lec" data-page="12">p.12</a>). There are usually more joints than DoF, so several joints are <b>passive</b> (not motorised). Examples: Gough’s tyre tester (1950s), Stewart’s flight simulator (1965), the ABB FlexPicker delta (Clavel), surgical hexapods (<a class="pg" data-doc="w04-lec" data-page="13">pp. 13–18</a>).</p>
+<div class="tbl"><table><tr><th></th><th>Serial</th><th>Parallel</th></tr>
+<tr><td>Chains</td><td>open</td><td>closed</td></tr><tr><td>Joints</td><td>all active</td><td>active + passive</td></tr>
+<tr><td>Forward kinematics</td><td>simple</td><td>complex</td></tr><tr><td>Inverse kinematics</td><td>complex</td><td>simple</td></tr>
+<tr><td>Joint errors</td><td>accumulate</td><td>do not accumulate</td></tr><tr><td>Workspace</td><td>large</td><td>small</td></tr>
+<tr><td>Payload-to-weight</td><td>low</td><td>very high</td></tr><tr><td>Moving inertia</td><td>high</td><td>low</td></tr></table></div>
+<p>Comparison as on slide 74 (<a class="pg" data-doc="w04-lec" data-page="74">p.74</a>). Drawbacks: complex kinematics and a restricted workspace (<a class="pg" data-doc="w04-lec" data-page="19">p.19</a>).</p></div>
+<div class="angle">A scenario question (“which architecture for fast pick-and-place / a heavy flight simulator / a precise surgical tool?”) is answered from this table: delta, Stewart, hexapod, each justified by stiffness, low moving mass and non-accumulating errors.</div>
+</div>
+
+<!-- 2 -->
+<div class="sub" id="w4-ws">
+<h3>2 · Workspace of parallel robots <span class="pgs"><a class="pg" data-doc="w04-lec" data-page="20">pp. 20–23</a></span></h3>
+<p>Four definitions (<a class="pg" data-doc="w04-lec" data-page="21">p.21</a>): <b>reachable</b> (some orientation), <b>dexterous</b> (all orientations), <b>constant-orientation</b> (points reachable with one given orientation), <b>orientation workspace</b> (all orientations available at one given point). Two ways to compute it: <b>discretisation</b>, i.e. step each actuator by a small amount and take the boundary of the reached nodes (slow; accuracy limited by step size, <a class="pg" data-doc="w04-lec" data-page="22">p.22</a>); or <b>geometry</b>, i.e. intersect the regions allowed by each actuator’s limits (<a class="pg" data-doc="w04-lec" data-page="23">p.23</a>). For a two-leg planar mechanism with prismatic legs, each leg confines the point to an annulus between its minimum and maximum length about its base pivot. The workspace is the overlap of the annuli.</p>
+<div class="angle">Sketch question: draw each leg’s annulus (r<sub>min</sub>, r<sub>max</sub> about its pivot), shade the intersection, and label it “reachable”.</div>
+</div>
+
+<!-- 3 -->
+<div class="sub" id="w4-gk">
+<h3>3 · Mobility: Grübler–Kutzbach <span class="pgs"><a class="pg" data-doc="w04-lec" data-page="24">pp. 24–34</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Start with N bodies, each free with D DoF, then fix one (the ground): D(N − 1) freedoms. Each joint i removes D − F<sub>i</sub> of them. So \(M=D(N-1)-\sum_i(D-F_i)\), which rearranges to the slide’s form (<a class="pg" data-doc="w04-lec" data-page="25">p.25</a>):</p>
+\[ M=D\,(N-J-1)+\sum_{i=1}^{J}F_i,\qquad D=\begin{cases}3 & \text{planar}\\6 & \text{spatial}\end{cases},\quad N\text{ includes the ground},\quad F_R=F_P=1,\;F_U=2,\;F_S=3 \]</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Decide planar or spatial (D = 3 or 6). Motion out of the drawing’s plane means spatial (“still 3D despite this depiction”, <a class="pg" data-doc="w13-lec" data-page="14">W13 p.14</a>).</li>
+<li>Number every rigid body on the figure, ground = 1. A prismatic pair is two bodies.</li>
+<li>List every joint and its F<sub>i</sub>. A joint connects exactly two bodies; if three bodies meet at one pin, that is two joints.</li>
+<li>Substitute. If M disagrees with the obvious motion, look for idle spins (R<sub>M</sub>) or redundant constraints (R<sub>C</sub>): section 4.</li></ol></div>
+<div class="worked"><span class="tag">Worked counts from the slides</span>
+<div class="tbl"><table><tr><th>Mechanism</th><th>D</th><th>N</th><th>J</th><th>ΣF</th><th>M</th></tr>
+<tr><td>Planar 3-RPR (<a class="pg" data-doc="w04-lec" data-page="26">p.26</a>; W13 Q6)</td><td>3</td><td>8</td><td>9</td><td>9</td><td>3(8−9−1)+9 = <b>3</b></td></tr>
+<tr><td>Simplest delta, R–U–U legs (<a class="pg" data-doc="w04-lec" data-page="30">p.30</a>)</td><td>6</td><td>8</td><td>9</td><td>(1+2+2)×3 = 15</td><td>6(8−9−1)+15 = <b>3</b></td></tr>
+<tr><td>Common delta, parallelogram legs (<a class="pg" data-doc="w04-lec" data-page="33">p.33</a>)</td><td>6</td><td>11</td><td>15</td><td>(1+4×3)×3 = 39</td><td>6(11−15−1)+39 = <b>9</b> (!)</td></tr>
+<tr><td>Planar four-bar <span class="added">added</span></td><td>3</td><td>4</td><td>4</td><td>4</td><td><b>1</b></td></tr>
+<tr><td>Gough–Stewart 6-UPS <span class="added">added</span></td><td>6</td><td>14</td><td>18</td><td>6×(2+1+3) = 36</td><td>6(14−18−1)+36 = <b>6</b></td></tr></table></div>
+<p><span class="chk">all checked</span> Why the simplest delta is not built: universal joints that are both stiff and play-free are hard to make, and play lowers the usable operating frequency (<a class="pg" data-doc="w04-lec" data-page="31">p.31</a>).</p></div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>A handwritten note on slide 29 reads D(N − J + 1). The printed formula (and every worked count) uses <b>D(N − J − 1)</b>; with +1 the simplest delta would give 6(8−9+1)+15 = 15.</p></div>
+</div>
+
+<!-- 4 -->
+<div class="sub" id="w4-egk">
+<h3>4 · Extended Grübler–Kutzbach: over-constraints and local mobility <span class="pgs"><a class="pg" data-doc="w04-lec" data-page="35">pp. 35–43</a></span></h3>
+<div class="layer derive"><span class="tag">Equation (slide 35)</span>
+\[ M=D(N-J-1)+\sum_{i=1}^{J}F_i+R_C-R_M,\qquad R_C=\sum_{i=1}^{J}F_i-\sum_{k=1}^{L}u_k \]
+<p><b>R<sub>M</sub></b>: local mobility, i.e. motions of internal parts that do not move the output (a rod spinning about its own axis between two ball joints). The plain formula counts them as DoF, so subtract them.</p>
+<p><b>R<sub>C</sub></b>: over-constraints. Some joints repeat a constraint that another joint already imposes, so the plain formula “removes” freedoms twice. u<sub>k</sub> are the <i>distinct</i> platform DoFs that loop k allows; the sum counts each distinct DoF once across loops.</p></div>
+<div class="worked"><span class="tag">Common delta (slides 33–36)</span><p>Plain count 9, but the platform only translates (3 DoF). Each of the 6 parallelogram rods can spin about its own axis between its two spherical joints: R<sub>M</sub> = 6. No redundant constraints: R<sub>C</sub> = 0. So M = 9 + 0 − 6 = <b>3</b>. <span class="chk">checked</span></p></div>
+<div class="worked"><span class="tag">4RRR (slides 37–43)</span><p>Two square plates joined by four RR legs: N = 10 (base, platform, 8 leg links), J = 12, ΣF = 12. Plain: 6(10 − 12 − 1) + 12 = <b>−6</b>, which is impossible for a mechanism that moves.</p>
+<p>Loop 1 (one pair of legs) lets the platform do {T<sub>y</sub>, T<sub>z</sub>, R<sub>x</sub>}; loop 2 lets it do {T<sub>x</sub>, T<sub>z</sub>, R<sub>y</sub>} (<a class="pg" data-doc="w04-lec" data-page="39">pp. 39–41</a>). The distinct DoFs are {T<sub>x</sub>, T<sub>y</sub>, T<sub>z</sub>, R<sub>x</sub>, R<sub>y</sub>}, so Σu<sub>k</sub> = 5 (T<sub>z</sub> counted once). R<sub>C</sub> = 12 − 5 = 7, R<sub>M</sub> = 0. M = −6 + 7 − 0 = <b>1</b>: the only motion common to both loops is T<sub>z</sub>, so the platform can only move up and down (<a class="pg" data-doc="w04-lec" data-page="42">pp. 42–43</a>). <span class="chk">checked</span></p></div>
+<div class="angle">“Explain” marks: the plain count assumes every constraint is independent and every DoF moves the output. R<sub>C</sub> fixes the first assumption, R<sub>M</sub> the second. Say which one applies, and why, for the mechanism in front of you.</div>
+</div>
+
+<!-- 5 -->
+<div class="sub" id="w4-loop">
+<h3>5 · Active and passive joints, and loop-closure equations <span class="pgs"><a class="pg" data-doc="w04-lec" data-page="45">pp. 45–58</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation (four-bar)</span>
+<p>Configuration \(\mathbf q=(\boldsymbol\theta,\boldsymbol\varphi)\): n active joints θ, m passive joints φ (<a class="pg" data-doc="w04-lec" data-page="45">p.45</a>). Recipe (<a class="pg" data-doc="w04-lec" data-page="49">p.49</a>): break the loop into serial chains, write the pose of the break point from each side, and equate. Choose the break so that the fewest equations are needed.</p>
+<p><b>Break link 2 at K</b> (<a class="pg" data-doc="w04-lec" data-page="54">p.54</a>), with a and b the distances from K to link 2’s ends (L<sub>2</sub> = a + b) and {D} at (L<sub>0</sub>, 0). Position and orientation of K must agree from both sides: three equations, one active (θ<sub>1</sub>) and three passive (φ<sub>1</sub>, φ<sub>2</sub>, φ<sub>3</sub>) unknowns.</p>
+\[ \begin{aligned} L_1\cos\theta_1+a\cos(\theta_1+\varphi_2)&=L_0+L_3\cos\varphi_1+b\cos(\varphi_1+\varphi_3)\\ L_1\sin\theta_1+a\sin(\theta_1+\varphi_2)&=L_3\sin\varphi_1+b\sin(\varphi_1+\varphi_3)\\ \theta_1+\varphi_2&=\varphi_1+\varphi_3+\pi \end{aligned} \]
+<p><b>Break link 2 at both ends</b> (<a class="pg" data-doc="w04-lec" data-page="57">p.57</a>): only its length must be preserved, giving one equation in θ<sub>1</sub>, φ<sub>1</sub> (the slide calls it the Freudenstein equation):</p>
+\[ \eta_1(\theta_1,\varphi_1)=(L_1\cos\theta_1-L_0-L_3\cos\varphi_1)^2+(L_1\sin\theta_1-L_3\sin\varphi_1)^2-L_2^2=0 \]
+<p><span class="chk">both forms checked at two assembly modes</span> A Gough–Stewart platform has 6 active (prismatic) and 30 passive joint variables in many loops; choosing which equations to use is not trivial (<a class="pg" data-doc="w04-lec" data-page="58">p.58</a>).</p></div>
+</div>
+
+<!-- 6 -->
+<div class="sub" id="w4-fk">
+<h3>6 · Forward kinematics: the hard direction <span class="pgs"><a class="pg" data-doc="w04-lec" data-page="59">pp. 59–67</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>FK of a parallel robot means: given the active joints, solve the loop-closure equations for the passive joints, then compute the output pose. There is no general method as there is for serial arms (<a class="pg" data-doc="w04-lec" data-page="60">p.60</a>). Solutions can be multiple, some imaginary, so numerical methods are often used (<a class="pg" data-doc="w04-lec" data-page="67">p.67</a>).</p>
+<p><b>Four-bar, by geometry</b> <span class="added">added</span>: with θ<sub>1</sub> known, A = L<sub>1</sub>(cos θ<sub>1</sub>, sin θ<sub>1</sub>) and D = (L<sub>0</sub>, 0) are fixed. B lies on the circle of radius L<sub>2</sub> about A and the circle of radius L<sub>3</sub> about D. Two circles meet in two points, the two <b>assembly modes</b>, one point (a limit), or not at all (the linkage cannot be assembled at that θ<sub>1</sub>).</p>
+<p><b>The slides’ route</b> (<a class="pg" data-doc="w04-lec" data-page="62">pp. 62–66</a>), given K = (x, y) and seeking δ = θ<sub>1</sub>+φ<sub>2</sub>: squaring and adding each chain’s equations gives two equations linear in cos δ and sin δ:</p>
+\[ A_1\cos\delta+B_1\sin\delta+C_1=0,\quad A_1=x-L_0,\;B_1=y,\;C_1=\frac{(x-L_0)^2+y^2+b^2-L_3^2}{2b} \]
+\[ A_2\cos\delta+B_2\sin\delta+C_2=0,\quad A_2=x,\;B_2=y,\;C_2=\frac{L_1^2-a^2-x^2-y^2}{2a} \]
+<p>By Cramer’s rule, \(\cos\delta=\dfrac{B_1C_2-B_2C_1}{A_1B_2-A_2B_1}\) and \(\sin\delta=\dfrac{A_2C_1-A_1C_2}{A_1B_2-A_2B_1}\), so \(\delta=\operatorname{atan2}(\sin\delta,\cos\delta)\). Consistency of the two requires \((A_1B_2-A_2B_1)^2=(A_1C_2-A_2C_1)^2+(B_1C_2-B_2C_1)^2\), which is slide 65’s condition on (x, y). <span class="chk">constants C<sub>1</sub>, C<sub>2</sub> and the identity checked</span></p></div>
+<div class="box warn-box"><span class="tag">Slides vs maths: slide 65</span><p>The slide prints \(\delta=\tan^{-1}\!\big(\tfrac{A_1C_2-A_2C_1}{(B_1C_2-B_2C_1)+(A_1B_2-A_2B_1)}\big)\). With the tangent-half-angle substitution the correct result is \(\delta=2\tan^{-1}\!\big(\tfrac{A_2C_1-A_1C_2}{(B_1C_2-B_2C_1)+(A_1B_2-A_2B_1)}\big)\): opposite sign in the numerator and a factor of 2. In our test the slide form gives 0.300° where the true δ is −0.600° <span class="chk">checked</span>. Safest in the exam: use the atan2 of the Cramer’s-rule sine and cosine above.</p></div>
+<div class="worked"><span class="tag">Worked example (same linkage as Sample Q5)</span>
+<p>L<sub>0</sub> = 1.0, L<sub>1</sub> = 0.5, L<sub>3</sub> = 0.6, a = 0.2, b = 0.25 m (L<sub>2</sub> = 0.45), θ<sub>1</sub> = 70°. The two assembly modes:</p>
+<div class="tbl"><table><tr><th>Mode</th><th>K (m)</th><th>φ (coupler)</th><th>φ<sub>1</sub></th></tr>
+<tr><td>B above line AD</td><td>(0.3710, 0.4678)</td><td>−0.600°</td><td>129.175°</td></tr>
+<tr><td>B below line AD</td><td>(0.2756, 0.2993)</td><td>−58.486°</td><td>171.739°</td></tr></table></div>
+<p>This linkage is non-Grashof (shortest + longest = 0.45 + 1.0 &gt; 0.5 + 0.6), so no link turns fully. The input link only rocks: it can be assembled only while |AD| ≤ L<sub>2</sub> + L<sub>3</sub>, i.e. |θ<sub>1</sub>| ≤ 81.52°. <span class="chk">checked</span></p></div>
+</div>
+
+<div class="widget" data-w3d="fourbar" id="w4-fourbar">
+  <div class="wh"><b>Four-bar: assembly modes, FK and IK</b><span class="eyebrow">drawn to scale · L0 1.0, L1 0.5, L2 0.45 (a 0.2 + b 0.25), L3 0.6 m</span></div>
+  <div class="wbody"><div class="stage"></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> set θ<sub>1</sub> = 70° and flip the mode: K jumps between the two rows of the table above. Push θ<sub>1</sub> past ±81.5°: the circles stop meeting and the linkage cannot close. The IK readout recovers θ<sub>1</sub> from K and φ alone (Sample Q5).</div>
+</div>
+
+<!-- 7 -->
+<div class="sub" id="w4-ik">
+<h3>7 · Inverse kinematics: the easy direction <span class="pgs"><a class="pg" data-doc="w04-lec" data-page="68">pp. 68–73</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Given the pose of the output link, each leg is a serial chain whose end pose is known, so solve each leg separately. No loop-closure equations are needed (<a class="pg" data-doc="w04-lec" data-page="69">p.69</a>). Each leg must not be redundant, or its solution is not unique.</p>
+<p><b>Four-bar</b> (<a class="pg" data-doc="w04-lec" data-page="70">pp. 70–72</a>; Sample Q5): the coupler’s ends are A = K − a(cos φ, sin φ) and B = K + b(cos φ, sin φ). So θ<sub>1</sub> = atan2(y − a sin φ, x − a cos φ), φ<sub>2</sub> = φ − θ<sub>1</sub>, φ<sub>1</sub> = atan2(y + b sin φ, x + b cos φ − L<sub>0</sub>), φ<sub>3</sub> = φ + π − φ<sub>1</sub> (mod 2π). The full worked answer, and a note on the sign printed on W13 slide 11, are on the <a href="#sample" data-goto="sample" data-anchor="sq5">Sample Qs tab</a>.</p>
+<p><b>Gough–Stewart leg</b> (homework, <a class="pg" data-doc="w04-lec" data-page="73">p.73</a>): leg i joins base point \(\mathbf b_i\) (in {B}) to platform point \(\mathbf p_i\) (in {P}). Given \({}^B\mathbf T_P=[\mathbf R\;|\;\mathbf t]\):</p>
+\[ \mathbf l_i=\mathbf t+\mathbf R\,\mathbf p_i-\mathbf b_i,\qquad d_i=\lVert\mathbf l_i\rVert\ (\text{active prismatic}),\qquad \hat{\mathbf n}_i=\mathbf l_i/d_i \]
+<p>The passive joint angles follow from the leg direction \(\hat{\mathbf n}_i\): the spherical joint at the base takes the leg’s azimuth and elevation, and the universal joint at the platform takes the angle between \(\hat{\mathbf n}_i\) and the platform axes \(\mathbf R\). One unique answer per leg: this is why parallel IK is “simple”.</p></div>
+<div class="worked"><span class="tag">Worked example: Stewart leg lengths</span>
+<p>Base points on a 1.0 m circle at −10°, 10°, 110°, 130°, 230°, 250°; platform points on a 0.5 m circle at −50°, 50°, 70°, 170°, 190°, 290°. Home pose (platform level, 1.0 m above the base): all six legs are 1.2182 m long.</p>
+<p>Pose \(t(0.05,-0.02,1.0)\,R_z(5^\circ)\,R_y(3^\circ)\): legs = 1.1597, 1.1974, 1.2170, 1.2812, 1.2152, 1.2504 m. <span class="chk">checked</span></p></div>
+<div class="widget" data-w3d="delta" id="w4-delta">
+  <div class="wh"><b>Delta robot: IK in 3D</b><span class="eyebrow">base radius 0.20 m · platform 0.05 m · arm 0.20 m · rods 0.45 m</span></div>
+  <div class="wbody"><div class="stage"><button type="button" class="btn small reset">Reset view</button><span class="legend">blue = actuated arms · grey = parallelogram rods · x red y green z blue</span></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> move the platform with the sliders. The three motor angles come from closed-form IK (each arm alone, like the four-bar). Every rod length is checked live to be 0.45 m: that is the loop closure. Note how the platform never tilts. Each pair of rods is a parallelogram, which keeps the platform parallel to the base. That is why plain G–K’s 9 becomes 3.</div>
+</div>
+</div>
+
+<h3>Guided problems: solve on paper first</h3>
+<div class="gp" data-topic="w04"><div class="head"><b>P4.1 · Mobility of the 4RRR</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w04-p1" data-topic="w04"></span></div>
+<p>Two square plates are joined by four identical RR legs (slides 37–43). Compute the plain G–K mobility, explain why it is wrong, and find the true mobility with the extended equation.</p>
+<details class="hint"><summary>Hint 1</summary><p>N = 10, J = 12, all revolute, D = 6.</p></details>
+<details class="hint"><summary>Hint 2</summary><p>Write the platform DoFs each pair of legs allows; count the union, not the sum.</p></details>
+<div class="ansrow"><label>R<sub>C</sub><input data-ans="7" data-tol="0.01" data-label="R_C" inputmode="decimal" data-wrong='[{"v":6,"msg":"you summed 3+3; Tz appears in both loops, count it once (5)."}]'></label><label>M<input data-ans="1" data-tol="0.01" data-label="M" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>Plain: 6(10 − 12 − 1) + 12 = −6. That is impossible for a moving mechanism, so constraints are being double-counted. Loop DoFs: {T<sub>y</sub>, T<sub>z</sub>, R<sub>x</sub>} and {T<sub>x</sub>, T<sub>z</sub>, R<sub>y</sub>}; union = 5. R<sub>C</sub> = 12 − 5 = 7, R<sub>M</sub> = 0, so M = −6 + 7 = 1 (pure T<sub>z</sub>).</p></details></div>
+
+<div class="gp" data-topic="w04"><div class="head"><b>P4.2 · Loop closure for the four-bar</b><span class="chip derive">derive</span><span class="marks" data-id="w04-p2" data-topic="w04"></span></div>
+<p>Break the four-bar at both ends of link 2 and write the single constraint equation. How many unknowns does it link?</p>
+<details class="hint"><summary>Hint</summary><p>The two cut points U (end of link 1) and V (end of link 3) must stay L<sub>2</sub> apart.</p></details>
+<details class="sol"><summary>Full solution</summary><p>U = (L<sub>1</sub>cos θ<sub>1</sub>, L<sub>1</sub>sin θ<sub>1</sub>), V = (L<sub>0</sub> + L<sub>3</sub>cos φ<sub>1</sub>, L<sub>3</sub>sin φ<sub>1</sub>), and |U − V|² = L<sub>2</sub>² gives η<sub>1</sub> above. It links one active and one passive variable (θ<sub>1</sub>, φ<sub>1</sub>). Given θ<sub>1</sub>, solving it gives two φ<sub>1</sub> (the two assembly modes).</p></details></div>
+
+<div class="gp" data-topic="w04"><div class="head"><b>P4.3 · Four-bar FK numbers</b><span class="chip calc">calculate</span><span class="marks" data-id="w04-p3" data-topic="w04"></span></div>
+<p>For the linkage in the worked example with θ<sub>1</sub> = 70°, find the coupler angle φ for the assembly mode with B below line AD.</p>
+<details class="hint"><summary>Hint 1</summary><p>A = (0.1710, 0.4698); |AD| = 0.9529 m.</p></details>
+<details class="hint"><summary>Hint 2</summary><p>Intersect the circle of radius 0.45 about A with the circle of radius 0.6 about D, and take the lower point.</p></details>
+<div class="ansrow"><label>φ (deg)<input data-ans="-58.486" data-tol="0.05" data-label="φ" inputmode="decimal" data-wrong='[{"v":-0.6,"msg":"that is the other assembly mode (B above AD)."}]'></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>Along AD from A: x = (L<sub>2</sub>² − L<sub>3</sub>² + |AD|²)/(2|AD|) = (0.2025 − 0.36 + 0.9080)/1.9058 = 0.3938 m, h = √(0.45² − 0.3938²) = 0.2178 m. B = A + 0.3938 û − 0.2178 n̂ = (0.4062, 0.0862). φ = atan2(B<sub>y</sub> − A<sub>y</sub>, B<sub>x</sub> − A<sub>x</sub>) = −58.486°. Then K = A + 0.2(cos φ, sin φ) = (0.2756, 0.2993) m. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w04"><div class="head"><b>P4.4 · Why is the delta’s platform always level?</b><span class="chip explain">explain</span><span class="chip sketch">sketch</span><span class="marks" data-id="w04-p4" data-topic="w04"></span></div>
+<p>Explain, with a sketch of one leg, why a delta platform translates but never rotates, and connect it to the mobility count.</p>
+<details class="sol"><summary>Model answer</summary><p>Each forearm is a parallelogram: two equal, parallel rods with spherical joints at the four corners. A parallelogram keeps its top and bottom edges parallel, so each leg keeps one platform edge parallel to its upper-arm axis. Three legs at 120° lock all three rotations, leaving 3 translations. Plain G–K counts each rod’s idle spin as a DoF (9), so subtract R<sub>M</sub> = 6 to get 3.</p></details></div>
+
+<div class="gp" data-topic="w04"><div class="head"><b>P4.5 · Gough–Stewart IK (homework, slide 73)</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w04-p5" data-topic="w04"></span></div>
+<p>Each leg is S (base, passive), P (active), U (platform, passive). Given \({}^B\mathbf T_P\), determine all joint variables. Then compute leg 1 for the worked-example geometry at the home pose (platform 1.0 m above the base, no rotation).</p>
+<details class="hint"><summary>Hint 1</summary><p>Write platform point i in {B}: \(\mathbf t+\mathbf R\mathbf p_i\). The leg vector is that minus \(\mathbf b_i\).</p></details>
+<details class="hint"><summary>Hint 2</summary><p>Leg 1: b<sub>1</sub> = (cos(−10°), sin(−10°), 0); p<sub>1</sub> = 0.5(cos(−50°), sin(−50°), 0).</p></details>
+<div class="ansrow"><label>d<sub>1</sub> (m)<input data-ans="1.2182" data-tol="0.0005" data-label="d1" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>\(\mathbf l_1=(0.3214-0.9848,\;-0.3830+0.1736,\;1.0)=(-0.6634,\,-0.2094,\,1.0)\) m; d<sub>1</sub> = √(0.4401 + 0.0438 + 1) = 1.2182 m. Passive angles: the base spherical joint aligns the leg with \(\hat{\mathbf n}_1=\mathbf l_1/d_1\) (azimuth atan2(−0.2094, −0.6634) = −162.48°, elevation asin(1.0/1.2182) = 55.17°). The roll about the leg axis is shared between the S and U joints and does not affect d<sub>1</sub>. <span class="chk">d checked</span></p></details></div>
+
+<div class="gp" data-topic="w04"><div class="head"><b>P4.6 · Spot the error</b><span class="chip spot">spot the error</span><span class="marks" data-id="w04-p6" data-topic="w04"></span></div>
+<p>“The slider-crank (ground, crank, connecting rod, slider; 3 revolute joints and 1 prismatic) has M = 6(4 − 4 − 1) + 4 = −2, so it is a structure.” What is wrong?</p>
+<details class="sol"><summary>Answer</summary><p>It is planar, so D = 3: M = 3(4 − 4 − 1) + 4 = 1. A slider-crank has one DoF (crank angle ↔ slider position).</p></details></div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w04"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w04-q1" data-topic="w04"></span></div><p>Why is FK hard and IK easy for parallel robots, the opposite of serial ones?</p><details class="sol"><summary>Answer</summary><p>FK needs the passive joints, which are found only by solving the coupled nonlinear loop-closure equations (multiple, possibly imaginary solutions). IK gives each leg’s end pose directly, so each leg is a small independent serial IK.</p></details></div>
+<div class="gp" data-topic="w04"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w04-q2" data-topic="w04"></span></div><p>A spatial mechanism has N = 6, J = 7, joints: 5 R, 1 U, 1 S. Plain G–K mobility?</p><details class="sol"><summary>Answer</summary><p>ΣF = 5 + 2 + 3 = 10; M = 6(6 − 7 − 1) + 10 = −2. Report it, then look for over-constraints (R<sub>C</sub>) before concluding it is a structure.</p></details></div>
+<div class="gp" data-topic="w04"><div class="head"><b>Q3</b><span class="chip explain">concept</span><span class="marks" data-id="w04-q3" data-topic="w04"></span></div><p>Name the two meanings of R<sub>M</sub> and R<sub>C</sub> in one line each.</p><details class="sol"><summary>Answer</summary><p>R<sub>M</sub>: internal motions that do not move the output (subtract). R<sub>C</sub>: constraints counted twice because they repeat each other (add back).</p></details></div>
+
+<div class="box" data-reading="w04"></div>
+
+<script data-after>
+W3D.kinds.fourbar = function (root) {
+  const stage = root.querySelector('.stage'), side = root.querySelector('.side'), id = root.id, D2R = Math.PI / 180;
+  const L0 = 1.0, L1 = 0.5, a = 0.2, b = 0.25, L2 = a + b, L3 = 0.6;
+  let th = 70 * D2R, mode = 1;
+  const cv = document.createElement('canvas'); stage.appendChild(cv); const g = cv.getContext('2d');
+  side.innerHTML = W3D.sliderRow(id + '-t', 'θ1', -100, 100, 70, 0.5, '°') + '<label style="font-size:.85rem"><input type="checkbox" id="' + id + '-m"> B below line AD (second assembly mode)</label><div class="out"></div>';
+  function solve() {
+    const A = [L1 * Math.cos(th), L1 * Math.sin(th)], Dp = [L0, 0], dx = Dp[0] - A[0], dy = Dp[1] - A[1], d = Math.hypot(dx, dy);
+    if (d > L2 + L3 || d < Math.abs(L2 - L3)) return { A, ok: false };
+    const x = (L2 * L2 - L3 * L3 + d * d) / (2 * d), h = Math.sqrt(Math.max(L2 * L2 - x * x, 0)), u = [dx / d, dy / d], n = [-u[1], u[0]];
+    const B = [A[0] + x * u[0] + mode * h * n[0], A[1] + x * u[1] + mode * h * n[1]];
+    const phi = Math.atan2(B[1] - A[1], B[0] - A[0]), K = [A[0] + a * Math.cos(phi), A[1] + a * Math.sin(phi)];
+    const phi1 = Math.atan2(B[1], B[0] - L0);
+    // IK back from (K, phi)
+    const th1ik = Math.atan2(K[1] - a * Math.sin(phi), K[0] - a * Math.cos(phi));
+    return { A, B, K, phi, phi1, phi2: phi - th, phi3: phi + Math.PI - phi1, th1ik, ok: true };
+  }
+  let S = 200, O = [0, 0];
+  function size() { const w = stage.clientWidth, h = Math.max(stage.clientHeight, 340), dpr = Math.min(devicePixelRatio || 1, 2); cv.width = w * dpr; cv.height = h * dpr; cv.style.height = h + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); S = Math.min(w / 1.9, h / 1.35); O = [w / 2 - 0.5 * S, h * 0.72]; draw(); }
+  const P = (p) => [O[0] + p[0] * S, O[1] - p[1] * S];
+  const wrap = v => { v = v % (2 * Math.PI); return v < 0 ? v + 2 * Math.PI : v; };
+  function draw() {
+    const c = W3D.css; g.clearRect(0, 0, cv.width, cv.height); const s = solve();
+    g.strokeStyle = c('--line'); g.lineWidth = 1; g.beginPath(); g.moveTo(...P([-0.4, 0])); g.lineTo(...P([1.4, 0])); g.stroke();
+    [[0, 0], [L0, 0]].forEach(p => { const q = P(p); g.fillStyle = c('--muted'); g.beginPath(); g.moveTo(q[0], q[1]); g.lineTo(q[0] - 9, q[1] + 14); g.lineTo(q[0] + 9, q[1] + 14); g.fill(); });
+    g.setLineDash([3, 4]); g.strokeStyle = c('--muted'); g.beginPath(); g.arc(...P(s.A), L2 * S, 0, 7); g.stroke(); g.beginPath(); g.arc(...P([L0, 0]), L3 * S, 0, 7); g.stroke(); g.setLineDash([]);
+    const seg = (p, q, col, w) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(...P(p)); g.lineTo(...P(q)); g.stroke(); };
+    seg([0, 0], s.A, c('--accent'), 6);
+    const out = side.querySelector('.out');
+    if (!s.ok) { out.innerHTML = '<p class="fb bad">Cannot assemble: |AD| = ' + Math.hypot(L0 - s.A[0], s.A[1]).toFixed(3) + ' m &gt; L2 + L3 = 1.05 m. The dashed circles do not meet.</p>'; window.__state[id] = { ok: false }; return; }
+    seg(s.A, s.B, c('--ink'), 5); seg([L0, 0], s.B, c('--muted'), 5);
+    [s.A, s.B].forEach(p => { g.fillStyle = c('--surface'); g.strokeStyle = c('--ink'); g.lineWidth = 2; const q = P(p); g.beginPath(); g.arc(q[0], q[1], 5, 0, 7); g.fill(); g.stroke(); });
+    const k = P(s.K); g.fillStyle = c('--exam'); g.beginPath(); g.arc(k[0], k[1], 6, 0, 7); g.fill();
+    g.fillStyle = c('--ink'); g.font = '12px IBM Plex Mono, monospace'; g.fillText('K', k[0] + 8, k[1] - 8); g.fillText('A', ...P([s.A[0] - 0.07, s.A[1]])); g.fillText('B', ...P([s.B[0] + 0.03, s.B[1] + 0.03])); g.fillText('{S}', ...P([-0.12, -0.08])); g.fillText('{D}', ...P([L0 + 0.03, -0.08]));
+    out.innerHTML = '<div class="mono" style="font-size:.82rem;line-height:1.6">FK: K = (' + s.K[0].toFixed(4) + ', ' + s.K[1].toFixed(4) + ') m<br>φ = ' + (s.phi / D2R).toFixed(3) + '°<br>φ1 = ' + (wrap(s.phi1) / D2R).toFixed(3) + '°, φ2 = ' + (wrap(s.phi2) / D2R).toFixed(3) + '°, φ3 = ' + (wrap(s.phi3) / D2R).toFixed(3) + '°<br>IK from (K, φ): θ1 = ' + (s.th1ik / D2R).toFixed(3) + '° ✓</div>';
+    window.__state[id] = { ok: true, K: s.K, phi: s.phi / D2R, phi1: wrap(s.phi1) / D2R, th1ik: s.th1ik / D2R };
+  }
+  const sl = side.querySelector('#' + id + '-t'); sl.addEventListener('input', () => { th = +sl.value * D2R; sl.nextElementSibling.textContent = sl.value + '°'; draw(); });
+  side.querySelector('#' + id + '-m').addEventListener('change', e => { mode = e.target.checked ? -1 : 1; draw(); });
+  new ResizeObserver(size).observe(stage); window.addEventListener('enn-theme', draw); size();
+  W3D.instances[id] = { set(t, m) { th = t * D2R; mode = m; sl.value = t; side.querySelector('#' + id + '-m').checked = m < 0; draw(); return window.__state[id]; } };
+};
+
+W3D.kinds.delta = function (root) {
+  const stage = root.querySelector('.stage'), side = root.querySelector('.side'), id = root.id, D2R = Math.PI / 180;
+  const Rb = 0.20, Rp = 0.05, La = 0.20, Lr = 0.45, ang = [0, 120, 240].map(v => v * D2R), gap = 0.03;
+  let p = [0.03, -0.02, -0.38];
+  const sc = new W3D.Scene3D(stage, { home: [1.5, -2.0, 1.1], grid: 0.8, gridZ: -0.62 });
+  sc.fit([[0.3, 0.3, 0.05], [-0.3, -0.3, -0.6], [0.3, -0.3, -0.6], [-0.3, 0.3, 0.05]]);
+  root.querySelector('.reset').addEventListener('click', () => sc.resetView());
+  side.innerHTML = ['x', 'y', 'z'].map((n, i) => W3D.sliderRow(id + '-' + n, n + ' (m)', i === 2 ? -0.55 : -0.15, i === 2 ? -0.25 : 0.15, p[i], 0.005, '')).join('') + '<div class="out"></div>';
+  function ik(pp) { return ang.map(g => { const u = [Math.cos(g), Math.sin(g), 0], t = [-Math.sin(g), Math.cos(g), 0];
+    const d = [pp[0] + (Rp - Rb) * u[0], pp[1] + (Rp - Rb) * u[1], pp[2]]; const du = d[0] * u[0] + d[1] * u[1], dz = d[2];
+    const K = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2] + La * La - Lr * Lr) / (2 * La), A = du, B = -dz, rho = Math.hypot(A, B);
+    if (Math.abs(K) > rho) return NaN; return Math.atan2(B, A) - Math.acos(K / rho); }); }
+  function update() {
+    const th = ik(p), out = side.querySelector('.out'); sc.clear();
+    const col = c => new THREE.Color(W3D.css(c)).getHex();
+    if (th.some(isNaN)) { out.innerHTML = '<p class="fb bad">Outside the workspace: some arm cannot reach (|K| &gt; ρ).</p>'; sc.render(); window.__state[id] = { ok: false }; return; }
+    const lens = [];
+    ang.forEach((g, i) => {
+      const u = [Math.cos(g), Math.sin(g), 0], t = [-Math.sin(g), Math.cos(g), 0];
+      const B = [Rb * u[0], Rb * u[1], 0], E = [B[0] + La * Math.cos(th[i]) * u[0], B[1] + La * Math.cos(th[i]) * u[1], -La * Math.sin(th[i])];
+      const Pp = [p[0] + Rp * u[0], p[1] + Rp * u[1], p[2]];
+      sc.cyl(B.map((v, k) => v - t[k] * 0.025), B.map((v, k) => v + t[k] * 0.025), 0.018, col('--accent'), 0.9);
+      sc.cyl(B, E, 0.009, col('--accent'));
+      [-1, 1].forEach(sg => { const e2 = E.map((v, k) => v + sg * gap * t[k]), p2 = Pp.map((v, k) => v + sg * gap * t[k]); sc.cyl(e2, p2, 0.004, col('--muted')); });
+      sc.cyl(E.map((v, k) => v - gap * t[k]), E.map((v, k) => v + gap * t[k]), 0.005, col('--muted'));
+      sc.cyl(Pp.map((v, k) => v - gap * t[k]), Pp.map((v, k) => v + gap * t[k]), 0.005, col('--muted'));
+      lens.push(Math.hypot(E[0] - Pp[0], E[1] - Pp[1], E[2] - Pp[2]));
+    });
+    for (let i = 0; i < 3; i++) { const g1 = ang[i], g2 = ang[(i + 1) % 3];
+      sc.cyl([Rb * 1.25 * Math.cos(g1), Rb * 1.25 * Math.sin(g1), 0.01], [Rb * 1.25 * Math.cos(g2), Rb * 1.25 * Math.sin(g2), 0.01], 0.006, col('--ink'));
+      sc.cyl([p[0] + Rp * Math.cos(g1), p[1] + Rp * Math.sin(g1), p[2]], [p[0] + Rp * Math.cos(g2), p[1] + Rp * Math.sin(g2), p[2]], 0.006, col('--exam')); }
+    sc.triad(W3D.M.I(), 0.1, '{B}', true); sc.triad(W3D.M.T(...p), 0.07, '{P}', true);
+    sc.render();
+    out.innerHTML = '<div class="mono" style="font-size:.82rem;line-height:1.6">θ1 = ' + (th[0] / D2R).toFixed(3) + '°<br>θ2 = ' + (th[1] / D2R).toFixed(3) + '°<br>θ3 = ' + (th[2] / D2R).toFixed(3) + '°<br>rod lengths: ' + lens.map(v => v.toFixed(4)).join(', ') + ' m</div>';
+    window.__state[id] = { ok: true, th: th.map(v => v / D2R), lens };
+  }
+  ['x', 'y', 'z'].forEach((n, i) => { const s = side.querySelector('#' + id + '-' + n); s.addEventListener('input', () => { p[i] = +s.value; s.nextElementSibling.textContent = (+s.value).toFixed(3); update(); }); });
+  update();
+  W3D.instances[id] = { set(pp) { p = pp.slice(); update(); return window.__state[id]; } };
+};
+</script>

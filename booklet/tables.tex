@@ -1,0 +1,136 @@
+\bpart{TABLES}{Reference tables}{15}
+\newtcolorbox{fbxu}[1][]{fbxstyle={#1},unbreakable}
+\begin{multicols}{3}
+\hd{Matrix formulas}
+\begin{fbx}[Inverse and determinant]
+\[\begin{bmatrix}a&b\\c&d\end{bmatrix}^{-1}=\frac1{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}\]
+\[\det\!\begin{bmatrix}a&b&c\\d&e&f\\g&h&i\end{bmatrix}=a(ei-fh)-b(di-fg)+c(dh-eg)\]
+\[\mathbf A^{-1}=\frac1{\det\mathbf A}\begin{bmatrix}ei-fh&ch-bi&bf-ce\\fg-di&ai-cg&cd-af\\dh-eg&bg-ah&ae-bd\end{bmatrix}\]
+$\det=0$ $\Rightarrow$ no inverse (singular). $(\mathbf{AB})^{-1}=\mathbf B^{-1}\mathbf A^{-1}$; $(\mathbf{AB})^\top=\mathbf B^\top\mathbf A^\top$.
+\end{fbx}
+
+\hd{Trigonometry}
+\begin{fbx}[Identities]
+$\sin(a\pm b)=\sin a\cos b\pm\cos a\sin b$\\
+$\cos(a\pm b)=\cos a\cos b\mp\sin a\sin b$\\
+$\tan(a\pm b)=\dfrac{\tan a\pm\tan b}{1\mp\tan a\tan b}$\\
+$\sin2a=2\sin a\cos a$\\
+$\cos2a=\cos^2a-\sin^2a=2\cos^2a-1=1-2\sin^2a$\\
+$\tan2a=\dfrac{2\tan a}{1-\tan^2a}$,\quad $\sin^2a+\cos^2a=1$\\
+$\cos^2a=\tfrac12(1+\cos2a)$,\ $\sin^2a=\tfrac12(1-\cos2a)$\\
+$\cos(\pi-q)=-\cos q$,\ $\sin(\pi-q)=\sin q$
+\use{arm algebra: $c_1c_{12}+s_1s_{12}=c_2$ and $s_{12}c_1-c_{12}s_1=s_2$ (with $c_{12}=\cos(q_1{+}q_2)$).}
+\end{fbx}
+\begin{fbx}[Single-harmonic form]
+\[a\cos x+b\sin x=R\cos(x-\varphi)=R\sin(x+\psi)\]
+$R=\sqrt{a^2+b^2}$, $\varphi=\atantwo(b,a)$, $\psi=\atantwo(a,b)$.
+\use{solving $a\cos x+b\sin x=c$: $x=\varphi\pm\arccos(c/R)$, needs $|c|\le R$ (reach test).}
+\end{fbx}
+\begin{fbx}[Triangle rules]
+Cosine rule: $c^2=a^2+b^2-2ab\cos C$\\
+Sine rule: $\dfrac a{\sin A}=\dfrac b{\sin B}=\dfrac c{\sin C}$
+\use{arm triangle: interior elbow angle $=\pi-q_2$, so $r^2=L_1^2+L_2^2+2L_1L_2\cos q_2$ (the sign flip is the classic trap).}
+\end{fbx}
+\begin{fbx}[atan2$(y,x)$: quadrant table]
+\begin{tabularx}{\linewidth}{@{}lXl@{}}\toprule
+$x$ & $y$ & value\\\midrule
+$>0$ & any & $\arctan(y/x)$\\
+$<0$ & $\ge0$ & $\arctan(y/x)+\pi$\\
+$<0$ & $<0$ & $\arctan(y/x)-\pi$\\
+$0$ & $>0$ / $<0$ & $+\pi/2$ / $-\pi/2$\\\bottomrule
+\end{tabularx}
+Range $(-\pi,\pi]$. Never use plain $\arctan(y/x)$ for a position angle.
+\end{fbx}
+
+\hd{Rotations and frames}
+\begin{fbx}[Basic rotations (right-hand rule)]
+\[R_x(\theta)=\begin{bmatrix}1&0&0\\0&c&-s\\0&s&c\end{bmatrix},\ R_y(\theta)=\begin{bmatrix}c&0&s\\0&1&0\\-s&0&c\end{bmatrix},\ R_z(\theta)=\begin{bmatrix}c&-s&0\\s&c&0\\0&0&1\end{bmatrix}\]
+$R^\top=R^{-1}$, $\det R=+1$, columns orthonormal. $R_z(a)R_z(b)=R_z(a{+}b)$; different axes do not commute.
+\end{fbx}
+\begin{fbx}[Composition rules]
+${}^A\Rm_C={}^A\Rm_B\,{}^B\Rm_C$ (inner indices cancel).\\
+\textbf{Right}-multiply: next turn about the \emph{current} (moving) axes.\\
+\textbf{Left}-multiply: next turn about the \emph{fixed} axes.\\
+Same for $4\times4$ $\T$: order of the matrices = order of the moves, read left to right for current axes.
+\end{fbx}
+\begin{fbx}[Homogeneous inverse]
+\[\begin{bmatrix}\Rm&\mathbf t\\\mathbf 0^\top&1\end{bmatrix}^{-1}=\begin{bmatrix}\Rm^\top&-\Rm^\top\mathbf t\\\mathbf 0^\top&1\end{bmatrix}\]
+\end{fbx}
+\begin{fbx}[Cross product and skew matrix]
+\[\mathbf a\times\mathbf b=[\mathbf a]_\times\mathbf b=\begin{bmatrix}a_2b_3-a_3b_2\\a_3b_1-a_1b_3\\a_1b_2-a_2b_1\end{bmatrix},\ [\mathbf a]_\times=\begin{bmatrix}0&-a_3&a_2\\a_3&0&-a_1\\-a_2&a_1&0\end{bmatrix}\]
+$|\mathbf a\times\mathbf b|=|\mathbf a||\mathbf b|\sin\theta$; $\mathbf a\times\mathbf b=-\mathbf b\times\mathbf a$; $[\mathbf a]_\times^\top=-[\mathbf a]_\times$.\\
+Rotating frame: $\dot\Rm=[\boldsymbol\omega]_\times\Rm$. Velocity of a point on a body: $\mathbf v=\mathbf v_0+\boldsymbol\omega\times\mathbf p$.
+\end{fbx}
+
+\hd{Small angles}
+\begin{fbx}[$|\theta|\lesssim0.1$ rad ($\approx6^\circ$)]
+$\sin\theta\approx\theta$ (error $<0.2\,\%$), $\tan\theta\approx\theta$ ($<0.4\,\%$), $\cos\theta\approx1-\theta^2/2$ (abs.\ error $<10^{-5}$; or just 1).\\
+$(1+x)^n\approx1+nx$. $R_z(\delta)\approx\mathbf I+[\delta\hat z]_\times$ (rotations commute to first order).
+\end{fbx}
+\hd{Unit conversions}
+\begin{tabularx}{\linewidth}{@{}Xl@{}}\toprule
+$1^\circ$ & $=0.017453$ rad\\
+1 rad & $=57.2958^\circ$\\
+1 rpm & $=2\pi/60=0.10472$ rad/s\\
+1 rad/s & $=9.5493$ rpm\\
+1 Hz & $=2\pi$ rad/s\\
+e.g.\ 3000 rpm & $=314.16$ rad/s\\
+$90^\circ$ & $=1.5708$ rad\\\bottomrule
+\end{tabularx}
+Ideal gearbox, ratio $N$ (motor : load): $\omega_m=N\omega_l$, $\tau_l=N\tau_m$, inertia seen at the load $N^2I_m$. \added
+
+\columnbreak
+\hd{Euler-angle extraction}
+\begin{fbxu}[ZYZ: $\Rm=R_z(\alpha)R_y(\beta)R_z(\gamma)$]
+\[\Rm=\begin{bmatrix}c_\alpha c_\beta c_\gamma-s_\alpha s_\gamma&-c_\alpha c_\beta s_\gamma-s_\alpha c_\gamma&c_\alpha s_\beta\\ s_\alpha c_\beta c_\gamma+c_\alpha s_\gamma&-s_\alpha c_\beta s_\gamma+c_\alpha c_\gamma&s_\alpha s_\beta\\-s_\beta c_\gamma&s_\beta s_\gamma&c_\beta\end{bmatrix}\]
+$\beta=\atantwo\!\big(\sqrt{r_{13}^2+r_{23}^2},\,r_{33}\big)$, $\alpha=\atantwo(r_{23},r_{13})$, $\gamma=\atantwo(r_{32},-r_{31})$.\\
+Second solution (flip): $-\beta$, $\alpha+\pi$, $\gamma+\pi$ (use $\atantwo(-r_{23},-r_{13})$, $\atantwo(-r_{32},r_{31})$).\\
+Singular if $s_\beta=0$: only $\alpha+\gamma$ ($\beta{=}0$) or $\alpha-\gamma$ ($\beta{=}\pi$) is fixed.
+\end{fbxu}
+\begin{fbxu}[ZYX (yaw $\psi$, pitch $\theta$, roll $\phi$): $\Rm=R_z(\psi)R_y(\theta)R_x(\phi)$]
+\[\Rm=\begin{bmatrix}c_\psi c_\theta&c_\psi s_\theta s_\phi-s_\psi c_\phi&c_\psi s_\theta c_\phi+s_\psi s_\phi\\ s_\psi c_\theta&s_\psi s_\theta s_\phi+c_\psi c_\phi&s_\psi s_\theta c_\phi-c_\psi s_\phi\\-s_\theta&c_\theta s_\phi&c_\theta c_\phi\end{bmatrix}\]
+$\theta=\atantwo\!\big(-r_{31},\sqrt{r_{11}^2+r_{21}^2}\big)$, $\psi=\atantwo(r_{21},r_{11})$, $\phi=\atantwo(r_{32},r_{33})$.\\
+Second solution: $\pi-\theta$, $\psi+\pi$, $\phi+\pi$. Singular at $\theta=\pm90^\circ$ ($c_\theta=0$).
+\end{fbxu}
+
+\hd{Inertia of standard bodies (about the centroid, principal axes)}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.34\linewidth}>{\raggedright\arraybackslash}X@{}}\toprule
+Body (mass $m$) & Inertia\\\midrule
+Slender rod, length $L$, axis $\perp$ rod & $\tfrac1{12}mL^2$ ($\approx0$ about its own axis)\\
+Box $a\times b\times c$ (along $x,y,z$) & $I_{xx}=\tfrac1{12}m(b^2{+}c^2)$; $I_{yy}=\tfrac1{12}m(a^2{+}c^2)$; $I_{zz}=\tfrac1{12}m(a^2{+}b^2)$\\
+Solid cylinder, radius $r$, length $h$, axis $z$ & $I_{zz}=\tfrac12mr^2$; $I_{xx}=I_{yy}=\tfrac1{12}m(3r^2{+}h^2)$\\
+Solid sphere, radius $r$ & $\tfrac25mr^2$ (any axis)\\
+Thin disc, radius $r$ & axis $\perp$ disc $\tfrac12mr^2$; diameter $\tfrac14mr^2$\\\bottomrule
+\end{tabularx}
+\begin{fbx}[Parallel-axis theorem]
+Scalar (axes parallel, distance $d$): $I=I_C+md^2$.\\
+Tensor ($\mathbf r$ = vector from centroid to the new origin):
+\[\mathbf I_O=\mathbf I_C+m\big(\|\mathbf r\|^2\mathbf 1-\mathbf r\mathbf r^\top\big)\]
+Components: $I_{xx}'=I_{xx}+m(y^2{+}z^2)$, $I_{xy}'=I_{xy}-mxy$ (convention $\mathbf I=\int(\|\mathbf r\|^2\mathbf 1-\mathbf r\mathbf r^\top)dm$).\\
+Different frame: $\mathbf I_B=\Rm\,\mathbf I_A\,\Rm^\top$.
+\use{link inertia about the joint: centroid value $+\,m d^2$. Never add inertias about different points.}
+\end{fbx}
+
+\hd{Polynomials and stability}
+\begin{fbx}[Quadratic]
+$ax^2+bx+c=0$: $x=\dfrac{-b\pm\sqrt{b^2-4ac}}{2a}$.\\
+$b^2-4ac>0$: two real; $=0$: double; $<0$: complex pair. Sum $=-b/a$, product $=c/a$.
+\end{fbx}
+\begin{fbx}[Cubic $q(t)$: boundary-condition matrix]
+\[\begin{bmatrix}1&0&0&0\\1&T&T^2&T^3\\0&1&0&0\\0&1&2T&3T^2\end{bmatrix}\!\begin{bmatrix}a_0\\a_1\\a_2\\a_3\end{bmatrix}=\begin{bmatrix}q_0\\q_F\\\dot q_0\\\dot q_F\end{bmatrix}\]
+$a_0=q_0$, $a_1=\dot q_0$, $\Delta=q_F-q_0$:
+\[a_2=\frac{3\Delta-(2\dot q_0+\dot q_F)T}{T^2},\ a_3=\frac{-2\Delta+(\dot q_0+\dot q_F)T}{T^3}\]
+Rest to rest: $a_2=3\Delta/T^2$, $a_3=-2\Delta/T^3$. Quintic rest to rest: $a_3=10\Delta/T^3$, $a_4=-15\Delta/T^4$, $a_5=6\Delta/T^5$.\chk
+\end{fbx}
+\begin{fbx}[Routh--Hurwitz]
+Quadratic $s^2+a_1s+a_0$: stable iff $a_1,a_0>0$.\\
+Cubic $s^3+a_2s^2+a_1s+a_0$: stable iff all $a_i>0$ \textbf{and} $a_2a_1>a_0$.\\
+PID: $s^3+k_vs^2+k_ps+k_i$: need $k_vk_p>k_i$ (equality gives $\pm j\sqrt{k_p}$, undamped).
+\end{fbx}
+\begin{fbx}[Second-order step response, ]
+Poles $-\zeta\omega_n\pm\omega_n\sqrt{\zeta^2-1}$; $\omega_d=\omega_n\sqrt{1-\zeta^2}$.\\
+Overshoot ($0<\zeta<1$): $M_p=\exp\!\Big(\!-\dfrac{\pi\zeta}{\sqrt{1-\zeta^2}}\Big)$; peak time $\pi/\omega_d$.\\
+2\,\% settling $t_s\approx\dfrac4{\zeta\omega_n}$ (approximate rule).\\
+$\zeta=0.6$: $M_p=9.48\,\%$. $\zeta=1$: critical, $k_v=2\sqrt{k_p}$. $\zeta>1$: no overshoot.
+\end{fbx}
+\end{multicols}

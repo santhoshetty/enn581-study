@@ -1,0 +1,651 @@
+<p class="eyebrow">Week 6 · Velocity kinematics and statics</p>
+<h2>How fast does the tool move when the joints move?</h2>
+<p class="lead">Forward kinematics gives where the tool is. Velocity kinematics gives how fast it moves for given joint rates, through one matrix, the Jacobian \(\mathbf J(\mathbf q)\). The same matrix explains where the arm gets stuck (singularities), how well it can move in each direction (manipulability), and how joint torques turn into tool forces (statics, \(\boldsymbol\tau=\mathbf J^\top\mathbf F\)).</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Velocity Kinematics<small>62 slides · Dr KM Digumarti · notebook “6 velocity kinematics” · plus the 1-page “Cross Product Clarification”</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w06-lec">📖 View here</button>
+    <button type="button" class="btn" data-view="w06-cross">📖 Cross-product note</button>
+    <button type="button" class="btn" data-dl="notes/w06-lec.pdf" data-name="ENN581 W6 Velocity Kinematics.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w06-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p>None of the ten W13 sample questions is on velocity kinematics (the only “velocity” items there are wheeled-robot kinematics, <a class="pg" data-doc="w13-lec" data-page="20">W13 pp.20–21</a>). So expect a new short question of the derive, calculate, sketch or explain type. The most likely forms: the Jacobian of a planar RR arm at a given \(\mathbf q\) (in frame {0} or in the tool frame); the determinant and the poses where it vanishes; joint rates for a wanted tool velocity; joint torques for a tool force; a sketch of the velocity ellipse near and far from a singularity.</p>
+  <p><b>Where the marks are (indicative; marks not published):</b> the FK written first; the derivative taken correctly (each column is one joint’s effect); the Jacobian assembled with the linear rows above the angular rows; the frame of expression stated; the determinant factorised; the singular poses named with a sentence on what is lost; units on every answer (m/s, rad/s, N·m).</p>
+  <p><b>Where marks are lost:</b> using joint angles instead of running sums (\(q_1+q_2\), not \(q_2\)); mixing frame {0} and frame {E} (the Jacobian rotates, \(\det\) does not); using \(\mathbf J\mathbf F\) instead of \(\mathbf J^\top\mathbf F\); putting the inverse in the force ellipsoid; forgetting that a tall Jacobian needs a pseudo-inverse; writing degrees where a calculator expects radians.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (optional, no coding in the exam)</span>
+  <p>The lecture notebook builds everything from scratch: <code>skew</code>, <code>vex</code>, <code>skewa</code>, <code>vexa</code>; the helpers <code>ρ</code> (rotation block) and <code>τ</code> (translation column); one derivative function per elementary transform (<code>dTRx, dTRy, dTRz, dTtx, dTty, dTtz</code> with an <code>isflip</code> flag); <code>dT_dqj</code>, <code>Jv_j</code>, <code>Jω_j</code> and <code>jacob0</code>. It then compares with the toolbox’s <code>jacob0</code> and <code>jacobe</code>. Questions 1 and 4 are given for the planar RR arm; questions 2 and 3 (PUMA 560) have no code. All four are solved below. The notebook has no saved outputs.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>The Jacobian is an exchange-rate table</h4>It converts joint speeds into hand speeds, like a currency table. The rates change with the pose: the same turn of the shoulder moves a stretched hand a long way and a tucked hand a short way.</div>
+    <div class="card"><h4>One column = one dial</h4>On a mixing desk, turning one dial alone changes the sound in one particular way. Column \(j\) of \(\mathbf J\) is exactly what the tool does when only joint \(j\) moves at unit speed. Move several dials: add the effects.<span class="inprac">In the practical: <code>Jv_j</code> and <code>Jω_j</code> build one column at a time.</span></div>
+    <div class="card"><h4>A singularity is a locked door hinge line</h4>Push a door along the line of its hinges and nothing turns. A fully stretched arm is the same: no joint can move the hand along the arm. Near that pose, a tiny hand motion demands a huge joint speed.</div>
+    <div class="card"><h4>The ellipsoid is a squashed ball</h4>Put every unit-size joint-speed combination into the Jacobian and the ball of choices comes out as an egg. The hand is fast along the long axis and slow along the short one. A collapsed egg is a singularity.</div>
+    <div class="card"><h4>Speed and force trade off</h4>A long lever moves far but pushes weakly. Where the hand can move fast, it can push only weakly, and the reverse. The force egg has the same axes as the velocity egg, but with reciprocal lengths.</div>
+  </div>
+  <div class="vids" data-vids="w06"></div>
+</div>
+
+<div class="widget" data-w3d="jac" id="w6-jac">
+  <div class="wh"><b>Jacobian, singularity and ellipsoid explorer</b><span class="eyebrow">J is built by the lecture’s method: differentiate the elementary transform sequence</span></div>
+  <div class="wbody"><div class="stage"><button type="button" class="btn small reset">Reset view</button><span class="legend">drag to orbit · translucent = velocity ellipsoid · red arrow = tool velocity</span></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> pick “Planar 2R” and press the pose “Stretched out (q2 = 0)”. The two columns of the position block become parallel (both perpendicular to the arm), σ<sub>min</sub> drops to 0 and the ellipsoid collapses to a flat line perpendicular to the arm. The red arrow is the tool velocity for the joint rates set below; it ends inside the ellipsoid whenever the joint-rate vector has length 1 or less. The warning appears whenever m = σ<sub>min</sub>/σ<sub>max</sub> falls below 0.05. Now drag q2 slowly towards 0 with a fixed tool velocity: the joint rates needed (section 8) grow without bound. Choose “W13 RRR arm” and use the interior pose: the tool is on the vertical axis through the shoulder and det J<sub>v</sub> = 0 although the arm is not stretched.</div>
+</div>
+
+<!-- ================= 1 ================= -->
+<div class="sub" id="w6-intro">
+<h3>1 · The aim: relate joint rates to tool velocity <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="7">pp. 6–7</a>, <a class="pg" data-doc="w06-lec" data-page="21">p. 21</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>We command joints, but we care about the tool. Given joint rates \(\dot{\mathbf q}\), what are the linear velocity \(\boldsymbol\upsilon\) and angular velocity \(\boldsymbol\omega\) of the end effector (<a class="pg" data-doc="w06-lec" data-page="7">p.7</a>)? The answer is linear in \(\dot{\mathbf q}\), and the matrix that does the job depends on the pose.</p>
+<figure class="svg"><svg viewBox="0 0 520 200" role="img" aria-label="Unit circle of joint rates mapped to an ellipse of tool velocities" style="max-width:520px">
+  <defs><marker id="w6ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <g style="color:var(--muted)" stroke="currentColor" fill="none" stroke-width="1"><line x1="30" y1="110" x2="200" y2="110" marker-end="url(#w6ar)"/><line x1="115" y1="190" x2="115" y2="20" marker-end="url(#w6ar)"/><line x1="320" y1="110" x2="490" y2="110" marker-end="url(#w6ar)"/><line x1="405" y1="190" x2="405" y2="20" marker-end="url(#w6ar)"/></g>
+  <circle cx="115" cy="110" r="50" fill="none" stroke="var(--accent)" stroke-width="2"/>
+  <ellipse cx="405" cy="110" rx="22" ry="62" fill="none" stroke="var(--exam)" stroke-width="2"/>
+  <path d="M175,60 C230,20 300,20 365,50" fill="none" stroke="var(--ink)" stroke-width="1.5" marker-end="url(#w6ar)"/>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)"><text x="204" y="114">q̇<tspan dy="4" font-size="10">1</tspan></text><text x="120" y="22">q̇<tspan dy="4" font-size="10">2</tspan></text><text x="494" y="114">ẋ</text><text x="410" y="22">ẏ</text><text x="236" y="28">ν = J q̇</text><text x="48" y="196" fill="var(--muted)">unit joint-rate circle</text><text x="338" y="196" fill="var(--muted)">tool-velocity ellipse</text></g>
+</svg><figcaption>Schematic, not to scale (after <a class="pg" data-doc="w06-lec" data-page="51">p.51</a>). A linear map turns a circle into an ellipse; the ellipse’s shape is the arm’s capacity to move in each direction.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>The tool pose is \({}^0\mathbf T_E(\mathbf q)\) (forward kinematics). Differentiate it in time. The result splits into a linear part and an angular part, each linear in \(\dot{\mathbf q}\) (derived in sections 3 and 4):</p>
+\[ {}^0\boldsymbol\nu=\begin{bmatrix}\boldsymbol\upsilon\\\boldsymbol\omega\end{bmatrix}=\begin{bmatrix}\mathbf J_\upsilon(\mathbf q)\\\mathbf J_\omega(\mathbf q)\end{bmatrix}\dot{\mathbf q}={}^0\mathbf J(\mathbf q)\,\dot{\mathbf q},\qquad \underbrace{{}^0\boldsymbol\nu}_{6\times1}=\underbrace{{}^0\mathbf J}_{6\times n}\,\underbrace{\dot{\mathbf q}}_{n\times1} \]
+<p>\(\boldsymbol\nu\) is the spatial velocity (twist): linear velocity \(\boldsymbol\upsilon\) (m/s) on top, angular velocity \(\boldsymbol\omega\) (rad/s) below. The superscript 0 matters: both are expressed in frame {0} (<a class="pg" data-doc="w06-lec" data-page="21">p.21</a>, “pay attention to the frame”). \(n\) is the number of joints.</p>
+</div>
+<div class="angle">A basic recall question: “what are the dimensions of \(\mathbf J\) for a 6-joint arm? for a planar RR arm?” 6×6; and 6×2 (three rows of it are zero in the plane, leaving the \(x,y\) and \(\omega_z\) rows). The units of an entry are m/s per rad/s (= m) in the linear rows for a revolute joint, and rad/s per rad/s (dimensionless) in the angular rows.</div>
+</div>
+
+<!-- ================= 2 ================= -->
+<div class="sub" id="w6-skew">
+<h3>2 · Prerequisites: the skew matrix, the cross product and \(\dot{\mathbf R}=[\boldsymbol\omega]_\times\mathbf R\) <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="10">pp. 9–12</a>, <a class="pg" data-doc="w06-lec" data-page="18">pp. 18–19</a>, <a class="pg" data-doc="w06-cross" data-page="1">cross-product note</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A rotation about an axis \(\hat{\mathbf n}\) at rate \(\dot\theta\) gives every point \(\mathbf r\) of the body the velocity \(\boldsymbol\omega\times\mathbf r\), where \(\boldsymbol\omega=\dot\theta\,\hat{\mathbf n}\). The skew matrix \([\boldsymbol\omega]_\times\) is just that cross product written as a matrix, so it can sit inside matrix algebra. <span class="added">added</span></p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Skew and vex</b> (<a class="pg" data-doc="w06-lec" data-page="10">p.10</a>). For \(\mathbf s=(s_1,s_2,s_3)^\top\):</p>
+\[ [\mathbf s]_\times=\begin{bmatrix}0&-s_3&s_2\\s_3&0&-s_1\\-s_2&s_1&0\end{bmatrix}\in so(3),\qquad \mathbf s=\vee_\times\big([\mathbf s]_\times\big)=\big(S_{32},\,S_{13},\,S_{21}\big)^\top \]
+<p><b>Augmented skew</b> (<a class="pg" data-doc="w06-lec" data-page="12">p.12</a>): \(\hat{\mathbf s}=(s_1,\dots,s_6)^\top\mapsto\hat{\mathbf S}=\begin{bmatrix}[\mathbf s_{4:6}]_\times&\mathbf s_{1:3}\\\mathbf 0^\top&0\end{bmatrix}\in se(3)\). Entries \(s_1\)–\(s_3\) are the linear part, \(s_4\)–\(s_6\) the angular part. This is the same “linear on top, angular below” order as \(\boldsymbol\nu\).</p>
+<p><b>The cross product, two forms</b> (the one-page note). For \(\boldsymbol\omega=(\omega_x,\omega_y,\omega_z)^\top\), \(\mathbf P=(P_x,P_y,P_z)^\top\), expand the determinant along its first row. The \(\hat{\mathbf j}\) term carries a cofactor sign \(-\):</p>
+\[ \boldsymbol\omega\times\mathbf P=\begin{vmatrix}\hat{\mathbf i}&\hat{\mathbf j}&\hat{\mathbf k}\\\omega_x&\omega_y&\omega_z\\P_x&P_y&P_z\end{vmatrix}=(\omega_yP_z-\omega_zP_y)\,\hat{\mathbf i}\;{\color{#c0392b}-}\;(\omega_xP_z-\omega_zP_x)\,\hat{\mathbf j}+(\omega_xP_y-\omega_yP_x)\,\hat{\mathbf k} \]
+<p>The \(\hat{\mathbf j}\) coefficient is therefore \(\omega_zP_x-\omega_xP_z\). Now multiply the skew matrix by \(\mathbf P\), row by row:</p>
+\[ [\boldsymbol\omega]_\times\mathbf P=\begin{bmatrix}0&-\omega_z&\omega_y\\\omega_z&0&-\omega_x\\-\omega_y&\omega_x&0\end{bmatrix}\begin{bmatrix}P_x\\P_y\\P_z\end{bmatrix}=\begin{bmatrix}\omega_yP_z-\omega_zP_y\\\omega_zP_x-\omega_xP_z\\\omega_xP_y-\omega_yP_x\end{bmatrix} \]
+<p>The two forms agree component by component (second row: \(\omega_zP_x-\omega_xP_z\)). <span class="chk">checked symbolically</span></p>
+<p><b>Rotation matrices.</b> \(\mathbf R\mathbf R^\top=\mathbf I\). Differentiate: \(\dot{\mathbf R}\mathbf R^\top+\mathbf R\dot{\mathbf R}^\top=\mathbf 0\), i.e. \(\dot{\mathbf R}\mathbf R^\top\) equals minus its own transpose: it is skew-symmetric. Name it \([\boldsymbol\omega]_\times\) (<a class="pg" data-doc="w06-lec" data-page="18">p.18</a>):</p>
+\[ \dot{\mathbf R}=[\boldsymbol\omega]_\times\mathbf R\quad\Longleftrightarrow\quad [\boldsymbol\omega]_\times=\dot{\mathbf R}\,\mathbf R^\top,\qquad \boldsymbol\omega=\vee_\times\big(\dot{\mathbf R}\mathbf R^\top\big) \]
+<p>Check on \(\mathbf R_z(\theta)\): \(\dot{\mathbf R}_z\mathbf R_z^\top=\dot\theta\,[\hat{\mathbf z}]_\times\), so \(\boldsymbol\omega=(0,0,\dot\theta)^\top\): the angular velocity points along the rotation axis, as expected. <span class="chk">checked</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Given a rotation as a function of a joint angle, write \(\mathbf R(\theta)\) and differentiate each entry with respect to \(\theta\).</li>
+<li>Form \(\frac{d\mathbf R}{d\theta}\mathbf R^\top\) and confirm it is skew (zero diagonal, \(S_{ij}=-S_{ji}\)).</li>
+<li>Read \(\hat{\mathbf n}=(S_{32},S_{13},S_{21})\).</li>
+<li>Multiply by \(\dot\theta\) for the angular velocity \(\boldsymbol\omega\).</li>
+<li>Sanity check: \(\hat{\mathbf n}\) is a unit vector along the joint axis.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>\(\boldsymbol\omega=(1,2,3)\), \(\mathbf P=(4,5,6)\). Cross product: \((2\cdot6-3\cdot5,\;3\cdot4-1\cdot6,\;1\cdot5-2\cdot4)=(-3,\,6,\,-3)\). Skew form gives the same. If you copy the note’s \(\hat{\mathbf j}\) term \((\omega_xP_z-\omega_zP_x)=1\cdot6-3\cdot4=-6\), you get \(-6\) instead of \(+6\). <span class="chk">checked</span></p>
+<p>Point velocity: \(\boldsymbol\omega=(0,0,2)\) rad/s, \(\mathbf r=(0.3,0.4,0)\) m: \(\boldsymbol\omega\times\mathbf r=(-0.8,\,0.6,\,0)\) m/s, perpendicular to \(\mathbf r\) with length \(2\times0.5\) m/s. <span class="chk">checked</span></p></div>
+<div class="angle">The cross-product note is a <b>spot-the-error</b> candidate (guided problem P6.3). Craig’s \(\boldsymbol\omega\times\mathbf P\) is the ordinary cross product, not a product of two \(3\times1\) vectors. Also expect “why is \(\dot{\mathbf R}\mathbf R^\top\) skew?” in two lines (the derivative of \(\mathbf R\mathbf R^\top=\mathbf I\)).</div>
+<div class="box warn-box"><span class="tag">Slides vs note</span><p>The note (rendered and read) prints the \(\hat{\mathbf j}\) coefficient as \((\omega_xP_z-\omega_zP_x)\) with a plus sign in front. The correct determinant expansion has \(-(\omega_xP_z-\omega_zP_x)=(\omega_zP_x-\omega_xP_z)\). The note’s own skew-matrix form is right (its second row gives \(\omega_zP_x-\omega_xP_z\)), so as printed its two “equivalent” forms disagree. The note also drops the rotation matrix and frame superscripts of Craig’s formula (section 6).</p></div>
+</div>
+
+<!-- ================= 3 ================= -->
+<div class="sub" id="w6-ets">
+<h3>3 · Differentiating the elementary transform sequence <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="13">pp. 13–16</a>, <a class="pg" data-doc="w06-lec" data-page="27">pp. 27–32</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>The ETS is a product of simple matrices, \({}^0\mathbf T_E=\mathbf E_1(\eta_1)\cdots\mathbf E_M(\eta_M)\). Each \(\eta_i\) is a constant (a link length, a fixed twist) or a joint variable \(q_j\). To find how the pose changes with joint \(j\), apply the product rule: freeze every factor except the one that contains \(q_j\), differentiate that one, and multiply the pieces back in the same order.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Chain rule</b> (<a class="pg" data-doc="w06-lec" data-page="15">p.15</a>): \(\dot{\mathbf T}=\sum_{j=1}^{n}\frac{\partial\mathbf T}{\partial q_j}\dot q_j\), where \(\mathbf T\in SE(3)\), and \(\dot{\mathbf T}\), \(\partial\mathbf T/\partial q_j\) are \(4\times4\) with a zero bottom row:</p>
+\[ \frac{\partial\mathbf T}{\partial q_j}=\begin{bmatrix}\mathbf J_{R_j}&\mathbf J_{t_j}\\\mathbf 0&0\end{bmatrix},\quad \mathbf J_{R_j}\in\mathbb R^{3\times3},\;\mathbf J_{t_j}\in\mathbb R^{3\times1},\qquad \dot{\mathbf R}=\sum_j\mathbf J_{R_j}\dot q_j,\;\; \dot{\mathbf t}=\sum_j\mathbf J_{t_j}\dot q_j \]
+<p><b>Product rule over the ETS</b> (<a class="pg" data-doc="w06-lec" data-page="32">p.32</a>). Let \(\mu(j)\) be the position in the sequence of the elementary transform that holds joint \(j\):</p>
+\[ \frac{\partial\mathbf T}{\partial q_j}=\Big(\prod_{i=1}^{\mu(j)-1}\mathbf E_i\Big)\;\frac{\partial\mathbf E_{\mu(j)}(q_j)}{\partial q_j}\;\Big(\prod_{i=\mu(j)+1}^{M}\mathbf E_i\Big) \]
+<p><b>Derivative of one elementary transform.</b> Translations (<a class="pg" data-doc="w06-lec" data-page="29">p.29</a>): \(\partial\mathbf T_{t_x}(d)/\partial d=\hat{\mathbf t}_x\), a matrix of zeros with a single 1 at entry (1,4) (for \(y\): entry (2,4); for \(z\): entry (3,4)). Rotations (<a class="pg" data-doc="w06-lec" data-page="31">p.31</a>): \(\partial\mathbf T_{R_k}(\theta)/\partial\theta=\hat{\mathbf R}_k\,\mathbf T_{R_k}(\theta)\) with</p>
+\[ \hat{\mathbf R}_x=\begin{bmatrix}0&0&0&0\\0&0&-1&0\\0&1&0&0\\0&0&0&0\end{bmatrix},\quad \hat{\mathbf R}_y=\begin{bmatrix}0&0&1&0\\0&0&0&0\\-1&0&0&0\\0&0&0&0\end{bmatrix},\quad \hat{\mathbf R}_z=\begin{bmatrix}0&-1&0&0\\1&0&0&0\\0&0&0&0\\0&0&0&0\end{bmatrix} \]
+<p>\(\hat{\mathbf R}_k\) is the \(4\times4\) skew matrix of the unit axis \(\hat{\mathbf k}\): the derivative of a rotation by \(\theta\) is “turn the axis frame at unit rate”. All six derivative formulas verified symbolically. <span class="chk">checked</span></p>
+<p><b>Sign flip</b> (notebook cells 13 and 16). If the joint’s positive sense is opposite to the elementary axis, e.g. the W13 arm’s \(R_y(-\theta_2)\) or a prismatic joint written \(t_z(-d)\), the derivative changes sign: \(\frac{d}{dq}R_y(-q)=-\hat{\mathbf R}_yR_y(-q)=\hat{\mathbf R}_y^\top R_y(-q)\). The notebook writes this as <code>Rhat.T @ T.T</code> (same thing, since \(R_y(q)^\top=R_y(-q)\)). <span class="chk">checked</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write the ETS from base to tool and mark which elementary transform holds each joint (\(\mu(j)\)).</li>
+<li>For joint \(j\), replace that one factor by its derivative (\(\hat{\mathbf R}_k\mathbf T_{R_k}\) or \(\hat{\mathbf t}_k\)), keep all others.</li>
+<li>If the drawn positive direction opposes the axis, flip the sign of that derivative.</li>
+<li>Multiply left to right. Read the translation column (\(\mathbf J_{t_j}\)) and the rotation block (\(\mathbf J_{R_j}\)).</li>
+<li>Check at a simple pose (all joints zero) against geometry.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>Planar RR: \(\mathbf T=\mathbf T_{R_z}(q_1)\,\mathbf T_{t_x}(L_1)\,\mathbf T_{R_z}(q_2)\,\mathbf T_{t_x}(L_2)=\mathbf E_1\mathbf E_2\mathbf E_3\mathbf E_4\) (<a class="pg" data-doc="w06-lec" data-page="36">p.36</a>), grouped as \({}^0\mathbf T_1=\mathbf E_1\), \({}^1\mathbf T_2=\mathbf E_2\mathbf E_3\), \({}^2\mathbf T_3=\mathbf E_4\). Joint 1 is in \(\mathbf E_1\) so \(\mu(1)=1\); joint 2 is in \(\mathbf E_3\) so \(\mu(2)=3\) (<a class="pg" data-doc="w06-lec" data-page="37">p.37</a>). Step 3 (<a class="pg" data-doc="w06-lec" data-page="38">p.38</a>):</p>
+\[ \frac{\partial\mathbf T}{\partial q_1}=\hat{\mathbf R}_z\mathbf T_{R_z}(q_1)\,\mathbf T_{t_x}(L_1)\,\mathbf T_{R_z}(q_2)\,\mathbf T_{t_x}(L_2),\qquad \frac{\partial\mathbf T}{\partial q_2}=\mathbf T_{R_z}(q_1)\,\mathbf T_{t_x}(L_1)\,\hat{\mathbf R}_z\mathbf T_{R_z}(q_2)\,\mathbf T_{t_x}(L_2) \]
+<p>Numeric: \(\hat{\mathbf R}_z\mathbf T_{R_z}(30^\circ)\) has top-left block \(\begin{bmatrix}-\sin30^\circ&-\cos30^\circ\\\cos30^\circ&-\sin30^\circ\end{bmatrix}=\begin{bmatrix}-0.5&-0.866\\0.866&-0.5\end{bmatrix}\), which is exactly \(d\mathbf R_z/d\theta\). Section 4 turns these two matrices into the two columns of \(\mathbf J\).</p></div>
+<div class="angle">“Derive the Jacobian of this arm” is solved by this method in four steps (the slides’ steps 1–4: write the ETS; derivative of the joint’s elementary transform; the product; extract \(\tau\) and \(\vee_\times(\rho\cdot\rho^\top)\)). Show every step: the order of the product is the whole point.</div>
+<div class="box warn-box"><span class="tag">Slides vs notebook</span><p>Slide 32 writes the first product up to \(\mathbf E_n(\eta_n)\) and slide 15 uses \(n\) for the number of joints; the product runs over all \(M\) elementary transforms (\(M\ne n\) in general), as the notebook (cell 22) has it. A notation slip, not a maths error.</p></div>
+</div>
+
+<!-- ================= 4 ================= -->
+<div class="sub" id="w6-columns">
+<h3>4 · Building the Jacobian column by column <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="17">pp. 17–26</a>, <a class="pg" data-doc="w06-lec" data-page="34">pp. 33–39</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>Column \(j\) is the spatial velocity of the tool when only joint \(j\) moves at unit rate</b> (<a class="pg" data-doc="w06-lec" data-page="23">pp. 22–23</a>: “what influence does the velocity of the first joint have?”). Then \(\boldsymbol\nu=\sum_j\mathbf J_{:,j}\dot q_j\): the effects of the joints add. Row \(i\) says how much each joint contributes to component \(i\) of \(\boldsymbol\nu\): rows 1–3 are \(\upsilon_x,\upsilon_y,\upsilon_z\), rows 4–6 are \(\omega_x,\omega_y,\omega_z\).</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Translation</b> (<a class="pg" data-doc="w06-lec" data-page="17">p.17</a>). The translation block of \(\dot{\mathbf T}\) is \(\dot{\mathbf t}=\sum_j\mathbf J_{t_j}\dot q_j\), so with \(\tau(\cdot)\) meaning “the \(3\times1\) translation column”:</p>
+\[ \boldsymbol\upsilon=\dot{\mathbf t}=\mathbf J_\upsilon\dot{\mathbf q},\qquad \mathbf J_{\upsilon_j}=\tau\!\Big(\frac{\partial\mathbf T}{\partial q_j}\Big) \]
+<p><b>Rotation</b> (<a class="pg" data-doc="w06-lec" data-page="18">pp. 18–19</a>). Use \(\dot{\mathbf R}=[\boldsymbol\omega]_\times\mathbf R\), post-multiply every term by \(\mathbf R^\top\), take vex, with \(\rho(\cdot)\) meaning “the \(3\times3\) rotation block”:</p>
+\[ [\boldsymbol\omega]_\times=\sum_j\big(\mathbf J_{R_j}\mathbf R^\top\big)\dot q_j\;\Rightarrow\;\boldsymbol\omega=\mathbf J_\omega\dot{\mathbf q},\qquad \mathbf J_{\omega_j}=\vee_\times\!\Big(\rho\Big(\frac{\partial\mathbf T}{\partial q_j}\Big)\,\rho(\mathbf T)^\top\Big) \]
+<p>Stack them (<a class="pg" data-doc="w06-lec" data-page="26">p.26</a>): \({}^0\mathbf J=\begin{bmatrix}\mathbf J_\upsilon\\\mathbf J_\omega\end{bmatrix}\in\mathbb R^{6\times n}\). The handwriting on slide 39 labels a \(3\times3\) block (\(\rho\)) and a \(3\times1\) column (\(\tau\)) of a \(4\times4\) matrix; I read it as describing \(\partial\mathbf T/\partial q_j\), not \(\mathbf J\) itself (which is \(6\times n\), slide 20).</p>
+<p><b>Planar RR, both ways.</b> <i>Route 1</i> (<a class="pg" data-doc="w06-lec" data-page="34">p.34</a>): differentiate \(x=L_1\cos q_1+L_2\cos(q_1+q_2)\), \(y=L_1\sin q_1+L_2\sin(q_1+q_2)\):</p>
+\[ \begin{bmatrix}\dot x\\\dot y\end{bmatrix}=\begin{bmatrix}-L_1\sin q_1-L_2\sin(q_1+q_2)&-L_2\sin(q_1+q_2)\\L_1\cos q_1+L_2\cos(q_1+q_2)&L_2\cos(q_1+q_2)\end{bmatrix}\begin{bmatrix}\dot q_1\\\dot q_2\end{bmatrix} \]
+<p><i>Route 2</i> (the ETS method). For joint 1, \(\partial\mathbf T/\partial q_1=\hat{\mathbf R}_z\mathbf T\): its translation column is \(\hat{\mathbf R}_z\mathbf t=(-y,\,x,\,0)^\top\), and \(\rho\cdot\rho^\top\) is \(\hat{\mathbf R}_z\mathbf R\mathbf R^\top=[\hat{\mathbf z}]_\times\), whose vex is \((0,0,1)\). For joint 2 the \(\hat{\mathbf R}_z\) sits in the middle, the left factor \(\mathbf R_z(q_1)\) rotates the result, and rotations about \(z\) commute, so the angular column is again \((0,0,1)\). The 6×2 result in frame {0}:</p>
+\[ {}^0\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\\0&0\\0&0\\0&0\\1&1\end{bmatrix},\qquad s_{12}=\sin(q_1+q_2),\;c_{12}=\cos(q_1+q_2) \]
+<p>Both routes agree, and the ETS method reproduces Route 1 for all \(q_1,q_2\). <span class="chk">checked symbolically</span> Rows 3, 4, 5 (\(\upsilon_z,\omega_x,\omega_y\)) are zero for a planar arm; the notebook’s comment “rows 2, 3, 4 with 0s can be ignored” counts from 0 (zero-indexed) and means these same rows.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write the FK (position and, if asked, orientation). State the frame.</li>
+<li>For each joint: differentiate FK with respect to that joint only (that is a column), or use the ETS method.</li>
+<li>Stack: linear rows on top, angular rows below. For a planar arm keep \(x\), \(y\), \(\omega_z\).</li>
+<li>Check at a pose you can see: e.g. at \(q_2=0\) the two columns of \(\mathbf J_\upsilon\) must be parallel.</li>
+<li>Write units: m/s per rad/s in the linear rows.</li></ol></div>
+<div class="worked"><span class="tag">Worked example: notebook Question 1</span>
+<p>\(L_1=3\) m, \(L_2=4\) m, \(q_1=30^\circ\), \(q_2=15^\circ\), so \(q_1+q_2=45^\circ\) (<span class="mono">sin 45° = cos 45° = 0.7071</span>):</p>
+<p>\(J_{11}=-3(0.5)-4(0.7071)=-4.3284\), \(J_{12}=-4(0.7071)=-2.8284\), \(J_{21}=3(0.8660)+4(0.7071)=5.4265\), \(J_{22}=2.8284\).</p>
+\[ {}^0\mathbf J=\begin{bmatrix}-4.3284&-2.8284\\5.4265&2.8284\\0&0\\0&0\\0&0\\1&1\end{bmatrix},\qquad \det\begin{bmatrix}-4.3284&-2.8284\\5.4265&2.8284\end{bmatrix}=3.1058=12\sin15^\circ \]
+<p>For example, \(\dot{\mathbf q}=(0.2,-0.1)\) rad/s gives \(\boldsymbol\upsilon=(-0.5828,\,0.8025)\) m/s and \(\omega_z=0.1\) rad/s in {0}. <span class="chk">checked</span></p></div>
+<div class="angle">Typical question: “compute the Jacobian of the planar RR arm at given \(q_1,q_2\)”. The trap is the running sum: \(\sin(q_1+q_2)\), not \(\sin q_2\), in frame {0}. Another: asked for “the Jacobian”, state whether you give the \(2\times2\) block or the \(6\times2\) matrix, and in which frame.</div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>Slides 22–23 (rendered): the bottom-right entry of the symbolic \(6\times6\) Jacobian is printed \(j_{76}\); a 6×6 matrix has no row 7, so it must be \(j_{66}\). Cosmetic.</p></div>
+</div>
+
+<!-- ================= 5 ================= -->
+<div class="sub" id="w6-puma">
+<h3>5 · Reading a real Jacobian: PUMA 560 <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="24">p. 24</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Slide 24 shows a numeric \(6\times6\) Jacobian next to the PUMA 560 drawing (waist, shoulder, elbow, wrist bend, flange rotation). The slide gives no configuration, frame or units. The numbers match the toolbox’s URDF PUMA 560 model at its nominal pose \(\mathbf q=(0,45^\circ,180^\circ,0,45^\circ,0)\) in frame {0}, units m/s and rad/s per rad/s. <span class="chk">checked: matches to 3 decimals</span> (the notebook calls Question 2’s pose the “rest configuration”).</p>
+</div>
+<div class="layer derive"><span class="tag">How to read it</span>
+\[ \mathbf J=\begin{bmatrix}0.13&0&0.306&0&0&0\\0.664&0&0&-0.038&0&0\\0&0.664&0.359&0&0.053&0\\0&0&0&0.707&0&1\\0&-1&-1&0&-1&0\\1&0&0&-0.707&0&0\end{bmatrix} \]
+<ul>
+<li><b>Angular rows (bottom three) are the joint axes in {0}.</b> Column 1: \((0,0,1)\), the waist axis is vertical. Columns 2, 3, 5: \((0,-1,0)\): three horizontal axes (shoulder, elbow, wrist bend) all along \(-y_0\). Column 4: \((0.707,0,-0.707)\), column 6: \((1,0,0)\). Their dot product is 0.707, so the angle between the forearm-roll axis and the flange axis equals \(q_5=45^\circ\). <span class="chk">checked</span></li>
+<li><b>Linear rows of a revolute column are \(\hat{\mathbf z}_j\times(\mathbf p_E-\mathbf o_j)\)</b> (section 6). Column 1 is \(\hat{\mathbf z}_0\times\mathbf p=(-p_y,p_x,0)=(0.13,0.664,0)\), so the tool point is at \(p_x=0.664\) m, \(p_y=-0.130\) m. <span class="chk">checked</span></li>
+<li>The \(\upsilon_z\) entry of column 1 is 0: spinning the waist moves the tool horizontally. Columns 4 and 6 have small or zero linear parts: the wrist joints mostly rotate the tool in place.</li>
+<li>The determinant at this pose is not zero (\(-0.0806\)), and the rank is 6: not singular. <span class="chk">checked</span></li></ul>
+</div>
+<div class="worked"><span class="tag">Notebook Question 2: PUMA 560 Jacobian in the rest configuration</span>
+<p>Build the robot (toolbox: <code>rtb.models.URDF.Puma560()</code>), take the configuration, call <code>jacob0(q)</code>. For the nominal pose it is the matrix above. For the zero-offset PUMA of the W2 notebook (ETS \(t_z(L_b)R_z(q_1)R_y(q_2)t_z(L_u)R_y(q_3)t_z(L_f)R_z(q_4)R_y(q_5)R_z(q_6)\)), differentiate each elementary transform as in section 3: the three arm columns are \(\hat{\mathbf z}_j\times(\mathbf p_E-\mathbf o_j)\) and the three wrist columns have zero linear part when the wrist centre is the tool point.</p></div>
+<div class="angle">Low probability as a calculation (it needs the numeric model), but “what do the columns tell you?” is a fair explain question: columns are joint axes (angular rows) and tool-point velocities (linear rows); parallel angular columns warn of a wrist singularity (section 9).</div>
+<div class="box warn-box"><span class="tag">Slides vs notebook</span><p>Slide 24 does not state the configuration or frame. I identified it by reproducing the matrix with the toolbox (above); say “assumed nominal pose, frame {0}” if asked. The “−0.” entries printed on the slide are floating-point negative zeros.</p></div>
+</div>
+
+<!-- ================= 6 ================= -->
+<div class="sub" id="w6-craig">
+<h3>6 · Craig’s velocity propagation and the geometric column rule <span class="added">added: Craig is your textbook</span> <span class="pgs"><a class="pg" data-doc="w06-cross" data-page="1">cross-product note</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>The lecture differentiates the whole pose. Craig instead walks <b>outward along the arm</b>, link by link, updating the velocity of each frame from the previous one. The one-page cross-product note belongs to this method. Both give the same \(\mathbf J\) (the exam may use either; the lecture’s way is the one it teaches). <span class="added">added</span></p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Outward recursion</b> (Craig’s notation: \({}^{i}\boldsymbol\omega_i\), \({}^{i}\mathbf v_i\) are velocities of frame {i} written in {i}; \({}^{i}\mathbf P_{i+1}\) is the origin of {i+1} in {i}; \({}^{i+1}_i\mathbf R=({}^i_{i+1}\mathbf R)^\top\)):</p>
+\[ \text{revolute joint } i+1:\quad {}^{i+1}\boldsymbol\omega_{i+1}={}^{i+1}_i\mathbf R\,{}^i\boldsymbol\omega_i+\dot\theta_{i+1}\,{}^{i+1}\hat{\mathbf Z}_{i+1},\qquad {}^{i+1}\mathbf v_{i+1}={}^{i+1}_i\mathbf R\big({}^i\mathbf v_i+{}^i\boldsymbol\omega_i\times{}^i\mathbf P_{i+1}\big) \]
+\[ \text{prismatic joint } i+1:\quad {}^{i+1}\boldsymbol\omega_{i+1}={}^{i+1}_i\mathbf R\,{}^i\boldsymbol\omega_i,\qquad {}^{i+1}\mathbf v_{i+1}={}^{i+1}_i\mathbf R\big({}^i\mathbf v_i+{}^i\boldsymbol\omega_i\times{}^i\mathbf P_{i+1}\big)+\dot d_{i+1}\,{}^{i+1}\hat{\mathbf Z}_{i+1} \]
+<p>The note’s \(\mathbf v_{i+1}=\mathbf v_i+\boldsymbol\omega_i\times\mathbf P_{i+1}\) is this with the rotation \({}^{i+1}_i\mathbf R\) and frame labels omitted: valid only if all vectors are in one common frame. The cross product is ordinary (section 2). Start with \({}^0\boldsymbol\omega_0=\mathbf 0\), \({}^0\mathbf v_0=\mathbf 0\). The result is the tool velocity in the last frame, i.e. \({}^N\mathbf J\) (then change frame, section 7).</p>
+<p><b>Planar RR check</b> (links along \(x\), \({}^1\mathbf P_2=(L_1,0,0)\), \({}^2\mathbf P_3=(L_2,0,0)\)). Frame {1}: \({}^1\boldsymbol\omega_1=(0,0,\dot q_1)\), \({}^1\mathbf v_1=\mathbf 0\). Then \({}^1\boldsymbol\omega_1\times{}^1\mathbf P_2=(0,\,L_1\dot q_1,\,0)\), and rotating into {2} (\(s_2=\sin q_2\), \(c_2=\cos q_2\)): \({}^2\mathbf v_2=(L_1s_2\dot q_1,\;L_1c_2\dot q_1,\;0)\), \({}^2\boldsymbol\omega_2=(0,0,\dot q_1+\dot q_2)\). Adding \({}^2\boldsymbol\omega_2\times{}^2\mathbf P_3=(0,\,L_2(\dot q_1+\dot q_2),\,0)\):</p>
+\[ {}^3\mathbf v_3=\begin{bmatrix}L_1s_2\,\dot q_1\\(L_1c_2+L_2)\dot q_1+L_2\dot q_2\\0\end{bmatrix}\;\Longrightarrow\;{}^3\mathbf J=\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\end{bmatrix}\ (\text{rows }x,y)\text{ and }\omega_z\text{ row }(1,1) \]
+<p>This is exactly the matrix the lecture prints on slide 45 (section 7). <span class="chk">checked symbolically and numerically</span></p>
+<p><b>Geometric column rule.</b> Let \(\hat{\mathbf z}_j\) be the unit vector along the axis of joint \(j\) and \(\mathbf o_j\) a point on that axis, both in {0}, and \(\mathbf p_E\) the tool point. Then</p>
+\[ \text{revolute: }\ \mathbf J_{:,j}=\begin{bmatrix}\hat{\mathbf z}_j\times(\mathbf p_E-\mathbf o_j)\\\hat{\mathbf z}_j\end{bmatrix},\qquad \text{prismatic: }\ \mathbf J_{:,j}=\begin{bmatrix}\hat{\mathbf z}_j\\\mathbf 0\end{bmatrix} \]
+<p>Reason: a revolute joint spins the whole rest of the arm about its axis, so the tool moves like a point on a rigid body, \(\mathbf v=\boldsymbol\omega\times\mathbf r\) with \(\boldsymbol\omega=\dot q_j\hat{\mathbf z}_j\) and \(\mathbf r=\mathbf p_E-\mathbf o_j\); a prismatic joint translates the rest of the arm along its axis and rotates nothing. In an ETS, \(\hat{\mathbf z}_j\) is the matching axis column of the product of all factors before joint \(j\) (times \(-1\) if the joint is written with a minus sign, like \(R_y(-\theta_2)\)). I verified this rule gives the same matrix as the ETS method for the planar RR, the offset RP arm, the W13 arm and five random mixed R/P arms with sign flips. <span class="chk">checked</span></p>
+<p>Planar RR with the rule: \(\hat{\mathbf z}=(0,0,1)\); \(\mathbf J_{:,1}=\hat{\mathbf z}\times\mathbf p_E=(-y,x,0)\); \(\mathbf J_{:,2}=\hat{\mathbf z}\times(\mathbf p_E-\mathbf p_{\text{elbow}})=L_2(-s_{12},c_{12},0)\). The offset RP arm (slide-extra from the W7–8 folder: \(x=l_1\cos q_1-d_2\sin q_1\), \(y=l_1\sin q_1+d_2\cos q_1\), \(d_2\) slides perpendicular to the link): prismatic column \(=(-\sin q_1,\cos q_1)\), revolute column \(=(-l_1\sin q_1-d_2\cos q_1,\;l_1\cos q_1-d_2\sin q_1)\), and \(\det=-d_2\). <span class="chk">checked</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe (geometric rule)</span><ol>
+<li>Draw the arm at the given pose. Mark each joint axis \(\hat{\mathbf z}_j\) and a point on it.</li>
+<li>For each revolute joint: \(\hat{\mathbf z}_j\times(\mathbf p_E-\mathbf o_j)\) on top, \(\hat{\mathbf z}_j\) below. For each prismatic joint: \(\hat{\mathbf z}_j\) on top, zeros below.</li>
+<li>All vectors in the same frame ({0}).</li>
+<li>Check against differentiating FK for one entry.</li></ol></div>
+<div class="angle">If the question says “use velocity propagation” or “Craig’s method”, use the recursion, keep every frame superscript and the \({}^{i+1}_i\mathbf R\), and finish in the tool frame. Otherwise use the lecture’s differentiation. The rule is the fastest way to write the Jacobian of a planar arm by inspection.</div>
+</div>
+
+<!-- ================= 7 ================= -->
+<div class="sub" id="w6-frame">
+<h3>7 · The frame of the Jacobian and how to change it <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="21">p. 21</a>, <a class="pg" data-doc="w06-lec" data-page="40">p. 40</a>, <a class="pg" data-doc="w06-lec" data-page="45">p. 45</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>\(\boldsymbol\upsilon\) and \(\boldsymbol\omega\) are vectors, so the numbers depend on which axes you measure them along. In frame {0} (the base) the same motion looks different from frame {E} (the tool). The physics is the same; only the components change.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>If \({}^B\boldsymbol\nu={}^B\mathbf J\dot{\mathbf q}\), then \({}^A\boldsymbol\upsilon={}^A\mathbf R_B\,{}^B\boldsymbol\upsilon\) and \({}^A\boldsymbol\omega={}^A\mathbf R_B\,{}^B\boldsymbol\omega\). Apply the same rotation to both halves (<a class="pg" data-doc="w06-lec" data-page="40">p.40</a>):</p>
+\[ {}^A\mathbf J(\mathbf q)=\begin{bmatrix}{}^A\mathbf R_B&\mathbf 0_{3\times3}\\\mathbf 0_{3\times3}&{}^A\mathbf R_B\end{bmatrix}{}^B\mathbf J(\mathbf q) \]
+<p>The notebook (cell 38) writes the same with \(B=0\): \({}^A\mathbf R_0\). To go from the base frame to the tool frame use \({}^E\mathbf R_0=({}^0\mathbf R_E)^\top\). Because the rotation is orthogonal, the singular values and the determinant of the linear block are the same in every frame, so <b>singularities do not depend on the frame</b>. (Checked on the W13 arm. <span class="chk">checked</span>)</p>
+<p><b>Planar RR in {E}</b> (slide 45 shows this, labelled \({}^3\mathbf J\)): \({}^E\mathbf R_0=\mathbf R_z(q_1+q_2)^\top\) applied to the frame-{0} matrix of section 4 gives</p>
+\[ {}^3\mathbf J=\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\\0&0\\0&0\\0&0\\1&1\end{bmatrix} \]
+<p>It depends only on \(q_2\): the tool frame rotates with the arm, so \(q_1\) disappears. <span class="chk">checked symbolically</span> (see also the Craig recursion, section 6, which gives this form directly).</p>
+</div>
+<div class="worked"><span class="tag">Worked example (Question 1 again)</span>
+<p>\(L_1=3\), \(L_2=4\), \(q=(30^\circ,15^\circ)\): \({}^E\mathbf J_{xy}=\begin{bmatrix}3\sin15^\circ&0\\3\cos15^\circ+4&4\end{bmatrix}=\begin{bmatrix}0.7765&0\\6.8978&4\end{bmatrix}\), determinant \(3.1058\), the same as in {0}. With \(\dot{\mathbf q}=(0.2,-0.1)\): \({}^E\boldsymbol\upsilon=(0.1553,\,0.9796)\) m/s, which is \(\mathbf R_z(45^\circ)^\top(-0.5828,0.8025)\); both have length 0.9918 m/s. <span class="chk">checked</span></p>
+<p>Direction check: \(\mathbf R_z(45^\circ)^\top(1,0,0)^\top=(0.7071,-0.7071,0)\): the base-frame \(x\) axis seen from the rotated frame points down-right. <span class="chk">checked</span></p></div>
+<div class="angle">A frame-mix-up question: “the Jacobian is given in the tool frame; what is the velocity in the world frame?” Multiply by \({}^0\mathbf R_E\) (blocks on the diagonal). Do not rotate \(\mathbf J\) by the transpose, and do not apply the \(3\times3\) rotation to a \(6\times n\) matrix without the block form.</div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>Slide 21 stresses frame {0}; slide 45 shows the RR matrix labelled \({}^3\mathbf J\), i.e. in the end-effector frame {3}. Both are right; they differ by the rotation above, and the frame-{0} form is not printed on the slides. The notebook’s <code>jacob0</code>/<code>jacobe</code> calls give the two forms.</p></div>
+</div>
+
+<!-- ================= 8 ================= -->
+<div class="sub" id="w6-inv">
+<h3>8 · Inverse velocity: from tool velocity to joint rates <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="41">pp. 41–42</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>To move the tool at a wanted velocity we need the joint rates that produce it: \(\dot{\mathbf q}=\mathbf J^{-1}(\mathbf q)\,\boldsymbol\nu\) (<a class="pg" data-doc="w06-lec" data-page="41">p.41</a>). This is like inverse kinematics, but linear and easy: no trigonometric equations to solve. The slide’s three questions (<a class="pg" data-doc="w06-lec" data-page="42">p.42</a>):</p>
+<ol><li>Is \(\mathbf J\) square? If not, use a pseudo-inverse.</li><li>If square, is it non-singular (\(\det\ne0\))? If not, there is no inverse.</li><li>Even if it is invertible now, it may not be for all \(\mathbf q\): which poses fail?</li></ol>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Square and non-singular.</b> For the planar RR block (rows \(x,y\)) with \(\det=L_1L_2\sin q_2\):</p>
+\[ \mathbf J^{-1}=\frac{1}{L_1L_2\sin q_2}\begin{bmatrix}L_2c_{12}&L_2s_{12}\\-L_1c_1-L_2c_{12}&-L_1s_1-L_2s_{12}\end{bmatrix} \]
+<p><span class="chk">checked</span> The factor \(1/\sin q_2\) shows the problem: near \(q_2=0\) or \(\pi\) the joint rates blow up. In the tool frame (section 7) it is easier to see: \(\dot q_1=\upsilon_{x,E}/(L_1\sin q_2)\).</p>
+<p><b>Not square: the pseudo-inverse</b> <span class="added">added</span> (slide 42 only says “go for pseudo inverse”). For a <i>tall</i> \(\mathbf J\) (\(m\) task components, \(m>n\) joints, over-determined): \(\mathbf J^{+}=(\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top\), which minimises \(\lVert\mathbf J\dot{\mathbf q}-\boldsymbol\nu\rVert\) (least squares). For a <i>fat</i> \(\mathbf J\) (\(n>m\), redundant arm): \(\mathbf J^{+}=\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}\), which gives the smallest-norm \(\dot{\mathbf q}\) that achieves \(\boldsymbol\nu\) exactly. Both equal the SVD pseudo-inverse. <span class="chk">checked</span></p>
+<p><b>Resolved-rate control</b> (notebook Question 4): at each time step compute \(\mathbf J(\mathbf q_k)\), \(\dot{\mathbf q}_k=\mathbf J^{-1}\boldsymbol\nu\), then \(\mathbf q_{k+1}=\mathbf q_k+\dot{\mathbf q}_k\Delta t\) (Euler). The Jacobian must be recomputed each step, because it depends on \(\mathbf q\).</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Compute \(\mathbf J(\mathbf q)\) at the given pose, in the frame in which \(\boldsymbol\nu\) is given.</li>
+<li>Check shape: square? \(\det\ne0\)? If tall, say “least squares”; if fat, say “minimum norm”.</li>
+<li>Solve \(\mathbf J\dot{\mathbf q}=\boldsymbol\nu\); for a 2×2 block use the closed-form inverse above or back-substitute.</li>
+<li>For a position update: \(\mathbf q\leftarrow\mathbf q+\dot{\mathbf q}\,\Delta t\), radians.</li>
+<li>Comment on how close to singular the pose is.</li></ol></div>
+<div class="worked"><span class="tag">Worked example: how joint rates blow up</span>
+<p>Planar RR, \(L_1=3\), \(L_2=4\). Move the tool at 0.1 m/s <b>perpendicular to the arm</b> (the \(x\) direction of the tool frame). Then \(\dot q_1=0.1/(L_1\sin q_2)\) and \(\dot q_2=-\dot q_1\,(L_1\cos q_2+L_2)/L_2\).</p>
+<div class="tbl"><table><tr><th>\(q_2\)</th><th>90°</th><th>30°</th><th>15°</th><th>5°</th><th>1°</th></tr>
+<tr><td>\(\dot q_1\) (rad/s)</td><td>0.0333</td><td>0.0667</td><td>0.1288</td><td>0.3825</td><td>1.9100</td></tr>
+<tr><td>\(\dot q_2\) (rad/s)</td><td>−0.0333</td><td>−0.1100</td><td>−0.2221</td><td>−0.6682</td><td>−3.3422</td></tr></table></div>
+<p>A tool speed of 0.1 m/s needs 3.3 rad/s at 1° from stretched: in a real robot the joint limit is hit long before. <span class="chk">checked</span></p></div>
+<div class="worked"><span class="tag">Worked example: notebook Question 4 (resolved-rate control)</span>
+<p>Planar RR, \(L_1=3\), \(L_2=4\), start \(\mathbf q=(30^\circ,60^\circ)\), wanted spatial velocity \(\boldsymbol\nu=(0.2,-0.3,-0.2)\) = \((\upsilon_x,\upsilon_y,\omega_z)\) in m/s, m/s, rad/s.</p>
+<p><b>1. Jacobian</b> (rows \(x,y,\omega_z\)): \(\begin{bmatrix}-5.5&-4\\2.5981&0\\1&1\end{bmatrix}\), \(\det\) of the \(x,y\) block \(=10.3923=12\sin60^\circ\).</p>
+<p><b>2. Joint rates.</b> The arm has two joints but \(\boldsymbol\nu\) has three components, so the equations are over-determined. The wanted \(\omega_z\) is not free: \(\omega_z=\dot q_1+\dot q_2\) is fixed once \((\upsilon_x,\upsilon_y)\) is. Reading A (follow the position, as the problem’s “constant spatial velocity” of the tool tip suggests): solve the \(2\times2\) block, \(\dot{\mathbf q}=\mathbf J^{-1}(0.2,-0.3)=(-0.1155,\,0.1088)\) rad/s; this gives \(\omega_z=-0.0067\), not \(-0.2\) rad/s. Reading B (all three components, least squares with \(\mathbf J^+=(\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top\)): \(\dot{\mathbf q}=(-0.1056,\,0.0840)\) rad/s, with a residual \(\mathbf J\dot{\mathbf q}-\boldsymbol\nu=(0.0446,\,0.0258,\,0.1784)\) that no choice of \(\dot{\mathbf q}\) can remove. I cannot tell which the instructor intends: say which you use. <span class="chk">checked</span></p>
+<p><b>3. New configuration</b> after \(\Delta t=0.1\) s: Reading A \(\mathbf q=(29.338^\circ,\,60.623^\circ)\); Reading B \(\mathbf q=(29.395^\circ,\,60.481^\circ)\). <span class="chk">checked</span></p>
+<p><b>4–5. Simulation</b> to \(t=5\) s (50 steps, Jacobian recomputed each step): start tip \((2.598,\,5.500)\) m. Reading A ends at \(\mathbf q=(0.78^\circ,\,80.73^\circ)\), tip \((3.591,\,3.997)\) m; Reading B at \((2.65^\circ,\,75.83^\circ)\), tip \((3.795,\,4.058)\) m. The ideal straight line would end at \((3.598,\,4.000)\) m; Reading A follows it closely and Reading B drifts because it spends effort on the unreachable \(\omega_z\). \(q_2\) never approaches 0 here, so there is no singularity trouble. <span class="chk">checked</span></p>
+<pre class="mono" style="font-size:.8rem;overflow-x:auto">q = np.radians([30, 60]); dt = 0.1
+for k in range(50):
+    J = jacob0(ets, q)[[0, 1, 5]]            # rows vx, vy, wz
+    qd = np.linalg.pinv(J) @ [0.2, -0.3, -0.2]   # Reading B; use solve(J[:2], [0.2, -0.3]) for A
+    q = q + qd * dt                              # then log qd, q and the tip position</pre></div>
+<div class="angle">Calculation: \(\dot{\mathbf q}=\mathbf J^{-1}\boldsymbol\nu\) at a pose, or the blow-up as \(q_2\to0\) (“by what factor does \(\dot q_1\) grow between 30° and 5°?”: \(\sin30^\circ/\sin5^\circ=5.7\)). Explain: “why can’t we invert \(\mathbf J\) at the stretched pose?” (\(\det=0\); the equation \(\mathbf J\dot{\mathbf q}=\boldsymbol\nu\) has no solution unless \(\boldsymbol\nu\) lies in the column space, and then it has many). Also: a tall \(\mathbf J\) uses \((\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top\), a fat one \(\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}\).</div>
+<div class="box warn-box"><span class="tag">Slides vs notebook</span><p>Question 4 asks for a three-component velocity from a two-joint arm and numbers its parts 1–5 but refers to them as a, b, c. Treat it as above (two readings), and note that near a singularity a plain inverse fails, while damped least squares, \(\mathbf J^\top(\mathbf J\mathbf J^\top+\lambda^2\mathbf I)^{-1}\), keeps rates finite at the cost of tracking error <span class="added">added</span> (not on the slides).</p></div>
+</div>
+
+<!-- ================= 9 ================= -->
+<div class="sub" id="w6-sing">
+<h3>9 · Singularities <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="44">pp. 43–47</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A singularity is a pose \(\mathbf q\) where \(\mathbf J(\mathbf q)\) loses rank: \(\det\mathbf J(\mathbf q)=0\) (<a class="pg" data-doc="w06-lec" data-page="44">p.44</a>). At such a pose the columns no longer span all directions, so some tool velocity cannot be produced by any \(\dot{\mathbf q}\), and joint rates needed for nearby velocities become huge. The slide’s two types:</p>
+<ul><li><b>Workspace-boundary</b> singularities: arm stretched out or folded back on itself.</li>
+<li><b>Workspace-interior</b> singularities: away from the boundary, e.g. wrist joints lining up.</li></ul>
+<figure class="svg"><svg viewBox="0 0 560 230" role="img" aria-label="Planar RR arm stretched out and folded back, with the lost direction along the arm" style="max-width:560px">
+  <defs><marker id="w6ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <!-- left: q2 = 0, scale 130 px/m, L1 = 1, L2 = 0.7, q1 = 30 deg -->
+  <g stroke="var(--accent)" stroke-width="5" stroke-linecap="round" fill="none"><line x1="50" y1="200" x2="162.6" y2="135"/><line x1="162.6" y1="135" x2="241.4" y2="89.5" stroke="var(--exam)"/></g>
+  <g fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"><circle cx="50" cy="200" r="6"/><circle cx="162.6" cy="135" r="5"/></g>
+  <line x1="241.4" y1="89.5" x2="283" y2="65.5" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <g style="color:var(--ink)" stroke="currentColor" stroke-width="2"><line x1="241.4" y1="89.5" x2="216.4" y2="46.2" marker-end="url(#w6ar2)"/></g>
+  <text x="170" y="38" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">can move ⟂ arm</text>
+  <text x="250" y="60" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--bad)">✕ along arm</text>
+  <text x="40" y="224" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--muted)">q2 = 0° (stretched)</text>
+  <!-- right: q2 = 180 deg -->
+  <g stroke="var(--accent)" stroke-width="5" stroke-linecap="round" fill="none"><line x1="330" y1="200" x2="442.6" y2="135"/><line x1="442.6" y1="135" x2="363.8" y2="180.5" stroke="var(--exam)"/></g>
+  <g fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"><circle cx="330" cy="200" r="6"/><circle cx="442.6" cy="135" r="5"/></g>
+  <line x1="363.8" y1="180.5" x2="330" y2="200" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <g style="color:var(--ink)" stroke="currentColor" stroke-width="2"><line x1="363.8" y1="180.5" x2="338.8" y2="137.2" marker-end="url(#w6ar2)"/></g>
+  <text x="372" y="162" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--bad)">✕ along arm</text>
+  <text x="320" y="224" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--muted)">q2 = 180° (folded)</text>
+</svg><figcaption>Drawn to scale for L<sub>1</sub> = 1 m, L<sub>2</sub> = 0.7 m, q<sub>1</sub> = 30° (130 px per metre). At both poses the tool can only move perpendicular to the (collinear) links; the direction along the arm is lost. Compare slide 46.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Planar RR</b> (<a class="pg" data-doc="w06-lec" data-page="45">p.45</a>). Use the \(2\times2\) block of \({}^3\mathbf J\) (rows 3–5 are zero in the plane, “ignore in 2D”; \(\omega_z\) is dependent):</p>
+\[ \det\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\end{bmatrix}=L_1L_2\sin q_2=0\iff q_2=0^\circ\text{ or }180^\circ \]
+<p>\(q_2=0\): arm stretched; \(q_2=180^\circ\): arm folded back. Both are on the workspace boundary (<a class="pg" data-doc="w06-lec" data-page="46">p.46</a>). The determinant is the same in {0} and {E} and independent of \(q_1\): <span class="chk">checked</span> (section 7). Also: at \(q_2=0\) the two columns of \(\mathbf J_\upsilon\) are parallel (both \(\perp\) arm), which is why the rank drops to 1.</p>
+<p><b>What is lost.</b> At a singularity there is a direction \(\mathbf u\) (a left null vector, \(\mathbf u^\top\mathbf J=\mathbf 0\)) in which the tool cannot move. For the stretched RR it is along the arm. <span class="added">added</span></p>
+<p><b>The W13-style 3-DoF arm</b> (ETS \(R_z(\theta_1)\,t_z(1.1)\,R_y(-\theta_2)\,t_x(L_3)\,R_y(-\theta_3)\,t_x(L_4)\), tool \(R_x(90^\circ)\)). Its position Jacobian is \(3\times3\) with</p>
+\[ \det\mathbf J_\upsilon=-L_3L_4\sin\theta_3\,\big(L_3\cos\theta_2+L_4\cos(\theta_2+\theta_3)\big) \]
+<p>(verified on 30 random poses; the overall sign depends on the sign convention of the joints). <span class="chk">checked</span> Two ways to be singular:</p>
+<ul><li>\(\sin\theta_3=0\): arm stretched (\(\theta_3=0\)) or folded (\(\theta_3=180^\circ\)); <b>boundary</b>. The lost direction is along the arm. <span class="chk">checked</span></li>
+<li>\(L_3\cos\theta_2+L_4\cos(\theta_2+\theta_3)=0\): the horizontal reach is zero, the tool is on the vertical axis through the shoulder and base rotation \(\theta_1\) no longer moves it; <b>interior</b>. The lost direction is horizontal and perpendicular to the arm plane. With \(L_3=0.4\), \(L_4=0.3\) m and \(\theta_2=60^\circ\), this needs \(\cos(\theta_2+\theta_3)=-2/3\), i.e. \(\theta_3=71.81^\circ\). <span class="chk">checked</span></li></ul>
+<p><b>PUMA 560, notebook Question 3.</b> A spherical-wrist arm (the three wrist axes meet at one point) has a block-triangular Jacobian in the wrist-centre frame, so \(\det\mathbf J\) factorises into an arm part and a wrist part. For the zero-offset model of W2 (lengths \(L_u,L_f\)):</p>
+\[ \det\mathbf J=-L_uL_f\,\sin q_3\,\big(L_u\sin q_2+L_f\sin(q_2+q_3)\big)\,\sin q_5 \]
+<p>(verified on 30 random poses with \(L_b=1\), \(L_u=0.5\), \(L_f=0.3\) m). <span class="chk">checked</span> Three singular families:</p>
+<ol><li><b>Elbow</b> \(\sin q_3=0\): forearm stretched or folded (boundary).</li>
+<li><b>Shoulder</b> \(L_u\sin q_2+L_f\sin(q_2+q_3)=0\): the wrist centre lies on the waist axis (the arm reaches “overhead”); e.g. \(q_2=22.92^\circ\), \(q_3=-63.39^\circ\) for these lengths (interior). <span class="chk">checked</span></li>
+<li><b>Wrist</b> \(\sin q_5=0\): axes 4 and 6 line up, so the two joints produce the same rotation; the rank drops to 5 (interior). With the real PUMA 560 model, setting \(q_5=0\) also gives rank 5, and the angular parts of columns 4 and 6 coincide. <span class="chk">checked</span></li></ol>
+<p>The real PUMA has link offsets, which move the arm-singularity poses a little but keep the same three types <span class="added">added; standard result, not derived on the slides</span>.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write \(\mathbf J\) (or the square block that matters) and compute \(\det\); factorise.</li>
+<li>Solve \(\det=0\) for the angles; list every solution in the stated range.</li>
+<li>Name each: boundary (stretched/folded) or interior (axes aligned).</li>
+<li>State what is lost: “the tool cannot move along …” and what happens: joint rates tend to infinity for a velocity with a component in that direction.</li>
+<li>For a non-square \(\mathbf J\), use rank, or \(\det(\mathbf J\mathbf J^\top)=0\), or \(\sigma_{\min}=0\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example: planar RR at the two poses</span>
+<p>\(L_1=3\), \(L_2=4\), \(q_1=30^\circ\). At \(q_2=0\) (stretched) the frame-{0} block is \(\begin{bmatrix}-3.5&-2\\6.0622&3.4641\end{bmatrix}\): the first column is 1.75 times the second, so both columns point along \((-0.5,\,0.866)\), perpendicular to the arm (direction \((0.866,\,0.5)\)). The rank is 1 and \(\det=0\). In the tool frame the same fact reads \({}^E\mathbf J_{xy}=\begin{bmatrix}0&0\\7&4\end{bmatrix}\): the whole first row (the direction along the arm) is zero. At \(q_2=180^\circ\): \({}^E\mathbf J_{xy}=\begin{bmatrix}0&0\\-3+4&4\end{bmatrix}=\begin{bmatrix}0&0\\1&4\end{bmatrix}\), again rank 1. (The notebook’s cell 46 evaluates the frame-{0} block at \(q_2=0\) and \(\pi\) and prints \(\det\approx0\).) <span class="chk">checked</span></p></div>
+<div class="angle">Explanation questions: “why does the arm slow down / go wild near a singularity?” (the Jacobian inverse has \(1/\det\); joint rates \(\to\infty\)); “name two types” (boundary vs interior with an example each); “what is physically lost?” (a direction of tool motion; and at the same time, forces along that direction need no joint torque: section 11). The slide’s demo (<a class="pg" data-doc="w06-lec" data-page="47">p.47</a>, an external plot credited to studywolf) shows a huge joint command near a singularity (control signal \(\approx(-6.05,\,-3.47)\)), with the target at about \((-0.4,-0.2)\).</div>
+</div>
+
+<!-- ================= 10 ================= -->
+<div class="sub" id="w6-manip">
+<h3>10 · Manipulability and the velocity ellipsoid <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="49">pp. 49–55</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Singular or not is a yes/no. Manipulability says <i>how close</i> we are. Take every joint-rate combination of unit size (a ball in joint-rate space, <a class="pg" data-doc="w06-lec" data-page="51">p.51</a>). Push the ball through \(\boldsymbol\nu=\mathbf J\dot{\mathbf q}\): it comes out as an ellipsoid of tool velocities (<a class="pg" data-doc="w06-lec" data-page="53">p.53</a>). A fat ellipse (far from a singularity) means the arm moves about equally fast in every direction; a thin one (near a singularity) means it moves fast along the long axis and slowly across (<a class="pg" data-doc="w06-lec" data-page="54">p.54</a>: “fastest along the long axis, slowest along the short axis”). The explorer above draws exactly this ellipsoid at the tool.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Ellipsoid.</b> Unit joint rates: \(\dot{\mathbf q}^\top\dot{\mathbf q}=1\). For a square invertible \(\mathbf J\): \(\dot{\mathbf q}=\mathbf J^{-1}\boldsymbol\nu\), so</p>
+\[ \dot{\mathbf q}^\top\dot{\mathbf q}=\boldsymbol\nu^\top\mathbf J^{-\top}\mathbf J^{-1}\boldsymbol\nu=\boldsymbol\nu^\top\big(\mathbf J\mathbf J^\top\big)^{-1}\boldsymbol\nu\le1 \]
+<p>(<a class="pg" data-doc="w06-lec" data-page="52">p.52</a>; boundary \(=1\)). For a non-square fat \(\mathbf J\) the same set is obtained with \(\dot{\mathbf q}=\mathbf J^{+}\boldsymbol\nu\) (smallest-norm rates). <span class="chk">checked</span></p>
+<p><b>Size and axes</b> (<a class="pg" data-doc="w06-lec" data-page="53">p.53</a>). Let \(\mathbf A=\mathbf J\mathbf J^\top\) (symmetric, positive semi-definite) with eigenvalues \(\lambda_i\) and eigenvectors \(\mathbf v_i\). The ellipsoid \(\boldsymbol\nu^\top\mathbf A^{-1}\boldsymbol\nu=1\) has <b>semi-axes \(\sqrt{\lambda_i}\) along \(\mathbf v_i\)</b>. The \(\sqrt{\lambda_i}\) are the singular values \(\sigma_i\) of \(\mathbf J\). <span class="chk">checked</span></p>
+<p><b>Measure</b> (<a class="pg" data-doc="w06-lec" data-page="55">p.55</a>):</p>
+\[ m:=\frac{\sqrt{\lambda_{\min}(\mathbf A)}}{\sqrt{\lambda_{\max}(\mathbf A)}}=\frac{\sigma_{\min}}{\sigma_{\max}},\quad 0\le m\le1 \]
+<p>\(m=1\): isotropic (equal in all directions, a sphere); \(m=0\): singular (ellipsoid collapsed in one dimension). The slide notes that some textbooks define the reciprocal as \(m\), so state your definition. This \(m\) is the inverse of the condition number of \(\mathbf J\).</p>
+<p><b>Yoshikawa’s measure</b> <span class="added">added</span> (not on the slides): \(w=\sqrt{\det(\mathbf J\mathbf J^\top)}=\sigma_1\sigma_2\cdots\sigma_m\), the volume of the ellipsoid up to a constant. For a square \(\mathbf J\), \(w=|\det\mathbf J|\), so for the planar RR \(w=L_1L_2|\sin q_2|\), independent of \(q_1\). \(w\) answers “how big”, \(m\) answers “how round”; \(w\) is zero at singularities, too. <span class="chk">checked</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write \(\mathbf J\) (the linear block for a position ellipsoid). Form \(\mathbf A=\mathbf J\mathbf J^\top\).</li>
+<li>Eigenvalues \(\lambda_{1,2}\) of the \(2\times2\) (use trace and determinant: \(\lambda=\tfrac12(\operatorname{tr}\pm\sqrt{\operatorname{tr}^2-4\det})\)); \(\det\mathbf A=(\det\mathbf J)^2\).</li>
+<li>Semi-axes \(\sqrt{\lambda_i}\); directions from the eigenvectors; \(m=\sqrt{\lambda_{\min}/\lambda_{\max}}\).</li>
+<li>Sketch the ellipse at the tool, long axis = fastest direction.</li>
+<li>Comment: \(m\to0\) means close to a singularity.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>Planar RR, \(L_1=3\), \(L_2=4\), \(q_1=30^\circ\) (the answer does not depend on \(q_1\)), position block, singular values:</p>
+<div class="tbl"><table><tr><th>\(q_2\)</th><th>\(\sigma_1\)</th><th>\(\sigma_2\)</th><th>\(m=\sigma_2/\sigma_1\)</th><th>\(w=L_1L_2\lvert\sin q_2\rvert\)</th></tr>
+<tr><td>15°</td><td>8.002</td><td>0.3881</td><td>0.0485</td><td>3.1058</td></tr>
+<tr><td>60°</td><td>7.1328</td><td>1.4570</td><td>0.2043</td><td>10.3923</td></tr>
+<tr><td>90°</td><td>6.0927</td><td>1.9696</td><td>0.3233</td><td>12.0000</td></tr>
+<tr><td>150°</td><td>4.2711</td><td>1.4048</td><td>0.3289</td><td>6.0000</td></tr>
+<tr><td>0°</td><td>—</td><td>0</td><td>0</td><td>0</td></tr></table></div>
+<p>\(\sigma_1\sigma_2=w\) in every row. <span class="chk">checked</span> At \(q_2=15^\circ\) the ellipse is thin (\(m=0.0485\)): fast in one direction (8 m/s per rad/s) and almost stuck (0.39) across it. The best \(m\) for \(L_1=3\), \(L_2=4\) is 0.4267 at \(q_2\approx125.8^\circ\); with equal links it is 0.618 at \(q_2\approx131.8^\circ\). A planar 2R never reaches \(m=1\) (isotropy). The product \(w\) is largest at \(q_2=90^\circ\), where the best round shape is not: \(w\) and \(m\) peak at different poses. <span class="chk">checked</span></p></div>
+<div class="angle">Sketch question: draw the arm at two poses with the ellipse at the tool, long axis along the fast direction (at a pose far from singular: fat; near singular: thin, nearly a line). Calculation: eigenvalues of \(\mathbf J\mathbf J^\top\) for a \(2\times2\) \(\mathbf J\); the trap is reporting \(\lambda\) where the semi-axis is \(\sqrt\lambda\). Definition trap: \(m\) as \(\sqrt{\lambda_{\min}/\lambda_{\max}}\), not \(\lambda_{\min}\) alone.</div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>Slide 51 writes the unit-norm condition as \(\dot{\mathbf q}\dot{\mathbf q}^\top=1\). For a column vector that is an \(n\times n\) matrix, not a number; the scalar condition is \(\dot{\mathbf q}^\top\dot{\mathbf q}=1\). Typo. <span class="chk">checked</span> (a rank-1 \(2\times2\) matrix versus a scalar).</p></div>
+</div>
+
+<!-- ================= 11 ================= -->
+<div class="sub" id="w6-static">
+<h3>11 · Statics: \(\boldsymbol\tau=\mathbf J^\top\mathbf F\) and the force ellipsoid <span class="pgs"><a class="pg" data-doc="w06-lec" data-page="58">pp. 57–59</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Holding still against a force on the tool needs joint torques. The same Jacobian that turns joint rates into tool velocity turns tool force into joint torque, by its <b>transpose</b> (<a class="pg" data-doc="w06-lec" data-page="58">p.58</a>). Because power must balance, \(\boldsymbol\tau^\top\dot{\mathbf q}=\mathbf F^\top\boldsymbol\nu\).</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Let \(\mathbf F_E=(F_x,F_y,F_z,n_x,n_y,n_z)^\top\) be the wrench at the tool (forces in N, moments in N·m) and \(\boldsymbol\tau\) the joint torques. Virtual work for a tiny motion \(\delta\mathbf q\): the actuators do \(\boldsymbol\tau^\top\delta\mathbf q\); the wrench does \(\mathbf F_E^\top\delta\mathbf x=\mathbf F_E^\top\mathbf J\,\delta\mathbf q\). In equilibrium these are equal for every \(\delta\mathbf q\):</p>
+\[ \boldsymbol\tau^\top\delta\mathbf q=\mathbf F_E^\top\mathbf J\,\delta\mathbf q\;\Rightarrow\;\boxed{\boldsymbol\tau=\mathbf J^\top(\mathbf q)\,\mathbf F_E} \]
+<p>Convention (slide 58 does not state it): \(\mathbf F_E\) is the wrench the tool applies <i>to the environment</i>, and \(\boldsymbol\tau\) is what the actuators must supply to hold it; \(\mathbf F_E\) and \(\mathbf J\) must be in the same frame. If \(\mathbf F_E\) is instead the load acting on the tool, the actuator torque has the opposite sign. <span class="added">added: the convention</span> Frame: using \({}^E\mathbf J\) with \({}^E\mathbf F\) gives the same \(\boldsymbol\tau\) as \({}^0\mathbf J\) with \({}^0\mathbf F\). <span class="chk">checked</span></p>
+<p><b>Force ellipsoid.</b> Take every joint-torque vector of unit size, \(\boldsymbol\tau^\top\boldsymbol\tau\le1\). Substitute \(\boldsymbol\tau=\mathbf J^\top\mathbf F\):</p>
+\[ \boldsymbol\tau^\top\boldsymbol\tau=\mathbf F^\top\mathbf J\mathbf J^\top\mathbf F\le1 \]
+<p>This is slide 59 exactly: <b>no inverse</b>, unlike the velocity ellipsoid \(\boldsymbol\nu^\top(\mathbf J\mathbf J^\top)^{-1}\boldsymbol\nu\le1\). (The digest’s doubt about whether slide 59 should carry an inverse is settled by this derivation: it should not.) Same matrix \(\mathbf A=\mathbf J\mathbf J^\top\), so the <b>same principal axes</b> \(\mathbf v_i\), but the semi-axes are \(1/\sqrt{\lambda_i}\), the <b>reciprocals</b> of the velocity ellipsoid’s \(\sqrt{\lambda_i}\) (slide 59: “same principal axes; lengths reciprocal”). Where the arm is fast it is weak, and the reverse. <span class="chk">checked</span></p>
+<p><b>At a singularity</b> \(\lambda_{\min}\to0\): the velocity semi-axis \(\sqrt{\lambda_{\min}}\to0\) (cannot move that way), but the force semi-axis \(1/\sqrt{\lambda_{\min}}\to\infty\): the arm can resist an arbitrarily large force in that direction with no torque at all. <span class="added">added</span></p>
+<figure class="svg"><svg viewBox="0 0 640 260" role="img" aria-label="Velocity ellipse and force ellipse at the tool of a planar RR arm, same axes, reciprocal lengths" style="max-width:640px">
+  <g stroke="var(--accent)" stroke-width="5" stroke-linecap="round" fill="none"><line x1="70" y1="240" x2="165.3" y2="185"/><line x1="165.3" y1="185" x2="165.3" y2="97" stroke="var(--exam)"/><line x1="370" y1="240" x2="465.3" y2="185"/><line x1="465.3" y1="185" x2="465.3" y2="97" stroke="var(--exam)"/></g>
+  <g fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"><circle cx="70" cy="240" r="6"/><circle cx="165.3" cy="185" r="5"/><circle cx="370" cy="240" r="6"/><circle cx="465.3" cy="185" r="5"/></g>
+  <ellipse cx="165.3" cy="97" rx="85.4" ry="20.3" transform="rotate(27.5 165.3 97)" fill="color-mix(in srgb, var(--exam) 18%, transparent)" stroke="var(--exam)" stroke-width="2"/>
+  <ellipse cx="465.3" cy="97" rx="98.6" ry="23.4" transform="rotate(-62.5 465.3 97)" fill="color-mix(in srgb, var(--accent) 18%, transparent)" stroke="var(--accent)" stroke-width="2"/>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)"><text x="20" y="20">velocity ellipsoid</text><text x="20" y="36" fill="var(--muted)">semi-axes 0.854 and 0.203 (m/s)</text><text x="340" y="20">force ellipsoid</text><text x="340" y="36" fill="var(--muted)">semi-axes 4.93 and 1.17 (N)</text></g>
+</svg><figcaption>Planar RR, L<sub>1</sub> = 0.5 m, L<sub>2</sub> = 0.4 m, q = (30°, 60°). Arms drawn at 220 px/m. Velocity ellipse at 100 px per (m/s) per unit joint-rate norm; force ellipse at 20 px per N per unit joint-torque norm. Long axis of one is the short axis of the other (same directions, reciprocal lengths). The semi-axes are \(\sqrt{\lambda_i}\) = 0.2029, 0.8537 and \(1/\sqrt{\lambda_i}\) = 4.929, 1.171.</figcaption></figure>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>State the frame of \(\mathbf F\). Compute \(\mathbf J\) in that frame.</li>
+<li>\(\boldsymbol\tau=\mathbf J^\top\mathbf F\): transpose, and match dimensions (\(n\times6\) times \(6\times1\)).</li>
+<li>Units: N·m. State the sign convention (force by the tool on the environment).</li>
+<li>For the force ellipsoid: \(\mathbf F^\top\mathbf J\mathbf J^\top\mathbf F\le1\); axes along the eigenvectors of \(\mathbf J\mathbf J^\top\), lengths \(1/\sqrt{\lambda}\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>Planar RR, \(L_1=0.5\) m, \(L_2=0.4\) m, \(q=(30^\circ,60^\circ)\), so \(q_1+q_2=90^\circ\): \(\mathbf J_{xy}=\begin{bmatrix}-0.65&-0.4\\0.4330&0\end{bmatrix}\). A tool force \(\mathbf F=(10,-20)\) N (in {0}):</p>
+\[ \boldsymbol\tau=\mathbf J^\top\mathbf F=\begin{bmatrix}-0.65&0.4330\\-0.4&0\end{bmatrix}\begin{bmatrix}10\\-20\end{bmatrix}=\begin{bmatrix}-6.5-8.660\\-4.0\end{bmatrix}=\begin{bmatrix}-15.160\\-4.000\end{bmatrix}\text{ N·m} \]
+<p>(Using \(\mathbf J\mathbf F\) by mistake would give \((1.5,\,4.330)\).) A moment \(n_z=2\) N·m on the tool adds \(2\times(1,1)\) to \(\boldsymbol\tau\) through the \(\omega_z\) row. <span class="chk">checked</span></p>
+<p><b>Stretched arm:</b> at \(q=(30^\circ,0)\), a 50 N force along the arm needs \(\boldsymbol\tau=(0,0)\) (the structure carries it); a 50 N force perpendicular to the arm needs \((45,\,20)\) N·m \(=(50\times0.9,\;50\times0.4)\) (full lever arms). <span class="chk">checked</span></p>
+<p><b>Ellipsoid axes</b> for the first pose: \(\mathbf A=\mathbf J\mathbf J^\top\) has eigenvalues 0.04116 and 0.72884, so the velocity ellipse has semi-axes 0.2029 and 0.8537 m/s, and the force ellipse has 4.929 and 1.171 N (reciprocals, same directions). <span class="chk">checked</span></p></div>
+<div class="angle">Calculation: \(\boldsymbol\tau\) from \(\mathbf F\) for the planar RR (the trap is \(\mathbf J\mathbf F\), or a \(\mathbf J\) in the wrong frame). Spot-the-error: a force ellipsoid written with \((\mathbf J\mathbf J^\top)^{-1}\), or lengths not reciprocal. Explain: why a stretched arm can hold a heavy load along its length (zero torque) but is weak sideways; \(\mathbf J^\top\) always exists, even when \(\mathbf J^{-1}\) does not.</div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>Slide 58 does not give the frame of \(\mathbf F_E\) or the sign convention for \(\boldsymbol\tau\) (applied by the actuators, or the reaction). I state both above; do the same in an answer.</p></div>
+</div>
+
+<!-- ================= guided problems ================= -->
+<h3 id="w6-problems">Guided problems: solve on paper first</h3>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.1 · Planar RR Jacobian (notebook Question 1)</b><span class="chip calc">calculate</span><span class="chip derive">derive</span><span class="marks" data-id="w06-p1" data-topic="w06"></span></div>
+  <p>For the planar RR arm with \(L_1=3\) m, \(L_2=4\) m, \(q_1=30^\circ\), \(q_2=15^\circ\): find \(J_{11}\), \(J_{21}\) of the \(x,y\) block in {0} and the determinant. (The full \(6\times2\) matrix has zero rows 3–5 and last row \((1,1)\).)</p>
+  <details class="hint"><summary>Hint 1: FK first</summary><p>\(x=L_1\cos q_1+L_2\cos(q_1+q_2)\), \(y=L_1\sin q_1+L_2\sin(q_1+q_2)\).</p></details>
+  <details class="hint"><summary>Hint 2: differentiate with respect to \(q_1\) only</summary><p>\(J_{11}=\partial x/\partial q_1=-L_1\sin q_1-L_2\sin(q_1+q_2)\); \(J_{21}=\partial y/\partial q_1\).</p></details>
+  <details class="hint"><summary>Hint 3: the determinant</summary><p>\(\det=L_1L_2\sin q_2\).</p></details>
+  <div class="ansrow"><label>J<sub>11</sub><input data-ans="-4.3284" data-tol="0.001" data-label="J11" inputmode="decimal" aria-label="J11"></label><label>J<sub>21</sub><input data-ans="5.4265" data-tol="0.001" data-label="J21" inputmode="decimal" aria-label="J21"></label><label>det<input data-ans="3.1058" data-tol="0.001" data-label="det" inputmode="decimal" aria-label="determinant" data-wrong='[{"v":8.4853,"msg":"that is 12 sin(q1+q2) = 12 sin 45°. The determinant depends on q2 only: 12 sin 15°."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(q_1+q_2=45^\circ\). \(J_{11}=-3\sin30^\circ-4\sin45^\circ=-1.5-2.8284=-4.3284\). \(J_{12}=-4\sin45^\circ=-2.8284\). \(J_{21}=3\cos30^\circ+4\cos45^\circ=2.5981+2.8284=5.4265\). \(J_{22}=4\cos45^\circ=2.8284\).</p>
+  <p>\(\det=(-4.3284)(2.8284)-(-2.8284)(5.4265)=-12.2427+15.3485=3.1058=12\sin15^\circ\) (\(12\times0.25882\)). In the tool frame: \(\begin{bmatrix}0.7765&0\\6.8978&4\end{bmatrix}\), the same determinant. <span class="chk">checked</span></p>
+  <p>Common wrong answer: using \(\sin q_2\), \(\cos q_2\) in the first column (no running sum), or \(\det=12\sin45^\circ=8.485\).</p></details>
+  <p class="blank">Blank-page test: derive both columns by the ETS method (\(\partial\mathbf T/\partial q_1\), \(\partial\mathbf T/\partial q_2\)) without looking.</p>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.2 · Why \(\dot{\mathbf R}\mathbf R^\top\) is skew, and \(\boldsymbol\omega\) for a rotation</b><span class="chip derive">derive</span><span class="marks" data-id="w06-p2" data-topic="w06"></span></div>
+  <p>(a) Show that \(\dot{\mathbf R}\mathbf R^\top\) is skew-symmetric. (b) For \(\mathbf R=\mathbf R_y(\theta(t))\) find \(\boldsymbol\omega\).</p>
+  <details class="hint"><summary>Hint</summary><p>Differentiate \(\mathbf R\mathbf R^\top=\mathbf I\). For (b) use \(d\mathbf R_y/d\theta=\hat{\mathbf R}_y\mathbf R_y\) (slide 31) and read the vex.</p></details>
+  <details class="sol"><summary>Full solution</summary>
+  <p>(a) \(\dot{\mathbf R}\mathbf R^\top+\mathbf R\dot{\mathbf R}^\top=\mathbf 0\). The second term is the transpose of the first, so \(\mathbf S=\dot{\mathbf R}\mathbf R^\top\) satisfies \(\mathbf S+\mathbf S^\top=\mathbf 0\).</p>
+  <p>(b) \(\dot{\mathbf R}_y\mathbf R_y^\top=\dot\theta\,\hat{\mathbf R}_y\) (3×3 part): \(\dot\theta\begin{bmatrix}0&0&1\\0&0&0\\-1&0&0\end{bmatrix}\). Vex: \((S_{32},S_{13},S_{21})=(0,\dot\theta,0)\). So \(\boldsymbol\omega=(0,\dot\theta,0)^\top\): about the \(y\) axis, as expected. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.3 · Spot the error in the cross-product note</b><span class="chip spot">spot the error</span><span class="marks" data-id="w06-p3" data-topic="w06"></span></div>
+  <p>The note claims the determinant form and the skew-matrix form are equivalent and expands \(\boldsymbol\omega\times\mathbf P\) as \((\omega_yP_z-\omega_zP_y)\hat{\mathbf i}+(\omega_xP_z-\omega_zP_x)\hat{\mathbf j}+(\omega_xP_y-\omega_yP_x)\hat{\mathbf k}\). Find the error and prove the two forms agree. Test with \(\boldsymbol\omega=(1,2,3)\), \(\mathbf P=(4,5,6)\).</p>
+  <details class="hint"><summary>Hint</summary><p>Which cofactor carries a minus sign when you expand along the first row of a \(3\times3\) determinant?</p></details>
+  <details class="sol"><summary>Full solution</summary>
+  <p>The middle (\(\hat{\mathbf j}\)) term needs its cofactor sign \(-\): it should be \(-(\omega_xP_z-\omega_zP_x)=\omega_zP_x-\omega_xP_z\). As printed the \(\hat{\mathbf j}\) coefficient has the wrong sign, so the note’s two forms disagree. Row 2 of \([\boldsymbol\omega]_\times\mathbf P\) is \(\omega_zP_x-\omega_xP_z\), matching the corrected determinant; rows 1 and 3 match as printed.</p>
+  <p>Test: correct \(=(-3,\,6,\,-3)\); the note’s \(\hat{\mathbf j}\) coefficient would give \(1\cdot6-3\cdot4=-6\). <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.4 · Reading the PUMA 560 Jacobian (slide 24, notebook Question 2)</b><span class="chip explain">explain</span><span class="chip calc">calculate</span><span class="marks" data-id="w06-p4" data-topic="w06"></span></div>
+  <p>From the matrix on slide 24: (a) if only \(\dot q_4=1\) rad/s, what is the tool’s angular velocity in {0}? (b) What is the angle between the axes of joints 4 and 6? (c) What does that tell you about \(q_5\)?</p>
+  <details class="hint"><summary>Hint</summary><p>The angular rows (4–6) of a revolute column are its joint axis in {0}. The angle between two unit vectors comes from their dot product.</p></details>
+  <div class="ansrow"><label>ω<sub>x</sub><input data-ans="0.707" data-tol="0.001" data-label="wx" inputmode="decimal" aria-label="omega x"></label><label>ω<sub>z</sub><input data-ans="-0.707" data-tol="0.001" data-label="wz" inputmode="decimal" aria-label="omega z"></label><label>angle (deg)<input data-ans="45" data-tol="0.5" data-label="angle" inputmode="decimal" aria-label="angle in degrees"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>(a) Column 4, rows 4–6: \(\boldsymbol\omega=(0.707,\,0,\,-0.707)\) rad/s (unit length: \(0.707^2\times2=1\)). (b) Column 6 rows 4–6 is \((1,0,0)\); dot product \(=0.707\), angle \(=\arccos0.707=45^\circ\). (c) For a spherical wrist the angle between axes 4 and 6 is \(q_5\), so \(q_5=45^\circ\) at this pose (the toolbox’s nominal pose has \(q_5=45^\circ\)). At \(q_5=0\) the axes coincide, columns 4 and 6 become equal in the angular rows, and the rank falls to 5: a wrist singularity. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.5 · Where does the PUMA 560 have singularities? (notebook Question 3)</b><span class="chip explain">explain</span><span class="chip derive">derive</span><span class="marks" data-id="w06-p5" data-topic="w06"></span></div>
+  <p>For the zero-offset PUMA of W2 (\(t_z(L_b)R_z(q_1)R_y(q_2)t_z(L_u)R_y(q_3)t_z(L_f)R_z(q_4)R_y(q_5)R_z(q_6)\)): list the singular poses, say which are boundary and which interior, and name the direction lost in each.</p>
+  <details class="hint"><summary>Hint 1</summary><p>The wrist axes meet at the wrist centre, so the Jacobian splits into an arm block (joints 1–3, wrist-centre position) and a wrist block (joints 4–6, orientation). Then \(\det\mathbf J\) is the product of the two determinants.</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>Wrist block: \(\det=\pm\sin q_5\). Arm block: \(\sin q_3\) times the horizontal reach of the wrist centre.</p></details>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(\det\mathbf J=-L_uL_f\sin q_3\,(L_u\sin q_2+L_f\sin(q_2+q_3))\sin q_5\). <span class="chk">checked</span></p>
+  <p>(1) \(\sin q_3=0\): elbow stretched or folded; boundary; lost direction along the forearm. (2) \(L_u\sin q_2+L_f\sin(q_2+q_3)=0\): wrist centre on the waist axis (overhead); interior; the waist rotation cannot move the wrist centre. (3) \(\sin q_5=0\): axes 4 and 6 aligned; interior; the wrist loses one rotational direction (rank 5). Example for \(L_u=0.5\), \(L_f=0.3\): \(q_2=22.92^\circ\), \(q_3=-63.39^\circ\) is singular type (2). <span class="chk">checked</span> The real PUMA (with offsets) has the same three types at slightly shifted poses. <span class="added">added</span></p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.6 · Resolved-rate control (notebook Question 4)</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w06-p6" data-topic="w06"></span></div>
+  <p>Planar RR, \(L_1=3\), \(L_2=4\), \(\mathbf q=(30^\circ,60^\circ)\). Wanted tool velocity \((\upsilon_x,\upsilon_y)=(0.2,-0.3)\) m/s. Find the joint rates and the configuration after \(\Delta t=0.1\) s (follow the position only; discuss why the third component \(\omega_z=-0.2\) rad/s cannot also be met).</p>
+  <details class="hint"><summary>Hint 1</summary><p>\(\mathbf J_{xy}=\begin{bmatrix}-5.5&-4\\2.5981&0\end{bmatrix}\); \(\det=10.3923\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>\(\mathbf J^{-1}=\frac{1}{10.3923}\begin{bmatrix}0&4\\-2.5981&-5.5\end{bmatrix}\). The second column of \(\mathbf J\) is \((-4,0)\), so \(\upsilon_y=2.5981\dot q_1\) alone.</p></details>
+  <div class="ansrow"><label>q̇<sub>1</sub> (rad/s)<input data-ans="-0.1155" data-tol="0.0006" data-label="qd1" inputmode="decimal" aria-label="qdot 1"></label><label>q̇<sub>2</sub> (rad/s)<input data-ans="0.1088" data-tol="0.0006" data-label="qd2" inputmode="decimal" aria-label="qdot 2"></label><label>q<sub>1</sub> after 0.1 s (°)<input data-ans="29.338" data-tol="0.01" data-label="q1" inputmode="decimal" aria-label="q1 degrees" data-wrong='[{"v":29.395,"msg":"that is the 3-component least-squares answer (Reading B). For the position-only reading use the 2×2 inverse."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(\dot q_1=\upsilon_y/2.5981=-0.3/2.5981=-0.1155\) rad/s. First row: \(-5.5\dot q_1-4\dot q_2=0.2\), so \(-4\dot q_2=0.2+5.5\dot q_1=0.2-0.6351=-0.4351\) and \(\dot q_2=0.1088\) rad/s. After 0.1 s: \(q_1=30^\circ+(-0.1155)(0.1)(57.2958)=29.338^\circ\), \(q_2=60^\circ+0.1088(0.1)(57.2958)=60.623^\circ\). <span class="chk">checked</span></p>
+  <p>The wanted \(\omega_z=-0.2\) would need \(\dot q_1+\dot q_2=-0.2\), but the position fixes \(\dot q_1+\dot q_2=-0.0067\). Two joints give only two degrees of freedom: a 3-component spatial velocity is over-determined, the least-squares answer (\(\mathbf J^+\)) is \(\dot{\mathbf q}=(-0.1056,\,0.0840)\) with an unavoidable residual. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.7 · Sketch and compute the velocity ellipse</b><span class="chip sketch">sketch</span><span class="chip calc">calculate</span><span class="marks" data-id="w06-p7" data-topic="w06"></span></div>
+  <p>For the RR arm with \(L_1=3\), \(L_2=4\): at \(q_2=15^\circ\) and \(q_2=90^\circ\), sketch the arm and the ellipse at the tool, and give the smaller singular value at \(15^\circ\) and \(m\) at \(90^\circ\). Which pose is nearer a singularity?</p>
+  <details class="hint"><summary>Hint</summary><p>\(\mathbf A=\mathbf J\mathbf J^\top\); \(\det\mathbf A=(L_1L_2\sin q_2)^2\); \(\operatorname{tr}\mathbf A=L_1^2+2L_2^2+2L_1L_2\cos q_2\) (sum of squared column norms).</p></details>
+  <div class="ansrow"><label>σ<sub>min</sub> at 15°<input data-ans="0.3881" data-tol="0.002" data-label="smin" inputmode="decimal" aria-label="sigma min"></label><label>m at 90°<input data-ans="0.3233" data-tol="0.002" data-label="m" inputmode="decimal" aria-label="m at 90"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>At 15°: \(\operatorname{tr}\mathbf A=9+32+24\cos15^\circ=64.182\), \(\det\mathbf A=(3.1058)^2=9.646\); \(\lambda=\tfrac12(64.182\pm\sqrt{64.182^2-4(9.646)})=64.032,\;0.1506\); \(\sigma=8.002,\;0.3881\), \(m=0.0485\). At 90°: \(\operatorname{tr}=41\), \(\det=144\), \(\lambda=\tfrac12(41\pm\sqrt{1681-576})=37.12,\;3.88\), \(\sigma=6.0927,\,1.9696\), \(m=0.3233\). <span class="chk">checked</span></p>
+  <p>Sketch: at 15° (nearly stretched) a long thin ellipse along the direction perpendicular to the arm; at 90° a fatter ellipse. The 15° pose is nearer a singularity (\(m=0.0485\), \(w=3.11\) versus \(m=0.323\), \(w=12\)).</p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.8 · Statics: joint torques from a tool force</b><span class="chip calc">calculate</span><span class="marks" data-id="w06-p8" data-topic="w06"></span></div>
+  <p>Planar RR, \(L_1=0.5\) m, \(L_2=0.4\) m, \(q=(30^\circ,60^\circ)\). The tool pushes on the environment with \(\mathbf F=(10,-20)\) N in {0}. Find the holding torques.</p>
+  <details class="hint"><summary>Hint 1</summary><p>\(\mathbf J_{xy}=\begin{bmatrix}-0.65&-0.4\\0.4330&0\end{bmatrix}\) (\(q_1+q_2=90^\circ\)).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>\(\boldsymbol\tau=\mathbf J^\top\mathbf F\), i.e. each torque is a column of \(\mathbf J\) dotted with \(\mathbf F\).</p></details>
+  <div class="ansrow"><label>τ<sub>1</sub> (N·m)<input data-ans="-15.1603" data-tol="0.01" data-label="tau1" inputmode="decimal" aria-label="tau 1" data-wrong='[{"v":1.5,"msg":"that is J F. The statics relation uses the transpose: tau = J^T F."}]'></label><label>τ<sub>2</sub> (N·m)<input data-ans="-4" data-tol="0.01" data-label="tau2" inputmode="decimal" aria-label="tau 2"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(\tau_1=(-0.65)(10)+(0.4330)(-20)=-6.5-8.660=-15.160\) N·m. \(\tau_2=(-0.4)(10)+(0)(-20)=-4.0\) N·m. Check with virtual work: \(\boldsymbol\tau^\top\delta\mathbf q=\mathbf F^\top\mathbf J\delta\mathbf q\). If instead \(\mathbf F\) were the load on the tool, the torques are \(+15.16,\,+4.0\) N·m. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.9 · Change the frame of the velocity</b><span class="chip calc">calculate</span><span class="marks" data-id="w06-p9" data-topic="w06"></span></div>
+  <p>RR with \(L_1=3\), \(L_2=4\), \(q=(30^\circ,15^\circ)\), \(\dot{\mathbf q}=(0.2,-0.1)\) rad/s. The tool velocity in {0} is \((-0.5828,0.8025)\) m/s. Find it in the tool frame {E}, using \({}^E\mathbf J\) of section 7.</p>
+  <details class="hint"><summary>Hint</summary><p>\({}^E\mathbf J=\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\end{bmatrix}\). Or rotate by \(\mathbf R_z(45^\circ)^\top\).</p></details>
+  <div class="ansrow"><label>υ<sub>x,E</sub><input data-ans="0.1553" data-tol="0.001" data-label="vx" inputmode="decimal" aria-label="v x in E" data-wrong='[{"v":-0.5828,"msg":"that is the {0}-frame x component; rotate it into the tool frame."}]'></label><label>υ<sub>y,E</sub><input data-ans="0.9796" data-tol="0.001" data-label="vy" inputmode="decimal" aria-label="v y in E"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(\upsilon_{x,E}=L_1\sin q_2\,\dot q_1=3(0.2588)(0.2)=0.1553\) m/s. \(\upsilon_{y,E}=(L_1\cos q_2+L_2)\dot q_1+L_2\dot q_2=(2.8978+4)(0.2)+4(-0.1)=1.3796-0.4=0.9796\) m/s. Speed \(=\sqrt{0.1553^2+0.9796^2}=0.9918\) m/s in both frames; \(\omega_z=\dot q_1+\dot q_2=0.1\) rad/s in both (rotation about \(z\)). <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.10 · Velocity and force ellipsoids</b><span class="chip explain">explain</span><span class="chip spot">spot the error</span><span class="marks" data-id="w06-p10" data-topic="w06"></span></div>
+  <p>A student writes the force ellipsoid as \(\mathbf F^\top(\mathbf J\mathbf J^\top)^{-1}\mathbf F\le1\), “same as the velocity ellipsoid”. Correct this by derivation, and say what happens to each ellipsoid as the arm approaches a singularity.</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>Velocity ellipsoid: \(\lVert\dot{\mathbf q}\rVert\le1\) with \(\dot{\mathbf q}=\mathbf J^{-1}\boldsymbol\nu\) gives \(\boldsymbol\nu^\top(\mathbf J\mathbf J^\top)^{-1}\boldsymbol\nu\le1\). Force ellipsoid: \(\lVert\boldsymbol\tau\rVert\le1\) with \(\boldsymbol\tau=\mathbf J^\top\mathbf F\) gives \(\mathbf F^\top\mathbf J\mathbf J^\top\mathbf F\le1\): no inverse. They share principal axes (eigenvectors of \(\mathbf J\mathbf J^\top\)); semi-axes are \(\sqrt{\lambda_i}\) and \(1/\sqrt{\lambda_i}\). Near a singularity \(\lambda_{\min}\to0\): the velocity ellipsoid collapses along that axis (no motion) while the force ellipsoid stretches without bound along it (can resist large force with no torque). Example: stretched RR, \(\mathbf F\) along the arm gives \(\boldsymbol\tau=\mathbf 0\). <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w06">
+  <div class="head"><b>P6.11 · Derive and use: the offset RP arm</b><span class="chip derive">derive</span><span class="chip explain">explain</span><span class="marks" data-id="w06-p11" data-topic="w06"></span></div>
+  <p>An arm has a revolute joint \(q_1\) and a prismatic joint \(d_2\) sliding <i>perpendicular</i> to the link of length \(l_1\): \(x=l_1\cos q_1-d_2\sin q_1\), \(y=l_1\sin q_1+d_2\cos q_1\). Find \(\mathbf J\), \(\det\mathbf J\), the singular pose and say what is lost. (This example comes from the W7–8 folder, not the W6 slides.)</p>
+  <details class="hint"><summary>Hint</summary><p>Partial derivatives with respect to \(q_1\) and \(d_2\); \(\mathbf J\) is \(2\times2\) for the position.</p></details>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(\mathbf J=\begin{bmatrix}-l_1\sin q_1-d_2\cos q_1&-\sin q_1\\l_1\cos q_1-d_2\sin q_1&\cos q_1\end{bmatrix}\). \(\det=(-l_1s-d_2c)c+s(l_1c-d_2s)=-d_2(c^2+s^2)=-d_2\). Singular only at \(d_2=0\), for any \(q_1\) and \(l_1\). There the revolute column is \(l_1\) times the prismatic column: both push the tool perpendicular to the link, and the radial direction (along the link) is lost; the null motion is \(\dot q_1=-1/l_1\) with \(\dot d_2=1\), which leaves the tool still. The prismatic column is \((-\sin q_1,\cos q_1)\), the unit direction of the slide, as the geometric rule says. <span class="chk">checked</span></p></details>
+</div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w06"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w06-q1" data-topic="w06"></span></div>
+<p>What does column 2 of the \(6\times n\) Jacobian mean physically, and what are its units for a revolute joint?</p><details class="sol"><summary>Answer</summary><p>The spatial velocity (linear velocity on top, angular velocity below) of the tool when only joint 2 moves at unit rate (1 rad/s). Units: linear rows in m per rad (m/s per rad/s); angular rows dimensionless.</p></details></div>
+<div class="gp" data-topic="w06"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w06-q2" data-topic="w06"></span></div>
+<p>Planar RR with \(L_1=1\), \(L_2=1\). At which \(q_2\) values is the arm singular, and what is \(\det\) at \(q_2=30^\circ\)?</p><details class="sol"><summary>Answer</summary><p>\(\det=L_1L_2\sin q_2=\sin q_2\): singular at \(q_2=0^\circ\) and \(180^\circ\). At \(30^\circ\): \(\det=0.5\) (units m², for the position block). It does not depend on \(q_1\).</p></details></div>
+<div class="gp" data-topic="w06"><div class="head"><b>Q3</b><span class="chip spot">spot the error</span><span class="marks" data-id="w06-q3" data-topic="w06"></span></div>
+<p>“Near a singularity the manipulability ellipsoid gets large in one direction, so the arm is faster there.” True?</p><details class="sol"><summary>Answer</summary><p>False. Near a singularity the ellipsoid <i>collapses</i> along one axis (\(\sigma_{\min}\to0\)): the arm cannot move the tool in that direction. It may look large in the other directions, but \(m=\sigma_{\min}/\sigma_{\max}\to0\). The joint <i>rates</i> needed for that direction blow up.</p></details></div>
+
+<div class="box" data-reading="w06"></div>
+
+<script data-after>
+(function () {
+  /* ---------- pure maths (the lecture's method), identical to checks/w06.py ---------- */
+  const D = Math.PI / 180, M = W3D.M;
+  const ELEM = { Rx: M.Rx, Ry: M.Ry, Rz: M.Rz, tx: d => M.T(d, 0, 0), ty: d => M.T(0, d, 0), tz: d => M.T(0, 0, d) };
+  const RH = { Rx: [0,0,0,0, 0,0,-1,0, 0,1,0,0, 0,0,0,0], Ry: [0,0,1,0, 0,0,0,0, -1,0,0,0, 0,0,0,0], Rz: [0,-1,0,0, 1,0,0,0, 0,0,0,0, 0,0,0,0] };   // slide p.31
+  const TH = { tx: [0,0,0,1, 0,0,0,0, 0,0,0,0, 0,0,0,0], ty: [0,0,0,0, 0,0,0,1, 0,0,0,0, 0,0,0,0], tz: [0,0,0,0, 0,0,0,0, 0,0,0,1, 0,0,0,0] };   // slide p.29
+  const val = (o, q) => o.q !== undefined ? (o.sgn || 1) * q[o.q] + (o.off || 0) : o.v;
+  const Em = (o, q) => ELEM[o.op](val(o, q));
+  function dEm(o, q) { const s = o.sgn || 1; const m = o.op[0] === 'R' ? M.mul(RH[o.op], Em(o, q)) : TH[o.op]; return m.map(x => s * x); }
+  const joints = ops => ops.filter(o => !o.frame);
+  function fkT(ops, q) { let T = M.I(); for (const o of joints(ops)) T = M.mul(T, Em(o, q)); return T; }
+  /* column j: tau(dT/dq_j) and vex(rho(dT/dq_j) rho(T)^T); returns 6 rows x n */
+  function jacobian(ops, q) {
+    const o2 = joints(ops), n = q.length, T = fkT(ops, q), J = [[], [], [], [], [], []];
+    for (let j = 0; j < n; j++) {
+      let Dm = M.I(); for (const o of o2) Dm = M.mul(Dm, o.q === j ? dEm(o, q) : Em(o, q));
+      const S = (a, b) => { let s = 0; for (let k = 0; k < 3; k++) s += Dm[a * 4 + k] * T[b * 4 + k]; return s; };
+      J[0][j] = Dm[3]; J[1][j] = Dm[7]; J[2][j] = Dm[11]; J[3][j] = S(2, 1); J[4][j] = S(0, 2); J[5][j] = S(1, 0);
+    }
+    return J;
+  }
+  function eigSym(A) {            // Jacobi rotations; returns descending eigenvalues and matching eigenvectors
+    const m = A.length, a = A.map(r => r.slice()), V = Array.from({ length: m }, (_, i) => Array.from({ length: m }, (_, j) => i === j ? 1 : 0));
+    for (let it = 0; it < 100; it++) {
+      let p = 0, q = 1, mx = 0;
+      for (let i = 0; i < m; i++) for (let j = i + 1; j < m; j++) if (Math.abs(a[i][j]) > mx) { mx = Math.abs(a[i][j]); p = i; q = j; }
+      if (mx < 1e-15) break;
+      const th = (a[q][q] - a[p][p]) / (2 * a[p][q]), t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th * th + 1)), c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < m; k++) { const x = a[k][p], y = a[k][q]; a[k][p] = c * x - s * y; a[k][q] = s * x + c * y; }
+      for (let k = 0; k < m; k++) { const x = a[p][k], y = a[q][k]; a[p][k] = c * x - s * y; a[q][k] = s * x + c * y; }
+      for (let k = 0; k < m; k++) { const x = V[k][p], y = V[k][q]; V[k][p] = c * x - s * y; V[k][q] = s * x + c * y; }
+    }
+    const idx = [...Array(m).keys()].sort((i, j) => a[j][j] - a[i][i]);
+    return { vals: idx.map(i => Math.max(a[i][i], 0)), vecs: idx.map(i => V.map(r => r[i])) };
+  }
+  const detSq = A => A.length === 2 ? A[0][0] * A[1][1] - A[0][1] * A[1][0]
+    : A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+  function analyse(P, q, qd) {
+    const J = jacobian(P.ops, q), Jt = P.rows.map(r => J[r]), m = Jt.length, n = q.length;
+    const A = Jt.map(ri => Jt.map(rk => ri.reduce((s, v, j) => s + v * rk[j], 0)));
+    const e = eigSym(A), sig = e.vals.map(Math.sqrt), sg = sig.slice(0, Math.min(m, n));
+    const v = Jt.map(r => r.reduce((s, x, j) => s + x * qd[j], 0));
+    const T = fkT(P.ops, q);
+    return { J, Jt, A, eig: e, sigma: sg, m: sg[0] > 1e-12 ? sg[sg.length - 1] / sg[0] : 0, w: sg.reduce((a, b) => a * b, 1),
+      det: m === n ? detSq(Jt) : null, v, tip: [T[3], T[7], T[11]] };
+  }
+  W3D.jacMath = { jacobian, analyse, eigSym, fkT };
+
+  /* ---------- presets ---------- */
+  const L1 = 0.6, L2 = 0.4, EF = { frame: '{E}', tool: true };
+  const PRE = {
+    rr: { title: 'Planar 2R (L1 = 0.6 m, L2 = 0.4 m)', types: 'RR', names: ['q1', 'q2'], rows: [0, 1], q: [30 * D, 60 * D], qd: [0.5, -0.3], home: [0.15, -0.55, 1.7],
+      ops: [{ op: 'Rz', q: 0 }, { op: 'tx', v: L1 }, { op: 'Rz', q: 1 }, { op: 'tx', v: L2 }, EF],
+      poses: [['Stretched out (q2 = 0)', [30 * D, 0]], ['Folded back (q2 = 180°)', [30 * D, Math.PI]], ['Elbow at 90°', [30 * D, 90 * D]]] },
+    rp: { title: 'Offset RP arm: slide ⟂ link (l1 = 0.5 m)', types: 'RP', names: ['q1', 'd2'], rows: [0, 1], q: [35 * D, 0.35], qd: [0.5, 0.1], home: [0.15, -0.55, 1.7],
+      ops: [{ op: 'Rz', q: 0 }, { op: 'tx', v: 0.5 }, { op: 'ty', q: 1 }, EF],
+      poses: [['d2 = 0 (singular)', [35 * D, 0]], ['d2 = 0.35 m', [35 * D, 0.35]]] },
+    w13: { title: 'W13 RRR arm (lecturer’s ETS, L3 = 0.4, L4 = 0.3)', types: 'RRR', names: ['θ1', 'θ2', 'θ3'], rows: [0, 1, 2], q: [30 * D, 20 * D, 40 * D], qd: [0.4, 0.2, -0.3], home: null,
+      ops: null,
+      poses: [['Boundary: θ3 = 0 (stretched)', [30 * D, 20 * D, 0]], ['Boundary: θ3 = 180° (folded)', [30 * D, 20 * D, Math.PI]],
+        ['Interior: tool on the shoulder’s vertical axis', [30 * D, 60 * D, Math.acos(-2 / 3) - 60 * D]]] }
+  };
+  function sweep(ops, q0) {
+    const pts = [[0, 0, 0]]; let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let k = 0; k < 20; k++) { const q = q0.map(v => k ? v + (rnd() - 0.5) * 1.4 : v); W3D.evalChain(ops, q).frames.forEach(f => pts.push(M.pos(f.T))); }
+    return pts;
+  }
+  const fmt = v => (Math.abs(v) < 5e-5 ? 0 : v).toFixed(4);
+
+  W3D.kinds.jac = function (root) {
+    const id = root.id; PRE.w13.ops = W3D.presets.w13rrr.list;
+    const stage = root.querySelector('.stage'), side = root.querySelector('.side'), KV = 0.35;   // metres drawn per (m/s)
+    let key = 'rr', P = PRE[key], q = P.q.slice(), qd = P.qd.slice();
+    const sc = new W3D.Scene3D(stage, { scale: 0.5, home: P.home || [2.2, -2.6, 1.9], target: [0.3, 0.2, 0.3] });
+    sc.fitPts = sweep(P.ops, q);
+    root.querySelector('.reset') && root.querySelector('.reset').addEventListener('click', () => sc.fit(sweep(P.ops, q)));
+    const unit = i => P.types[i] === 'R' ? '°' : ' m', toDisp = (v, i) => P.types[i] === 'R' ? v / D : v;
+    function build() {
+      const n = q.length;
+      side.innerHTML = '<label class="eyebrow" for="' + id + '-p">Robot</label><select id="' + id + '-p">' + Object.keys(PRE).map(k => '<option value="' + k + '"' + (k === key ? ' selected' : '') + '>' + PRE[k].title + '</option>').join('') + '</select>' +
+        '<label class="eyebrow" for="' + id + '-j">Jump to pose</label><select id="' + id + '-j"><option value="">choose…</option>' + P.poses.map((p, i) => '<option value="' + i + '">' + p[0] + '</option>').join('') + '</select>' +
+        '<div class="eyebrow">Joint values q</div>' + q.map((v, i) => W3D.sliderRow(id + '-q' + i, P.names[i], P.types[i] === 'R' ? -180 : -0.5, P.types[i] === 'R' ? 180 : 0.5, +toDisp(v, i).toFixed(P.types[i] === 'R' ? 1 : 2), P.types[i] === 'R' ? 0.1 : 0.01, unit(i))).join('') +
+        '<div class="eyebrow">Joint rates q̇ (' + (P.types.includes('P') ? 'rad/s, m/s' : 'rad/s') + ')</div>' + qd.map((v, i) => W3D.sliderRow(id + '-r' + i, 'q̇' + (i + 1), -1, 1, v, 0.05, '')).join('') + '<div class="out"></div>';
+      side.querySelector('#' + id + '-p').addEventListener('change', e => load(e.target.value));
+      side.querySelector('#' + id + '-j').addEventListener('change', e => { if (e.target.value !== '') { q = P.poses[+e.target.value][1].slice(); sync(); update(); } });
+      q.forEach((_, i) => { const s = side.querySelector('#' + id + '-q' + i); s.addEventListener('input', () => { q[i] = P.types[i] === 'R' ? +s.value * D : +s.value; s.nextElementSibling.textContent = (+s.value).toFixed(P.types[i] === 'R' ? 1 : 2) + unit(i); update(); }); });
+      qd.forEach((_, i) => { const s = side.querySelector('#' + id + '-r' + i); s.addEventListener('input', () => { qd[i] = +s.value; s.nextElementSibling.textContent = s.value; update(); }); });
+    }
+    function sync() { q.forEach((v, i) => { const s = side.querySelector('#' + id + '-q' + i); if (s) { s.value = toDisp(v, i).toFixed(P.types[i] === 'R' ? 1 : 2); s.nextElementSibling.textContent = (+s.value).toFixed(P.types[i] === 'R' ? 1 : 2) + unit(i); } }); }
+    function load(k, qq, rr) { key = k; P = PRE[k]; q = (qq || P.q).slice(); qd = (rr || P.qd).slice(); sc.home = P.home || [2.2, -2.6, 1.9]; build(); sc.fit(sweep(P.ops, q)); update(); }
+    function ellipsoid(a) {
+      if (!sc.ok) return;
+      const e = a.eig, ax = [], sg = [];
+      for (let k = 0; k < e.vals.length; k++) { const v = [0, 0, 0]; P.rows.forEach((r, i) => v[r] = e.vecs[k][i]); ax.push(v); sg.push(Math.sqrt(e.vals[k])); }
+      if (ax.length === 2) { ax.push([0, 0, 1]); sg.push(0); }
+      const s = sg.map(x => Math.max(x * KV, 0.004)), c = a.tip, m = new THREE.Matrix4();
+      m.set(ax[0][0] * s[0], ax[1][0] * s[1], ax[2][0] * s[2], c[0], ax[0][1] * s[0], ax[1][1] * s[1], ax[2][1] * s[2], c[1], ax[0][2] * s[0], ax[1][2] * s[1], ax[2][2] * s[2], c[2], 0, 0, 0, 1);
+      const col = new THREE.Color(W3D.css('--accent')).getHex();
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.3, depthWrite: false, roughness: 0.6 }));
+      mesh.matrixAutoUpdate = false; mesh.matrix.copy(m); sc.dyn.add(mesh);
+      const wire = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), new THREE.MeshBasicMaterial({ color: col, wireframe: true, transparent: true, opacity: 0.25 }));
+      wire.matrixAutoUpdate = false; wire.matrix.copy(m); sc.dyn.add(wire);
+    }
+    function update() {
+      const a = analyse(P, q, qd), n = q.length;
+      sc.clear();
+      if (sc.ok) {
+        W3D.drawChain(sc, P.ops, q, { scale: 0.5 }); ellipsoid(a);
+        const v3 = [0, 0, 0]; P.rows.forEach((r, i) => v3[r] = a.v[i]); const sp = Math.hypot(...v3);
+        if (sp > 1e-4) sc.arrow(a.tip, v3, sp * KV, new THREE.Color(W3D.css('--exam')).getHex(), 0.25);
+        sc.render();
+      }
+      const rl = ['υx', 'υy', 'υz', 'ωx', 'ωy', 'ωz'];
+      const cells = ['<span></span>'].concat(q.map((_, j) => '<span style="color:var(--muted)">∂/∂' + P.names[j] + '</span>'));
+      for (let i = 0; i < 6; i++) { cells.push('<span style="color:var(--muted)">' + rl[i] + '</span>'); for (let j = 0; j < n; j++) cells.push('<span>' + fmt(a.J[i][j]) + '</span>'); }
+      const sgS = a.sigma.map(x => x.toFixed(4)).join(', '), near = a.m < 0.05;
+      const detTxt = a.det === null ? '—' : fmt(a.det);
+      side.querySelector('.out').innerHTML = '<div class="eyebrow">J(q) in {0}: rows 1–3 linear, rows 4–6 angular (units m/s or rad/s per joint unit)</div>' +
+        '<div class="mat" style="grid-template-columns:repeat(' + (n + 1) + ',auto)">' + cells.join('') + '</div>' +
+        '<div class="mono" style="font-size:.82rem;line-height:1.6">tool point (' + a.tip.map(x => x.toFixed(3)).join(', ') + ') m<br>σ of the ' + a.Jt.length + '×' + n + ' position block = ' + sgS + '<br>m = σmin/σmax = ' + a.m.toFixed(4) + ' · w = Πσ = ' + a.w.toFixed(4) + ' · det = ' + detTxt + '<br>tool velocity (' + P.rows.map(r => ['x', 'y', 'z'][r]).join(', ') + ') = (' + a.v.map(x => x.toFixed(4)).join(', ') + ') m/s</div>' +
+        (near ? '<p class="fb bad">Near singular (m &lt; 0.05): the ellipsoid has collapsed along one axis. The tool cannot move that way, and the joint rates needed for it grow without bound.</p>' : '<p class="fb ok">Not near a singularity (m ≥ 0.05).</p>');
+      window.__state[id] = { preset: key, q: q.slice(), qdot: qd.slice(), J: a.J, sigma: a.sigma, m: a.m, w: a.w, det: a.det, tip: a.tip, v: a.v, singular: near };
+    }
+    build(); update();
+    W3D.instances[id] = { set(k, qq, rr) { load(k, qq, rr); return window.__state[id]; }, state() { return window.__state[id]; } };
+  };
+})();
+</script>

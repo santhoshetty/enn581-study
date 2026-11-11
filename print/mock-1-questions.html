@@ -1,0 +1,58 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Mock exam 1 — questions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>@page{size:A4;margin:16mm 15mm 16mm 15mm}
+body{font-family:'Source Serif 4',Georgia,serif;font-size:11pt;line-height:1.45;color:#000}
+h1{font-family:Archivo,Arial,sans-serif;font-size:16pt;margin:0 0 4pt}
+h3{font-family:Archivo,Arial,sans-serif;font-size:13pt}
+.gp{border-top:1.2px solid #000;padding-top:6pt;margin-top:10pt;break-inside:auto}
+.head b{font-family:Archivo,Arial,sans-serif;font-size:11.5pt}.chip{font:600 8pt Arial;border:1px solid #888;border-radius:3px;padding:1px 4px;margin-left:5px}
+.marks,.chk{display:none}.added{font:8pt Arial;color:#444}
+.work{height:62mm;border:1px dashed #999;margin:6pt 0 2pt;border-radius:3px}
+details>summary{display:none}details{display:block}
+.note{font:9pt Arial;color:#333;border:1px solid #999;padding:6pt;margin:6pt 0}</style>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'},startup:{pageReady:()=>MathJax.startup.defaultPageReady().then(()=>{document.body.dataset.ready='1'})}};</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script></head>
+<body><h1>ENN581 Robot Motion, Control and Planning · Mock exam 1 — questions</h1><p class="note">Indicative marks in [brackets] (the real paper’s marks are not published). 2 hours. Calculator and printed notes allowed. Write all working.</p><h3 id="mock1">Mock exam 1 <span class="pgs">indicative total 64 marks · 2 hours</span></h3>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q1 · Forward kinematics of a SCARA arm</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q1" data-topic="mock"></span></div>
+<p>A SCARA arm stands on a column of height H = 0.40 m. Joint 1 rotates about the vertical axis of the column. A horizontal link of length a<sub>1</sub> = 0.35 m leads to joint 2, which also rotates about a vertical axis. A second horizontal link a<sub>2</sub> = 0.25 m carries joint 3, a prismatic joint that extends the tool <i>downwards</i> by d<sub>3</sub>. The tool frame {T} has z<sub>T</sub> pointing down and x<sub>T</sub> along link 2.</p>
+<p>(a) Write an elementary transform sequence for \({}^0\mathbf T_T\) and a proximal DH table for the arm. [3] &nbsp; (b) Evaluate \({}^0\mathbf T_T\) at θ<sub>1</sub> = 30°, θ<sub>2</sub> = −60°, d<sub>3</sub> = 0.10 m. [3]</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q2 · Inverse kinematics and workspace of the SCARA</b><span class="chip derive">derive</span><span class="chip sketch">sketch</span><span class="chip">8 marks</span><span class="marks" data-id="m1-q2" data-topic="mock"></span></div>
+<p>For the arm of Q1: (a) derive θ<sub>1</sub>, θ<sub>2</sub>, d<sub>3</sub> for a desired tool position (x, y, z) and state how many solutions exist [4]; (b) evaluate them for (0.45, 0.20, 0.25) m [2]; (c) sketch the workspace if 0 ≤ d<sub>3</sub> ≤ 0.20 m and the revolute joints are unlimited [2].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q3 · Mobility</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q3" data-topic="mock"></span></div>
+<p>Find the mobility of: (a) a planar five-bar linkage (five links including ground, five revolute joints) [1]; (b) a 3-RPS parallel platform (each leg: revolute at the base, prismatic, spherical at the platform) [2]; (c) a 3-SPS platform (spherical joints at both ends of each prismatic leg). Explain any correction you apply [3].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q4 · Two cubic segments through a via point</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q4" data-topic="mock"></span></div>
+<p>A joint starts at rest at θ<sub>0</sub> = 0°, passes through θ<sub>v</sub> = 40° and stops at θ<sub>g</sub> = 30°. Each segment lasts 1 s and the acceleration is continuous at the via point. (a) List the conditions [2]. (b) Find all eight coefficients [3]. (c) What is the joint speed at the via point? [1]</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q5 · Jacobian, singularity and static force</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">7 marks</span><span class="marks" data-id="m1-q5" data-topic="mock"></span></div>
+<p>A planar 2R arm has L<sub>1</sub> = 0.5 m, L<sub>2</sub> = 0.4 m. (a) Derive its 2×2 position Jacobian and its singular configurations [3]. (b) At q = (30°, 60°), find the joint torques needed to hold a tip force F = (0, −10) N, and explain why τ<sub>2</sub> comes out as it does [2]. (c) Find \(\dot{\mathbf q}\) for a tip velocity (0.1, 0) m/s at that pose [2].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q6 · Equations of motion of an RP arm</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">8 marks</span><span class="marks" data-id="m1-q6" data-topic="mock"></span></div>
+<p>An RP arm moves in a vertical plane. Joint 1 rotates the arm by θ from the horizontal. Joint 2 slides a point mass m along the arm to distance d from joint 1. The arm itself is massless; gravity acts along −y. (a) Derive the equations of motion by Lagrange and identify M, C (velocity terms) and g [6]. (b) Evaluate τ<sub>1</sub> and f<sub>2</sub> for m = 2 kg at θ = 30°, d = 0.6 m, \(\dot\theta\) = 0.5 rad/s, \(\dot d\) = 0.2 m/s, \(\ddot\theta\) = 1.0 rad/s², \(\ddot d\) = −0.3 m/s² [2].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q7 · Partitioned control of one joint</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip">7 marks</span><span class="marks" data-id="m1-q7" data-topic="mock"></span></div>
+<p>A joint obeys \(m\ddot x+b\dot x+kx=f\) with m = 2 kg, b = 0.5 N·s/m, k = 4 N/m. (a) Write a partitioned control law for trajectory following and the closed-loop error equation [3]. (b) Choose k<sub>p</sub>, k<sub>v</sub> for critical damping with ω<sub>n</sub> = 8 rad/s [1]. (c) Find the steady-state error under a constant 5 N disturbance, and say how to remove it [2]. (d) Compute f at x = 0.10 m, \(\dot x\) = −0.20 m/s when x<sub>d</sub> = 0.15 m, \(\dot x_d=\ddot x_d=0\) [1].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q8 · Differential-drive robot</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q8" data-topic="mock"></span></div>
+<p>Wheels of radius r = 0.08 m sit at (0, ±a) with a = 0.20 m (left wheel 1 at +a). (a) From the generalised wheel model, derive the chassis velocity from the wheel speeds [2]. (b) For \(\dot\varphi\) = (5, 7.5) rad/s find u, θ̇ and the ICR [2]. (c) Find the wheel speeds for u = 0.3 m/s, θ̇ = −0.5 rad/s [1]. (d) Write the robot’s non-holonomic constraint in the inertial frame [1].</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q9 · A* by hand</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="chip">6 marks</span><span class="marks" data-id="m1-q9" data-topic="mock"></span></div>
+<p>Undirected edges with costs: S–A 2, S–B 5, A–C 4, A–D 7, B–D 3, C–G 6, D–G 2. Heuristic h: S 7, A 6, B 4, C 5, D 2, G 0. (a) Run A* from S to G; give the expansion order with g, h, f, and the path and cost [4]. (b) Is h admissible? Consistent? [2]</p>
+<div class="work"></div></div>
+
+<div class="gp mq" data-topic="mock1"><div class="head"><b>Q10 · Wheeled-robot dynamics (short)</b><span class="chip explain">explain</span><span class="chip">4 marks</span><span class="marks" data-id="m1-q10" data-topic="mock"></span></div>
+<p>The chassis frame {C} moves with velocity (u, v) and turns at θ̇. Show that the acceleration of the chassis origin, written in {C}, is \((\dot u-v\dot\theta,\;\dot v+u\dot\theta)\), and explain why a robot driving in a circle at constant u needs a sideways force even though v = 0.</p>
+<div class="work"></div></div>
+
+</body></html>

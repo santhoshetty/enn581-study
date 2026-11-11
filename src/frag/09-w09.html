@@ -1,0 +1,696 @@
+<p class="eyebrow">Week 9 · Control, part 2</p>
+<h2>How do we control a robot whose dynamics are non-linear and coupled?</h2>
+<p class="lead">Week 8 gave a servo law that works for a plain mass-spring-damper. A real arm adds gravity, friction and coupled inertia. The fix is <b>computed-torque (partitioned) control</b>: use the model to cancel everything predictable, then let a simple PD law steer what is left. This week extends that idea to many joints, to Cartesian space, to force control and to mixed force/position tasks, and asks what goes wrong when the model is wrong.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Control, Part 2<small>50 slides · Dr KM Digumarti · plus the one-page practical sheet “Week 9 Practical on dynamics and control” (no notebook)</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w09-lec">📖 View here</button>
+    <button type="button" class="btn" data-view="w09-prac">📖 View practical sheet</button>
+    <button type="button" class="btn" data-dl="notes/w09-lec.pdf" data-name="ENN581 W9 Control Part 2.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w09-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>No sample question on control.</b> The W13 revision lists ten sample questions (<a class="pg" data-doc="w13-lec" data-page="4">W13 pp. 4–20</a>): FK, workspace, IK, equations of motion, parallel robots, mobility, cubic paths, mobile robots. None is a control question. The nearest archetypes are <b>Q4 “Derive the equations of motion”</b> (<a class="pg" data-doc="w13-lec" data-page="8">W13 p.8</a>), which is the first half of any control question here (you need M, C, g before you can write the law), and <b>Q8–Q9 cubic paths</b> (<a class="pg" data-doc="w13-lec" data-page="18">W13 pp. 18–19</a>), which produce the \(\mathbf q_d,\dot{\mathbf q}_d,\ddot{\mathbf q}_d\) that the law consumes. Expect: “write the partitioned control law for this system”, “what is the closed-loop equation, and what changes if the model is wrong?”, “which of two force laws has the smaller steady-state error?”, “choose S and S′ for this task”.</p>
+  <p><b>Where the marks are (indicative; marks not published):</b> identifying \(\alpha\) (the coefficient of acceleration) and \(\beta\) (everything else); the servo law with the right error sign; the closed-loop equation \(\ddot e + k_v\dot e + k_p e = 0\); units; for imprecise-model questions, the right-hand side of the error equation with hats; for force control, the two steady-state formulas and their comparison.</p>
+  <p><b>Where marks are lost:</b> putting a term in \(\alpha\) that belongs in \(\beta\); using \(\mathrm{diag}(\mathbf M)\) as \(\alpha\); defining \(E\) as actual minus desired; claiming the closed loop is decoupled when the model is inexact; swapping the two steady-state error formulas; forgetting that \(f'\) is an acceleration and \(f\) a force.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (optional, no coding in the exam)</span>
+  <p>The week’s practical is a <b>one-page sheet</b> (<a class="pg" data-doc="w09-prac" data-page="1">view</a>), not a notebook. A 3-link planar arm (L = 3, 2, 1 m; point masses 3, 2, 1 kg at the distal ends) moves from pose (5, 1, 90°) to (−3, 3, 180°) on a cubic joint trajectory. You derive its Lagrangian model, write a partitioned law for the first link, build a forward-dynamics simulator, plot the error, try an imprecise mass of 2.8 kg, and extend the law to all joints. No saved results exist, so every number below was computed here; all items (a)–(i) are solved in the guided problems. The sheet says “week 6” for trajectories and “week 8” for torques; on this site those are the W5 and W7 tabs.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>Cancel, then steer</h4>Carrying a bag of known weight, you first add the force that holds it up, then walk wherever you like. Computed torque adds the torque that cancels gravity, friction and inertia in advance. What remains behaves like a weightless unit mass: \(\ddot q = \) whatever the servo asks for.</div>
+    <div class="card"><h4>The servo is a tuned spring</h4>Once the plant is a unit mass, the PD part is just a spring-damper pulling the error to zero: \(\ddot e + k_v\dot e + k_p e = 0\). Pick \(k_v = 2\sqrt{k_p}\) and the error settles with no overshoot, like a well-set door closer.</div>
+    <div class="card"><h4>A wrong scale leaves a push</h4>If you think a box is 7% lighter than it is, you under-lift every time. The leftover is a steady push on the error equation, proportional to your mismatch. A stiffer spring (bigger \(k_p\)) shrinks the sag but never removes it.<span class="inprac">In the practical: part (h) uses 2.8 kg against the true 3 kg.</span></div>
+    <div class="card"><h4>Slow planner, fast reflex</h4>A pianist plans the piece slowly, but the fingers correct in milliseconds. The dynamics model is expensive, so run it slowly along the planned path. The cheap error-times-gain servo runs fast.</div>
+    <div class="card"><h4>Pushing on a wall</h4>Press a hand on a stiff wall: a tiny motion makes a big force change, so the force controller must act on tiny motions (hence the factor \(k_e^{-1}\)). Wiping a window needs both: press with force normal to the glass, glide with position along it.<span class="inprac">In the practical: none; the humanoid on p. 46 is the lecture’s example.</span></div>
+  </div>
+  <div class="vids" data-vids="w09"></div>
+</div>
+
+<div class="widget" data-w3d="ctc" id="w9-ctc">
+  <div class="wh"><b>Computed-torque lab: single link tracking a sine</b><span class="eyebrow">three controllers, one plant, one RK4 integrator</span></div>
+  <div class="wbody"><div class="stage"></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> set the initial error to 0 and leave the model exact (k = 1, friction factor = 1). Curve (c), full computed torque, lies on zero (RMS 0.000 mrad) while (a) PD alone has RMS 124.8 mrad and (b) PD + gravity 39.3 mrad. Now set the initial error to 0.1 rad: (c) decays as \(e_0(1+\omega_n t)e^{-\omega_n t}\), 9.158 mrad at 0.5 s. Set k = 0.93 (the 2.8 kg against 3 kg of the practical): RMS of (c) rises to 8.78 mrad, but still beats (b). Set the friction factor to 0 and (c) gets worse (22.6 mrad) than a 7% mass error: friction matters. Finally set the controller period to 50 ms with the exact model: (c) RMS 3.29 mrad.</div>
+</div>
+
+<!-- ================= 1 ================= -->
+<div class="sub" id="w9-siso">
+<h3>1 · Partitioned control of a non-linear single-input system <span class="pgs"><a class="pg" data-doc="w09-lec" data-page="5">pp. 5–11</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>The controller is cut into two parts (<a class="pg" data-doc="w09-lec" data-page="10">p.10</a>). The <b>model-based part</b> (\(\alpha\), \(\beta\)) knows the physics and cancels it. The <b>servo part</b> (\(f'\)) sees only a perfect unit mass and steers it with the usual PD law. The slide’s summary (<a class="pg" data-doc="w09-lec" data-page="49">p.49</a>): the model-based part cancels the non-linearity, the servo part ensures stability.</p>
+<figure class="svg"><svg viewBox="0 0 660 262" role="img" aria-label="Computed torque block diagram: servo part, model-based part, robot, feedback">
+  <defs><marker id="w9ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <g style="color:var(--ink)" stroke="currentColor" fill="none" stroke-width="1.5">
+    <line x1="52" y1="65" x2="95" y2="65" marker-end="url(#w9ar)"/>
+    <line x1="260" y1="65" x2="295" y2="65" marker-end="url(#w9ar)"/>
+    <line x1="380" y1="65" x2="416" y2="65" marker-end="url(#w9ar)"/>
+    <line x1="430" y1="150" x2="430" y2="79" marker-end="url(#w9ar)"/>
+    <line x1="444" y1="65" x2="500" y2="65" marker-end="url(#w9ar)"/>
+    <line x1="595" y1="65" x2="640" y2="65"/>
+    <polyline points="620,65 620,245 178,245 178,106" marker-end="url(#w9ar)"/>
+    <polyline points="362,245 362,191" marker-end="url(#w9ar)"/>
+  </g>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">
+    <rect x="95" y="25" width="165" height="80" rx="6" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="103" y="45" font-weight="600" fill="var(--accent)">Servo: stabilises</text>
+    <text x="103" y="67" font-size="11">Q′ = q̈<tspan dy="4" font-size="9">d</tspan><tspan dy="-4"> + K</tspan><tspan dy="4" font-size="9">v</tspan><tspan dy="-4">ė + K</tspan><tspan dy="4" font-size="9">p</tspan><tspan dy="-4">e</tspan></text>
+    <text x="103" y="90" font-size="11">e = q<tspan dy="4" font-size="9">d</tspan><tspan dy="-4"> − q</tspan></text>
+    <text x="2" y="52" font-size="11">q<tspan dy="4" font-size="9">d</tspan><tspan dy="-4">, q̇</tspan><tspan dy="4" font-size="9">d</tspan><tspan dy="-4">, q̈</tspan><tspan dy="4" font-size="9">d</tspan></text>
+    <rect x="285" y="30" width="172" height="176" rx="6" fill="none" stroke="var(--exam)" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="289" y="22" font-weight="600" fill="var(--exam)">Model-based: linearises</text>
+    <rect x="295" y="45" width="85" height="40" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+    <text x="337" y="70" text-anchor="middle">α = M(q)</text>
+    <circle cx="430" cy="65" r="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+    <text x="425" y="69">+</text>
+    <text x="437" y="104" font-size="11">+</text>
+    <rect x="295" y="150" width="135" height="40" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+    <text x="362" y="175" text-anchor="middle">β = C + g + f</text>
+    <rect x="500" y="40" width="95" height="50" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+    <text x="547" y="62" text-anchor="middle">Robot</text><text x="547" y="79" text-anchor="middle" font-size="10">Mq̈+C+g+f = Q</text>
+    <text x="268" y="58" font-size="11">Q′</text><text x="466" y="58" font-size="11">Q</text>
+    <text x="598" y="58" font-size="11">q, q̇</text>
+    <text x="430" y="238" font-size="11" fill="var(--muted)">q, q̇ measured</text>
+  </g></svg><figcaption>Schematic, not to scale. The same picture holds for one joint (scalars) and for n joints (n×1 vectors, α an n×n matrix). Redrawn from slides <a class="pg" data-doc="w09-lec" data-page="11">11</a> and <a class="pg" data-doc="w09-lec" data-page="20">20</a>.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation: cubic spring</span>
+<p>Slide 8: a mass-spring-damper is linear, \(m\ddot x + b\dot x + kx = f\) (m kg, b N·s/m, k N/m, f N, x m). Slide 9 makes the spring cubic, so the plant is non-linear:</p>
+\[ m\ddot x + b\dot x + kx^{3} = f \qquad (k\ \text{in N/m}^3) \]
+<p>Step 1: isolate the acceleration term, \(m\,\ddot x + (b\dot x + kx^3) = f\). Step 2: partition \(f = \alpha f' + \beta\) with \(\alpha = m\) and \(\beta = b\dot x + kx^3\) (<a class="pg" data-doc="w09-lec" data-page="10">p.10</a>). Step 3: substitute,</p>
+\[ m\ddot x + \beta = m f' + \beta \;\Rightarrow\; \ddot x = f'. \]
+<p>The plant now looks like a pure double integrator, whatever the spring does. \(f'\) (“f-prime”) is a commanded <i>acceleration</i> in m/s². Step 4: the servo law is the Week 8 law,</p>
+\[ f' = \ddot x_d + k_v\dot e + k_p e,\qquad e = x_d - x \;\Rightarrow\; \ddot e + k_v\dot e + k_p e = 0 . \]
+<p>Critical damping needs \(k_v = 2\sqrt{k_p}\) (Week 8; slide 8 only says “like being critically damped”). Units: \(k_p\) in s⁻², \(k_v\) in s⁻¹. Check: \(\alpha f'\) is kg·m/s² = N. ✓</p>
+<p><b>Limitation (<a class="pg" data-doc="w09-lec" data-page="15">p.15</a>):</b> you must know the <i>structure</i> (cubic spring, Coulomb friction) and the <i>parameters</i> (\(k\), \(b_c\), …). In practice they are not always known. Section 4 shows what that costs.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write the plant with the acceleration term isolated: (coefficient)·\(\ddot x\) + (everything else) = input.</li>
+<li>\(\alpha\) = the coefficient of \(\ddot x\). \(\beta\) = everything else, including every non-linear term and every sign.</li>
+<li>Servo: \(f' = \ddot x_d + k_v\dot e + k_p e\) with \(e = x_d - x\) (desired minus actual).</li>
+<li>Law: \(f = \alpha f' + \beta\). Write \(\beta\) in terms of the <i>measured</i> \(x,\dot x\), not the desired ones.</li>
+<li>Show the closed loop: \(\ddot x = f'\), hence \(\ddot e + k_v\dot e + k_p e = 0\).</li>
+<li>Sanity check units: \(\alpha f'\) must have the units of \(f\).</li>
+</ol></div>
+<div class="worked"><span class="tag">Worked example (numbers are mine; the slides are symbolic)</span>
+<p>m = 2 kg, b = 4 N·s/m, k = 50 N/m³, \(k_p = 100\) s⁻², \(k_v = 20\) s⁻¹. Now: x = 0.10 m, ẋ = 0.30 m/s; desired \(x_d = 0.12\) m, \(\dot x_d = 0.40\) m/s, \(\ddot x_d = 0.50\) m/s².</p>
+<p>\(e = 0.02\) m, \(\dot e = 0.10\) m/s. \(f' = 0.50 + 20(0.10) + 100(0.02) = 4.5\) m/s². \(\beta = 4(0.30) + 50(0.10)^3 = 1.25\) N. \(f = 2(4.5) + 1.25 = 10.25\) N.</p>
+<p>Plant: \(\ddot x = (f - b\dot x - kx^3)/m = (10.25 - 1.2 - 0.05)/2 = 4.5\) m/s² \(= f'\). ✓ Then \(\ddot e = 0.5 - 4.5 = -4.0\), and \(\ddot e + 20(0.10) + 100(0.02) = -4 + 2 + 2 = 0\). ✓ <span class="chk">checked</span></p>
+</div>
+<div class="angle">Typical question: “Given \(m\ddot x + b\dot x + kx^3 = f\) (or another EoM), write the partitioned law.” Marks are for \(\alpha = m\), \(\beta\) = the rest, and the servo with \(\ddot x_d\). Trap: the law uses \(f'\), an acceleration, inside \(\alpha f'\). Do not add \(k_p e\) to \(f\) directly without multiplying by \(\alpha\).</div>
+</div>
+
+<!-- ================= 2 ================= -->
+<div class="sub" id="w9-link">
+<h3>2 · A single link with gravity and friction <span class="pgs"><a class="pg" data-doc="w09-lec" data-page="12">pp. 12–15</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>One rigid link of length L, pivoted at the origin, with a point mass m at its tip. The angle q is measured <b>counter-clockwise from the horizontal</b> (<a class="pg" data-doc="w09-lec" data-page="12">p.12</a>). Gravity pulls the mass down with force mg. Its lever arm about the pivot is the horizontal distance \(L\cos q\), so the gravity torque is \(mgL\cos q\): largest when the link is horizontal (q = 0), zero when vertical (q = 90°).</p>
+<figure class="svg"><svg viewBox="0 0 360 230" role="img" aria-label="Single link, angle q from the horizontal, weight at the tip, lever arm L cos q">
+  <defs><marker id="w9ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <g style="color:var(--ink)" stroke="currentColor" fill="none" stroke-width="1.5">
+    <line x1="30" y1="184" x2="100" y2="184"/><line x1="36" y1="184" x2="28" y2="194"/><line x1="48" y1="184" x2="40" y2="194"/><line x1="60" y1="184" x2="52" y2="194"/><line x1="72" y1="184" x2="64" y2="194"/><line x1="84" y1="184" x2="76" y2="194"/>
+    <line x1="233" y1="86" x2="233" y2="152" marker-end="url(#w9ar2)"/>
+    <line x1="300" y1="96" x2="300" y2="150" marker-end="url(#w9ar2)"/>
+    <path d="M 38,166 A 24 24 0 0 1 50,146" marker-end="url(#w9ar2)"/>
+  </g>
+  <g style="color:var(--muted)" stroke="currentColor" fill="none" stroke-width="1" stroke-dasharray="4 3">
+    <line x1="60" y1="170" x2="280" y2="170"/><line x1="233" y1="70" x2="233" y2="170" opacity="0.5"/>
+  </g>
+  <g style="color:var(--muted)" stroke="currentColor" fill="none" stroke-width="1">
+    <line x1="60" y1="208" x2="233" y2="208" marker-start="url(#w9ar2)" marker-end="url(#w9ar2)"/>
+    <path d="M 110,170 A 50 50 0 0 0 103.3,145"/>
+  </g>
+  <line x1="60" y1="170" x2="233.2" y2="70" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="233.2" cy="70" r="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+  <circle cx="60" cy="170" r="6" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">
+    <text x="118" y="162">q</text><text x="132" y="108">L</text><text x="240" y="130">m g</text><text x="308" y="124">g</text>
+    <text x="16" y="154">τ</text><text x="105" y="224" fill="var(--muted)">L cos q (lever arm)</text><text x="252" y="64">m</text>
+  </g></svg><figcaption>Schematic, drawn at q = 30°. The weight is a vertical force, so only the horizontal distance \(L\cos q\) from the pivot creates torque. Redrawn from slide <a class="pg" data-doc="w09-lec" data-page="12">12</a>.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation: equation of motion (Lagrangian, as on the handwritten slide 13)</span>
+<p>Tip position \(x = L\cos q,\ y = L\sin q\), so \(\dot x = -L\sin q\,\dot q\) and \(\dot y = L\cos q\,\dot q\) (m, m/s). Kinetic and potential energy:</p>
+\[ K = \tfrac12 m(\dot x^2+\dot y^2) = \tfrac12 mL^2\dot q^2,\qquad P = mgy = mgL\sin q,\qquad \mathcal L = K - P . \]
+<p>The generalised torque is \(Q = \dfrac{d}{dt}\dfrac{\partial\mathcal L}{\partial\dot q} - \dfrac{\partial\mathcal L}{\partial q}\). Here \(\partial\mathcal L/\partial\dot q = mL^2\dot q\), so its derivative is \(mL^2\ddot q\), and \(\partial\mathcal L/\partial q = -mgL\cos q\). Hence \(Q = mL^2\ddot q + mgL\cos q\). Friction opposes motion, so the actuator torque must also overcome it (<a class="pg" data-doc="w09-lec" data-page="12">p.12</a>): viscous \(\tau_v = b_v\dot q\) and Coulomb \(\tau_c = b_c\,\mathrm{sgn}(\dot q)\):</p>
+\[ \tau = mL^2\ddot q + b_v\dot q + b_c\,\mathrm{sgn}(\dot q) + mgL\cos q \qquad\text{(N·m)} \]
+<p><span class="chk">checked</span> (Lagrangian result, symbolically) Units: m kg, L m, \(b_v\) N·m·s/rad, \(b_c\) N·m, g = 9.81 m/s². <span class="added">added</span> If the link also has its own mass or inertia, \(mL^2\) becomes the total inertia about the pivot.</p>
+<p>Partition (<a class="pg" data-doc="w09-lec" data-page="14">p.14</a>): \(\tau = \alpha\tau' + \beta\) with</p>
+\[ \alpha = mL^2,\qquad \beta = b_v\dot q + b_c\,\mathrm{sgn}(\dot q) + mgL\cos q,\qquad \tau' = \ddot q_d + k_v\dot e + k_p e,\quad e = q_d - q . \]
+<p>Substituting into the EoM gives \(mL^2\ddot q = mL^2\tau'\), so \(\ddot q = \tau'\) and \(\ddot e + k_v\dot e + k_p e = 0\) again.</p>
+<p><span class="added">added</span> \(\mathrm{sgn}(\dot q)\) jumps at \(\dot q = 0\). With a noisy velocity measurement the term chatters between \(\pm b_c\). Practical implementations smooth it (the widget above uses \(\tanh(\dot q/0.01)\) in plant and controller alike).</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Get the EoM (Lagrangian if not given): \(K\), \(P\), then \(\tfrac{d}{dt}\partial\mathcal L/\partial\dot q - \partial\mathcal L/\partial q\).</li>
+<li>Add friction torques on the side that the actuator must overcome.</li>
+<li>\(\alpha\) = coefficient of \(\ddot q\); \(\beta\) = the rest (velocity terms, gravity, friction).</li>
+<li>\(\tau' = \ddot q_d + k_v\dot e + k_p e\).</li>
+<li>\(\tau = \alpha\tau' + \beta\). Quote it with the measured \(q,\dot q\) inside \(\beta\).</li>
+<li>Check: at rest on the path (\(e = 0\), \(\ddot q_d = 0\), \(\dot q = 0\)) the torque must equal the gravity torque \(mgL\cos q\).</li>
+</ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>m = 2 kg, L = 0.5 m, \(b_v = 0.3\) N·m·s/rad, \(b_c = 0.2\) N·m, g = 9.81 m/s². State: q = 30°, \(\dot q\) = 1 rad/s. Desired \(\ddot q_d\) = 2 rad/s², e = 0.05 rad, \(\dot e\) = −0.1 rad/s; \(k_p\) = 64 s⁻², \(k_v\) = 16 s⁻¹.</p>
+<p>\(\alpha = 2(0.5)^2 = 0.5\) kg·m². \(\tau' = 2 + 16(-0.1) + 64(0.05) = 3.6\) rad/s². \(\beta = 0.3(1) + 0.2(+1) + 2(9.81)(0.5)\cos30^\circ = 0.5 + 8.4957 = 8.9957\) N·m. \(\tau = 0.5(3.6) + 8.9957 = 10.7957\) N·m.</p>
+<p>Check with the plant: \(\ddot q = (\tau - \beta)/\alpha = 1.8/0.5 = 3.6 = \tau'\). ✓ <span class="chk">checked</span></p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>Friction is written \(\mathbf f(\dot{\mathbf q})\) on p. 19 and on the “true” side of p. 27, but \(\hat{\mathbf f}(\mathbf q,\dot{\mathbf q})\) in \(\hat\beta\) (p. 27), in the error equation (p. 28) and on the practical sheet. The friction in this deck (viscous, Coulomb) depends on velocity only, so both mean the same. The extra \(\mathbf q\) is generality (a friction that varies with position). Write \(\mathbf f(\mathbf q,\dot{\mathbf q})\) if the question does, otherwise \(\mathbf f(\dot{\mathbf q})\). Slide 18 also writes the generalised force as F where p. 19 writes Q; same object.</p></div>
+<div class="angle">Calculation: given the EoM and a state, compute \(\tau\). Common slips: using degrees in \(\cos q\) on a radian calculator, forgetting that \(\mathrm{sgn}(\dot q)\) takes the sign of the <i>velocity</i> (not of q or e), and using \(\ddot q_d\) in \(\beta\). Explain: “why does the law need the parameters?” (p. 15).</div>
+</div>
+
+<!-- ================= 3 ================= -->
+<div class="sub" id="w9-mimo">
+<h3>3 · The n-joint manipulator: computed torque <span class="pgs"><a class="pg" data-doc="w09-lec" data-page="16">pp. 16–21</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Every line in the block diagram is now an \(n\times1\) vector (<a class="pg" data-doc="w09-lec" data-page="17">p.17</a>). The model-based part has two jobs: multiply the commanded accelerations by the <b>inertia matrix</b> \(\mathbf M(\mathbf q)\), and add the velocity, gravity and friction torques. The first job undoes the coupling: pushing joint 1 also needs torque on joints 2 and 3 (the off-diagonal terms of \(\mathbf M\)), and \(\mathbf M\) supplies exactly that.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>The manipulator dynamics from Week 8 (<a class="pg" data-doc="w09-lec" data-page="19">p.19</a>), all \(n\times1\) except \(\mathbf M\) (\(n\times n\)):</p>
+\[ \mathbf Q = \mathbf M(\mathbf q)\ddot{\mathbf q} + \mathbf C(\mathbf q,\dot{\mathbf q}) + \mathbf g(\mathbf q) + \mathbf f(\dot{\mathbf q}) \]
+<p>Partition \(\mathbf Q = \boldsymbol\alpha\mathbf Q' + \boldsymbol\beta\) with \(\boldsymbol\alpha = \mathbf M(\mathbf q)\), \(\boldsymbol\beta = \mathbf C + \mathbf g + \mathbf f\), and servo \(\mathbf Q' = \ddot{\mathbf q}_d + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E\) (<a class="pg" data-doc="w09-lec" data-page="18">pp. 18</a>–<a class="pg" data-doc="w09-lec" data-page="19">19</a>). Substituting: \(\mathbf M\ddot{\mathbf q} + \boldsymbol\beta = \mathbf M\mathbf Q' + \boldsymbol\beta\). \(\mathbf M\) is symmetric positive definite, hence invertible, so \(\ddot{\mathbf q} = \mathbf Q'\) and</p>
+\[ \ddot{\mathbf E} + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E = \mathbf 0 \quad(\text{slide }21). \]
+<p>With diagonal gains each row is independent: \(\ddot e_i + k_{v,i}\dot e_i + k_{p,i}e_i = 0\). A coupled, non-linear robot becomes \(n\) separate linear second-order systems. <span class="chk">checked</span> (20 random states on the 3-link arm)</p>
+<p>Three facts the slides stress (<a class="pg" data-doc="w09-lec" data-page="18">p.18</a>, <a class="pg" data-doc="w09-lec" data-page="20">p.20</a>): \(\boldsymbol\alpha\) is chosen to decouple the n equations and is <b>not</b> diagonal; \(\mathbf K_v,\mathbf K_p\) are <i>usually</i> diagonal; the model-based box “linearises the system”, the servo box “stabilises the closed-loop system”.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write the EoM as \(\mathbf M\ddot{\mathbf q} + \mathbf C + \mathbf g + \mathbf f = \mathbf Q\) and identify the matrices.</li>
+<li>\(\boldsymbol\alpha = \mathbf M(\mathbf q)\) (full matrix), \(\boldsymbol\beta = \mathbf C + \mathbf g + \mathbf f\).</li>
+<li>\(\mathbf Q' = \ddot{\mathbf q}_d + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E\); choose \(\mathbf K\) diagonal, e.g. \(k_p=\omega_n^2\), \(k_v = 2\omega_n\).</li>
+<li>\(\mathbf Q = \mathbf M(\mathbf q)\,\mathbf Q' + \boldsymbol\beta\).</li>
+<li>State the closed loop \(\ddot{\mathbf E} + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E = \mathbf 0\) and say “decoupled because the gains are diagonal”.</li>
+<li>Qualify: “only if the model is exact and the law runs continuously”.</li>
+</ol></div>
+<div class="worked"><span class="tag">Worked example: why \(\boldsymbol\alpha\) is not diagonal (practical arm, initial pose)</span>
+<p>For the 3-link arm of the practical sheet at \(\mathbf q = (0, 0, 90^\circ)\) (derived in problem P9.2) \(\mathbf M = \begin{bmatrix}103&31&1\\31&13&1\\1&1&1\end{bmatrix}\) kg·m². Ask for a unit acceleration of joint 1 only, \(\mathbf Q' = (1,0,0)\) rad/s². Then \(\mathbf Q - \boldsymbol\beta = \mathbf M\mathbf Q' = (103, 31, 1)\) N·m. To accelerate joint 1 by 1 rad/s² and keep joints 2 and 3 still, the controller must also apply 31 N·m at joint 2 and 1 N·m at joint 3. A \(\mathrm{diag}(\mathbf M)\) would skip those. <span class="chk">checked</span></p>
+</div>
+<div class="angle">Explain / spot-the-error: “the closed loop is linear and decoupled” is true only for a perfect model (slide 21). “\(\alpha\) is diagonal because \(K_p,K_v\) are” is false. If asked “what does the red box do and the green box do?”: red (model-based) linearises, green (servo) stabilises.</div>
+</div>
+
+<!-- ================= 4 ================= -->
+<div class="sub" id="w9-practical-issues">
+<h3>4 · When the ideal fails: imprecise model and discretisation <span class="pgs"><a class="pg" data-doc="w09-lec" data-page="22">pp. 22–28</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Two things break the clean result \(\ddot E + K_v\dot E + K_pE = 0\) (<a class="pg" data-doc="w09-lec" data-page="22">p.22</a>). (1) The model is inexact: friction is hard to model, the robot wears, a grasped object shifts the mass (<a class="pg" data-doc="w09-lec" data-page="26">p.26</a>). (2) The law runs on a computer: sensors are sampled, torques updated at discrete times, and the dynamics computation takes finite time (<a class="pg" data-doc="w09-lec" data-page="23">p.23</a>). The dynamics part is the slow one; error × gain is quick (<a class="pg" data-doc="w09-lec" data-page="24">p.24</a>).</p>
+<p>The slide’s fix for (2) (<a class="pg" data-doc="w09-lec" data-page="25">p.25</a>): move the model-based block to the <b>outer loop</b>. Its input is the <i>desired</i> trajectory \(\ddot{\mathbf q}_d,\dot{\mathbf q}_d,\mathbf q_d\), so it can be evaluated ahead of time or at a slower rate, and the fast servo loop (\(K_p,K_v\) on the measured error) runs inside. <span class="added">reading of the diagram</span> The cancellation is then only approximate (the model is evaluated along the plan, not the actual state), so the servo has to mop up the difference.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation: error equation with hats (slide 28)</span>
+<p>Hats mean estimates. The law uses \(\boldsymbol\alpha = \hat{\mathbf M}(\mathbf q)\), \(\boldsymbol\beta = \hat{\mathbf C} + \hat{\mathbf g} + \hat{\mathbf f}\) (<a class="pg" data-doc="w09-lec" data-page="27">p.27</a>) with the same servo \(\mathbf Q'\). The true plant is \(\mathbf M\ddot{\mathbf q} + \mathbf C + \mathbf g + \mathbf f = \mathbf Q\). Equate the two:</p>
+\[ \mathbf M\ddot{\mathbf q} + \mathbf C + \mathbf g + \mathbf f = \hat{\mathbf M}\big(\ddot{\mathbf q}_d + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E\big) + \hat{\mathbf C} + \hat{\mathbf g} + \hat{\mathbf f}. \]
+<p>Add and subtract \(\hat{\mathbf M}\ddot{\mathbf q}\) on the left, move the hatted torques across, multiply by \(\hat{\mathbf M}^{-1}\) and use \(\ddot{\mathbf E} = \ddot{\mathbf q}_d - \ddot{\mathbf q}\):</p>
+\[ \ddot{\mathbf E} + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E = \hat{\mathbf M}^{-1}\Big[(\mathbf M-\hat{\mathbf M})\ddot{\mathbf q} + (\mathbf C-\hat{\mathbf C}) + (\mathbf g-\hat{\mathbf g}) + (\mathbf f-\hat{\mathbf f})\Big] \quad(\text{slide }28). \]
+<p><span class="chk">checked</span> (20 random states, 2-link arm with mismatched masses) Read it as a servo loop driven by a <b>forcing term</b>: each model mismatch pushes on the error. If every hat is exact the right side is zero. The error no longer decays to zero; for a bounded forcing it settles at roughly (forcing)/\(k_p\), so a bigger \(k_p\) shrinks it (at the price of noise sensitivity and torque limits). Note the \(\ddot{\mathbf q}\) on the right is the actual acceleration.</p>
+<p><b>Single link with only the mass wrong</b>, \(\hat m = km\) (<span class="added">added</span>: the special case of the slide’s equation). Here \(\alpha = mL^2\), \(\hat\alpha = kmL^2\), and \(\beta-\hat\beta = (m-\hat m)gL\cos q\). Dividing the bracket by \(\hat\alpha\):</p>
+\[ \ddot e + k_v\dot e + k_p e = \frac{m-\hat m}{\hat m}\Big[\ddot q + \frac gL\cos q\Big] . \]
+<p><span class="chk">checked</span> (20 random states) The coefficient \((m-\hat m)/\hat m\) is the relative error in mass; the bracket is the acceleration the mass actually has plus the gravity acceleration at the pivot. If \(\hat m\lt m\) gravity is under-compensated, the link sags, and \(e = q_d - q\) becomes positive.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write the law with hats: \(\boldsymbol\alpha = \hat{\mathbf M}\), \(\boldsymbol\beta = \hat{\mathbf C}+\hat{\mathbf g}+\hat{\mathbf f}\).</li>
+<li>Equate to the true dynamics and isolate \(\ddot{\mathbf E} + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E\).</li>
+<li>Quote the slide-28 right side, term by term (mass, Coriolis, gravity, friction mismatch).</li>
+<li>For a numeric case, plug in the mismatch: \((m-\hat m)/\hat m\) and the bracket.</li>
+<li>Static error: set \(\ddot e = \dot e = 0\), \(\ddot q = 0\): \(e_{ss} \approx \dfrac{m-\hat m}{\hat m}\dfrac{g}{L}\dfrac{\cos q}{k_p}\).</li>
+<li>Discretisation: say the model part is slow, so run it in the outer loop; the servo loop stays fast.</li>
+</ol></div>
+<div class="worked"><span class="tag">Worked example: the practical’s 2.8 kg (single link: m = 3 kg, L = 3 m, \(k_p=100\) s⁻², \(k_v=20\) s⁻¹)</span>
+<p>\(\hat m = 2.8\) kg, so \((m-\hat m)/\hat m = 0.2/2.8 = 1/14 = 0.0714\). \(g/L = 9.81/3 = 3.27\) rad/s². Holding the link horizontal (q = 0, \(\ddot q = 0\)): forcing \(= 0.0714(3.27) = 0.2336\) rad/s², so \(e_{ss} = 0.2336/100 = 2.34\) mrad \(= 0.134^\circ\). Holding it vertical (q = 90°): \(\cos q = 0\), no lever arm, so the static error from mass mismatch is essentially zero. <span class="chk">checked, including a simulation of the hold</span></p>
+</div>
+<div class="angle">Typical question: “the mass is estimated 5% too small; write the closed-loop error equation and say what happens”. State: forcing term non-zero, error does not decay to zero, steady-state error proportional to the mismatch and inversely to \(k_p\), larger when the link is horizontal. Trap: “the servo law fixes any model error” (it reduces it, it does not remove it).</div>
+</div>
+
+<!-- ================= 5 ================= -->
+<div class="sub" id="w9-cart">
+<h3>5 · Control in Cartesian space <span class="pgs"><a class="pg" data-doc="w09-lec" data-page="29">pp. 29–33</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Tasks are given as paths of the tool, \(\mathbf x(t)\). The joint-space controller of Section 3 needs the whole plan in joint space. Slide 30 does that with a trajectory generator that converts \((\mathbf x_d,\dot{\mathbf x}_d,\ddot{\mathbf x}_d)\) into \((\mathbf q_d,\dot{\mathbf q}_d,\ddot{\mathbf q}_d)\). Slide 31 lists the three conversions and says all are computationally intensive:</p>
+\[ \mathbf q = \mathcal K^{-1}(\mathbf x),\qquad \dot{\mathbf q} = \mathbf J^{-1}(\mathbf q)\dot{\mathbf x},\qquad \ddot{\mathbf q} = \tfrac{d}{dt}\big(\mathbf J^{-1}\big)\dot{\mathbf x} + \mathbf J^{-1}\ddot{\mathbf x}. \]
+<p>The alternative (<a class="pg" data-doc="w09-lec" data-page="32">p.32</a>): write the dynamics in Cartesian space, \(\mathcal F = \mathbf M_x(\mathbf q)\ddot{\mathbf x} + \mathbf C_x(\mathbf q,\dot{\mathbf q}) + \mathbf g_x(\mathbf q)\), solve for the control force/wrench \(\mathcal F\) from the Cartesian error, then convert to joint torques with <b>\(\mathbf Q = \mathbf J^\top(\mathbf q)\,\mathcal F\)</b>. Feedback is cheap and forward: \(\mathbf x = \mathcal K(\mathbf q)\) (forward kinematics) and \(\dot{\mathbf x} = \mathbf J(\mathbf q)\dot{\mathbf q}\) (<a class="pg" data-doc="w09-lec" data-page="33">p.33</a>).</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>The Cartesian law mirrors the joint law (<a class="pg" data-doc="w09-lec" data-page="33">p.33</a>): servo on \(\mathbf e_x = \mathbf x_d - \mathbf x\), then \(\mathbf M_x\), then add the model terms:</p>
+\[ \mathcal F = \mathbf M_x(\mathbf q)\big(\ddot{\mathbf x}_d + \mathbf K_v\dot{\mathbf e}_x + \mathbf K_p\mathbf e_x\big) + \mathbf c_x(\mathbf q,\dot{\mathbf q}) + \mathbf g_x(\mathbf q),\qquad \mathbf Q = \mathbf J^\top(\mathbf q)\,\mathcal F, \]
+<p>so \(\ddot{\mathbf e}_x + \mathbf K_v\dot{\mathbf e}_x + \mathbf K_p\mathbf e_x = \mathbf 0\) in Cartesian coordinates (exact model).</p>
+<p><span class="added">added</span> Why \(\mathbf Q = \mathbf J^\top\mathcal F\): virtual work. A small joint motion \(\delta\mathbf q\) moves the tool by \(\delta\mathbf x = \mathbf J\delta\mathbf q\). Equal work gives \(\mathbf Q^\top\delta\mathbf q = \mathcal F^\top\delta\mathbf x = \mathcal F^\top\mathbf J\delta\mathbf q\), so \(\mathbf Q = \mathbf J^\top\mathcal F\) for any \(\delta\mathbf q\). This is the statics result from W6.</p>
+<p><span class="added">added</span> Where the Cartesian terms come from (standard result, not on the slides): from \(\ddot{\mathbf x} = \mathbf J\ddot{\mathbf q} + \dot{\mathbf J}\dot{\mathbf q}\) get \(\ddot{\mathbf q} = \mathbf J^{-1}(\ddot{\mathbf x} - \dot{\mathbf J}\dot{\mathbf q})\). Substitute in the joint dynamics and premultiply by \(\mathbf J^{-\top}\): \(\mathbf M_x = \mathbf J^{-\top}\mathbf M\mathbf J^{-1}\), \(\mathbf c_x = \mathbf J^{-\top}(\mathbf C - \mathbf M\mathbf J^{-1}\dot{\mathbf J}\dot{\mathbf q})\), \(\mathbf g_x = \mathbf J^{-\top}\mathbf g\). <span class="chk">checked</span> (numerically, 2-link arm) So these still need \(\mathbf J\) to be invertible: near a singularity \(\mathbf M_x\) blows up (some tool direction cannot be accelerated), even though \(\mathbf J^\top\mathcal F\) itself is always fine.</p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs textbook</span><p>Slide 31 prints the third line as \(\dot J^{-1}(\mathbf q)\dot{\mathbf x} + J^{-1}(\mathbf q)\ddot{\mathbf x}\), with the dot over J. The correct term is the time derivative of the <i>inverse</i>: \(\tfrac{d}{dt}(\mathbf J^{-1}) = -\mathbf J^{-1}\dot{\mathbf J}\mathbf J^{-1}\). Derivation: \(\dot{\mathbf x} = \mathbf J\dot{\mathbf q}\Rightarrow\ddot{\mathbf q} = \mathbf J^{-1}(\ddot{\mathbf x} - \dot{\mathbf J}\dot{\mathbf q}) = \mathbf J^{-1}\ddot{\mathbf x} - \mathbf J^{-1}\dot{\mathbf J}\mathbf J^{-1}\dot{\mathbf x}\). “Inverse of \(\dot{\mathbf J}\)” would be wrong (and \(\dot{\mathbf J}\) is usually not even invertible). <span class="chk">checked by finite differences</span></p></div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>State why: joint-space needs \(\mathcal K^{-1}\), \(\mathbf J^{-1}\) and \(\tfrac d{dt}\mathbf J^{-1}\) along the whole path (slide 31).</li>
+<li>Write the Cartesian plant \(\mathcal F = \mathbf M_x\ddot{\mathbf x} + \mathbf C_x + \mathbf g_x\).</li>
+<li>Servo on Cartesian error, \(\mathcal F = \mathbf M_x(\ddot{\mathbf x}_d + \mathbf K_v\dot{\mathbf e} + \mathbf K_p\mathbf e) + \mathbf c_x + \mathbf g_x\).</li>
+<li>Map to joints: \(\mathbf Q = \mathbf J^\top\mathcal F\). Feedback: \(\mathbf x = \mathcal K(\mathbf q)\), \(\dot{\mathbf x} = \mathbf J\dot{\mathbf q}\).</li>
+<li>For a numeric \(\mathbf Q = \mathbf J^\top\mathcal F\): build \(\mathbf J\) at the pose, transpose, multiply; cross-check joint 1 with \(x F_y - yF_x\).</li>
+</ol></div>
+<div class="worked"><span class="tag">Worked example: \(\mathbf Q = \mathbf J^\top\mathcal F\) for a 2-link arm (\(l_1 = l_2 = 1\) m)</span>
+<p>The position Jacobian is \(\mathbf J = \begin{bmatrix}-l_1s_1 - l_2s_{12} & -l_2s_{12}\\ l_1c_1 + l_2c_{12} & l_2c_{12}\end{bmatrix}\). At \(\mathbf q = (30^\circ, 60^\circ)\): \(s_1 = 0.5\), \(c_1 = 0.8660\), \(s_{12} = 1\), \(c_{12} = 0\), so \(\mathbf J = \begin{bmatrix}-1.5&-1\\0.8660&0\end{bmatrix}\). A tool force \(\mathcal F = (3, -4)\) N gives</p>
+\[ \mathbf Q = \mathbf J^\top\mathcal F = \begin{bmatrix}-1.5&0.8660\\-1&0\end{bmatrix}\begin{bmatrix}3\\-4\end{bmatrix} = \begin{bmatrix}-4.5-3.4641\\-3\end{bmatrix} = \begin{bmatrix}-7.9641\\-3.0000\end{bmatrix}\ \text{N·m}. \]
+<p>Cross-check by moments. The tool is at \((\cos30^\circ + \cos90^\circ,\ \sin30^\circ + \sin90^\circ) = (0.8660,\ 1.5)\) m and joint 2 at (0.8660, 0.5) m. Torque about joint 1: \(xF_y - yF_x = 0.8660(-4) - 1.5(3) = -7.9641\) N·m ✓. About joint 2, \(\mathbf r = (0, 1)\): \(0\cdot(-4) - 1\cdot 3 = -3\) N·m ✓. <span class="chk">checked</span></p>
+</div>
+<div class="angle">Likely a calculation (\(\mathbf Q = \mathbf J^\top\mathcal F\)) or an explain (“why is Cartesian-space control attractive / what is expensive in the joint-space version?”). Trap: using \(\mathbf J\) instead of \(\mathbf J^\top\), or the inverse. Dimension check: \(\mathbf J\) is 2×2 here, force 2×1, torque 2×1.</div>
+</div>
+
+<!-- ================= 6 ================= -->
+<div class="sub" id="w9-force">
+<h3>6 · Force control <span class="pgs"><a class="pg" data-doc="w09-lec" data-page="34">pp. 34–44</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Goal (<a class="pg" data-doc="w09-lec" data-page="35">p.35</a>): make the end effector push on the environment with a desired force. Model (<a class="pg" data-doc="w09-lec" data-page="36">p.36</a>): a mass m pushed by the control force f against a wall, which behaves as a spring \(f_e = k_e x\). An unknown disturbance \(f_{dist}\) also acts on the mass. The handwritten balance is \(f - f_e - f_{dist} = m\ddot x\).</p>
+<figure class="svg"><svg viewBox="0 0 470 140" role="img" aria-label="Mass pushed by force f against a spring wall, with a disturbance force">
+  <defs><marker id="w9ar3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <g style="color:var(--ink)" stroke="currentColor" fill="none" stroke-width="1.5">
+    <line x1="80" y1="65" x2="188" y2="65" marker-end="url(#w9ar3)"/>
+    <line x1="270" y1="112" x2="212" y2="112" marker-end="url(#w9ar3)"/>
+    <line x1="190" y1="22" x2="232" y2="22" marker-end="url(#w9ar3)"/>
+    <polyline points="262,65 290,65 298,45 312,85 326,45 340,85 354,45 368,85 380,65 412,65"/>
+    <line x1="412" y1="30" x2="412" y2="100" stroke-width="4"/>
+  </g>
+  <rect x="190" y="40" width="72" height="50" rx="3" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">
+    <text x="218" y="70">m</text><text x="128" y="58">f</text><text x="226" y="128">f<tspan dy="4" font-size="9">dist</tspan></text>
+    <text x="236" y="16">x</text><text x="338" y="38">k<tspan dy="4" font-size="9">e</tspan></text>
+    <text x="318" y="108" fill="var(--muted)">f<tspan dy="4" font-size="9">e</tspan><tspan dy="-4"> = k</tspan><tspan dy="4" font-size="9">e</tspan><tspan dy="-4"> x</tspan></text>
+  </g></svg><figcaption>Schematic. The wall is a stiff spring of stiffness \(k_e\) (N/m); \(x\) is the mass position, increasing towards the wall. The spring force \(f_e\) and the disturbance both oppose \(f\). Redrawn from slide <a class="pg" data-doc="w09-lec" data-page="36">36</a>.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation: the ideal law, and why it fails</span>
+<p>Plant (<a class="pg" data-doc="w09-lec" data-page="37">p.37</a>): \(f = m\ddot x + f_{dist} + f_e\). Because \(f_e = k_ex\), \(x = k_e^{-1}f_e\) and \(\ddot x = k_e^{-1}\ddot f_e\), so \(f = mk_e^{-1}\ddot f_e + f_{dist} + f_e\). Now the <i>controlled quantity is the force</i>, and the same partition applies with \(\alpha = mk_e^{-1}\) (units kg·m/N = s²) and \(\beta = f_{dist} + f_e\):</p>
+\[ f = mk_e^{-1}\big[\ddot f_d + k_v\dot E + k_pE\big] + f_{dist} + f_e,\qquad E = f_d - f_e \]
+<p>with \(f_d\) the desired interaction force. Substituting gives \(\ddot f_e = f'\), i.e. \(\ddot E + k_v\dot E + k_pE = 0\) (<a class="pg" data-doc="w09-lec" data-page="38">p.38</a>). But \(\beta\) contains \(f_{dist}\), which we do not know, so the law is <b>infeasible</b>. Two ways out (<a class="pg" data-doc="w09-lec" data-page="39">p.39</a>). Write \(\alpha = mk_e^{-1}\).</p>
+<p><b>Option 1: drop \(f_{dist}\)</b>, keep \(f_e\): \(f = \alpha[\ddot f_d + k_v\dot E + k_pE] + f_e\). Equate to the plant \(f = \alpha\ddot f_e + f_{dist} + f_e\): \(\alpha(\ddot E + k_v\dot E + k_pE) = f_{dist}\), so</p>
+\[ \ddot E + k_v\dot E + k_pE = \frac{f_{dist}}{mk_e^{-1}} \;\Rightarrow\; E_{ss} = \frac{f_{dist}}{mk_e^{-1}k_p}\quad(\ddot E = \dot E = 0). \]
+<p><b>Option 2: replace \(f_{dist} + f_e\) by \(f_d\)</b>: \(f = \alpha[\ddot f_d + k_v\dot E + k_pE] + f_d\). Equating: \(\alpha(\ddot E + k_v\dot E + k_pE) = f_{dist} + f_e - f_d = f_{dist} - E\), so</p>
+\[ \ddot E + k_v\dot E + \Big(\frac{1}{mk_e^{-1}} + k_p\Big)E = \frac{f_{dist}}{mk_e^{-1}} \;\Rightarrow\; E_{ss} = \frac{f_{dist}}{1 + mk_e^{-1}k_p}. \]
+<p><span class="chk">checked</span> (both closed loops and steady states, symbolically and by simulation) Let \(x = mk_e^{-1}k_p\) (dimensionless: kg·(m/N)·s⁻² = 1). Then \(E_1 = f_{dist}/x\), \(E_2 = f_{dist}/(1+x)\), and \(E_2/E_1 = x/(1+x) < 1\): Option 2 is <b>always</b> better, and much better when \(x\) is small, which is exactly a stiff environment (\(k_e\) large \(\Rightarrow x\) small) (<a class="pg" data-doc="w09-lec" data-page="40">p.40</a>). Physically, as \(k_p\to0\) Option 2 still pushes with \(f_d\), so the contact force is \(f_d - f_{dist}\) and \(E\to f_{dist}\); Option 1 gets \(E\to\infty\).</p>
+<p><b>Practical implementation (<a class="pg" data-doc="w09-lec" data-page="41">pp. 41–43</a>).</b> The full law needs \(\dot f_e\). Differentiating a noisy force measurement is “not a good idea” (p. 42), and \(\ddot f_d,\dot f_d\) are zero for a constant \(f_d\). Since \(\dot E = \dot f_d - k_e\dot x = -k_e\dot x\), replace the derivative of the force by the measured velocity: with Option 2,</p>
+\[ f = m\big[k_e^{-1}k_pE - k_v\dot x\big] + f_d . \]
+<p><span class="chk">checked</span> (equal to Option 2 for constant \(f_d\)) This is the form on p. 43: outer loop \(k_p/k_e\) on the force error, inner velocity loop \(k_v\), and \(f_d\) fed forward. Stiffness is usually unknown; \(k_e\) is “usually chosen to be a high value” and the controller is designed to be robust to small changes (<a class="pg" data-doc="w09-lec" data-page="44">p.44</a>). <span class="added">likely reason, inferred</span> \(k_e\) enters only through the gain \(k_p/k_e\), so a high assumed value gives a lower, safer loop gain.</p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>Slide 38 writes the closed loop with bold \(\mathbf K_v,\mathbf K_p\) and slide 39 (Option 2) writes capital \(K_v\) where Option 1 has \(k_v\). The system is scalar, so these are the plain gains \(k_v,k_p\). The steady-state formulas on slides 39–40 are consistent with the closed-loop equations printed beside them.</p></div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write the plant with \(f_e = k_ex\) substituted, so the acceleration is \(k_e^{-1}\ddot f_e\).</li>
+<li>\(\alpha = mk_e^{-1}\), \(\beta = f_{dist} + f_e\); \(E = f_d - f_e\). Note \(\beta\) is infeasible (\(f_{dist}\) unknown).</li>
+<li>Option 1: delete \(f_{dist}\). Option 2: replace \(f_{dist}+f_e\) by \(f_d\).</li>
+<li>Equate to the plant, get \(\alpha(\ddot E + k_v\dot E + k_pE) = \) (right-hand side), then set derivatives to 0.</li>
+<li>\(E_1 = f_{dist}/(mk_e^{-1}k_p)\), \(E_2 = f_{dist}/(1+mk_e^{-1}k_p)\). Compare: \(E_2\lt E_1\).</li>
+<li>Sanity check: \(x = mk_e^{-1}k_p\) is dimensionless; E has the units of force.</li>
+</ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>m = 2 kg, \(f_{dist}\) = 5 N, \(k_p\) = 100 s⁻². <b>Stiff wall</b>, \(k_e\) = 1000 N/m: \(mk_e^{-1} = 0.002\) s², \(x = 0.2\). \(E_1 = 5/0.2 = 25\) N, \(E_2 = 5/1.2 = 4.17\) N. <b>Soft wall</b>, \(k_e\) = 20 N/m: \(mk_e^{-1} = 0.1\) s², \(x = 10\). \(E_1 = 0.5\) N, \(E_2 = 5/11 = 0.455\) N.</p>
+<p>Reading: on a stiff wall Option 1 is useless at this gain (25 N is larger than any sensible \(f_d\), the contact would be lost), while Option 2 stays below \(f_{dist}\). To get Option 2 to 1% of the disturbance you would need \(x = 99\), i.e. \(k_p = 99/0.002 = 49\,500\) s⁻². <span class="chk">checked</span></p>
+</div>
+<div class="angle">Calculation or explain: “state the steady-state error of each option and say which is better for a stiff environment”. Trap: swapping the two formulas, forgetting the “1 +”, or saying Option 1 is better because it uses the measured \(f_e\). Also expect “why is \(\tfrac{d}{dt}f_e\) a bad idea?” (noise amplified by differentiation).</div>
+</div>
+
+<!-- ================= 7 ================= -->
+<div class="sub" id="w9-hybrid">
+<h3>7 · Hybrid force and position control <span class="pgs"><a class="pg" data-doc="w09-lec" data-page="45">pp. 45–47</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Many tasks need both (<a class="pg" data-doc="w09-lec" data-page="46">p.46</a>: a humanoid pressing and wiping a wall). Along the wall normal the hand must push with a force; along the wall it must follow a path. The hybrid controller runs <b>both</b> laws and uses a diagonal 0/1 <b>selection matrix</b> for each to pass, axis by axis, only the output that applies (<a class="pg" data-doc="w09-lec" data-page="47">p.47</a>).</p>
+<figure class="svg"><svg viewBox="0 0 610 230" role="img" aria-label="Hybrid force and position controller with selection matrices S and S prime">
+  <defs><marker id="w9ar4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <g style="color:var(--ink)" stroke="currentColor" fill="none" stroke-width="1.5">
+    <line x1="70" y1="45" x2="105" y2="45" marker-end="url(#w9ar4)"/>
+    <line x1="215" y1="45" x2="250" y2="45" marker-end="url(#w9ar4)"/>
+    <line x1="295" y1="45" x2="330" y2="45"/><line x1="330" y1="45" x2="330" y2="91" marker-end="url(#w9ar4)"/>
+    <line x1="70" y1="185" x2="105" y2="185" marker-end="url(#w9ar4)"/>
+    <line x1="215" y1="185" x2="250" y2="185" marker-end="url(#w9ar4)"/>
+    <line x1="295" y1="185" x2="330" y2="185"/><line x1="330" y1="185" x2="330" y2="119" marker-end="url(#w9ar4)"/>
+    <line x1="344" y1="105" x2="400" y2="105" marker-end="url(#w9ar4)"/>
+    <polyline points="520,95 560,95 560,12 160,12 160,28" marker-end="url(#w9ar4)"/>
+    <polyline points="520,115 580,115 580,218 160,218 160,202" marker-end="url(#w9ar4)"/>
+    <line x1="272" y1="108" x2="272" y2="75" marker-end="url(#w9ar4)"/><line x1="272" y1="108" x2="272" y2="155" marker-end="url(#w9ar4)"/>
+    <line x1="150" y1="108" x2="272" y2="108"/>
+  </g>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">
+    <rect x="105" y="28" width="110" height="34" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="160" y="49" text-anchor="middle">Position law</text>
+    <rect x="250" y="30" width="45" height="30" rx="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><text x="272" y="50" text-anchor="middle">S</text>
+    <rect x="105" y="168" width="110" height="34" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="160" y="189" text-anchor="middle">Force law</text>
+    <rect x="250" y="170" width="45" height="30" rx="4" fill="var(--surface)" stroke="var(--exam)" stroke-width="2"/><text x="272" y="190" text-anchor="middle">S′</text>
+    <circle cx="330" cy="105" r="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="324" y="109">Σ</text>
+    <rect x="400" y="80" width="120" height="50" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="460" y="109" text-anchor="middle">Cartesian arm</text>
+    <text x="4" y="40" font-size="11">ẍ<tspan dy="4" font-size="9">d</tspan><tspan dy="-4">, ẋ</tspan><tspan dy="4" font-size="9">d</tspan><tspan dy="-4">, x</tspan><tspan dy="4" font-size="9">d</tspan></text>
+    <text x="14" y="190" font-size="11">𝓕<tspan dy="4" font-size="9">d</tspan></text>
+    <text x="40" y="123" font-size="11" fill="var(--muted)">constraints</text>
+    <text x="344" y="97" font-size="11">𝓕</text><text x="526" y="88" font-size="11">x</text><text x="526" y="132" font-size="11">𝓕<tspan dy="4" font-size="9">E</tspan></text>
+  </g></svg><figcaption>Schematic, redrawn from slide <a class="pg" data-doc="w09-lec" data-page="47">47</a>. The “constraints” (which directions are blocked by the surface) set S and S′. The position loop feeds back x, the force loop feeds back the measured \(\mathcal F_E\).</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>The commanded Cartesian force is the sum of the two filtered outputs:</p>
+\[ \mathcal F = \mathbf S\,\mathcal F_{pos} + \mathbf S'\,\mathcal F_{force}, \]
+<p>where \(\mathcal F_{pos}\) comes from the Cartesian position law of Section 5 and \(\mathcal F_{force}\) from a force law as in Section 6. \(\mathbf S\) and \(\mathbf S'\) are diagonal with 0 or 1 entries, “complementary to each other”, saying for each degree of freedom whether it is in position or force mode (slide 47). <span class="added">inferred</span> Complementary means \(\mathbf S' = \mathbf I - \mathbf S\), so each axis is controlled by exactly one law. The slide does not write this relation. It also says “joint” in the last bullet although the diagram is in Cartesian space.</p>
+<p>For the wall in the slide with the wall normal along \(x\) (axis labels are my choice): position control in \(y,z\), force control in \(x\):</p>
+\[ \mathbf S = \mathrm{diag}(0,1,1),\qquad \mathbf S' = \mathrm{diag}(1,0,0). \]
+<p>A full pose has six Cartesian degrees of freedom (three forces, three moments), and \(\mathbf S\) is then 6×6. The surface constraint decides: translation along the normal and rotations that tilt the hand off the surface are blocked (so they can be force/moment-controlled); sliding along the surface and the rotation about the normal are free (position-controlled).</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Name the constraint surface and its normal direction.</li>
+<li>Directions the surface blocks: force control, \(\mathbf S'\) entry 1 (and \(\mathbf S\) entry 0).</li>
+<li>Free directions: position control, \(\mathbf S\) entry 1 (and \(\mathbf S'\) entry 0).</li>
+<li>Write \(\mathbf S\) and \(\mathbf S' = \mathbf I - \mathbf S\) as diagonal matrices in the stated order of axes.</li>
+<li>Write \(\mathcal F = \mathbf S\mathcal F_{pos} + \mathbf S'\mathcal F_{force}\) and \(\mathbf Q = \mathbf J^\top\mathcal F\).</li>
+<li>Feedback: position law uses \(\mathbf x\); force law uses the measured \(\mathcal F_E\).</li>
+</ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>With the wall normal along \(x\): position law outputs \(\mathcal F_{pos} = (5, 3, -2)\) N, force law outputs \(\mathcal F_{force} = (8, 40, 7)\) N. Then</p>
+\[ \mathcal F = \mathrm{diag}(0,1,1)\begin{bmatrix}5\\3\\-2\end{bmatrix} + \mathrm{diag}(1,0,0)\begin{bmatrix}8\\40\\7\end{bmatrix} = \begin{bmatrix}0\\3\\-2\end{bmatrix} + \begin{bmatrix}8\\0\\0\end{bmatrix} = \begin{bmatrix}8\\3\\-2\end{bmatrix}\ \text{N}. \]
+<p>The 5 N of the position law along \(x\) and the 40 N and 7 N of the force law along \(y,z\) are discarded: each axis obeys one law only. <span class="chk">checked</span></p>
+</div>
+<div class="angle">Scenario: “a robot polishes a flat table / presses a stamp / turns a crank; choose S and S′”. Name the normal, put the normal in force mode, everything else in position mode. Draw the p. 47 diagram if asked to sketch. Trap: swapping S and S′ (S goes with the <i>position</i> law in the diagram).</div>
+</div>
+
+<!-- ================= 8 ================= -->
+<div class="sub" id="w9-summary">
+<h3>8 · Putting it together: which law, when? <span class="pgs"><a class="pg" data-doc="w09-lec" data-page="49">p. 49</a></span></h3>
+<div class="layer derive"><span class="tag">Decision table</span>
+<div class="tbl"><table><tr><th>Situation</th><th>Law</th><th>Closed loop (exact model)</th></tr>
+<tr><td>Scalar plant, non-linear (spring, friction)</td><td>\(f = \alpha f' + \beta\), \(f' = \ddot x_d + k_v\dot e + k_pe\)</td><td>\(\ddot e + k_v\dot e + k_pe = 0\)</td></tr>
+<tr><td>n-joint arm, joint space</td><td>\(\mathbf Q = \mathbf M\mathbf Q' + \mathbf C + \mathbf g + \mathbf f\)</td><td>\(\ddot{\mathbf E} + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E = \mathbf 0\), decoupled</td></tr>
+<tr><td>Model inexact</td><td>same law with hats</td><td>RHS \(=\hat{\mathbf M}^{-1}[(\mathbf M-\hat{\mathbf M})\ddot{\mathbf q} + \dots]\ne0\) (slide 28)</td></tr>
+<tr><td>Path given in task space</td><td>\(\mathcal F = \mathbf M_x(\dots) + \mathbf c_x + \mathbf g_x\), \(\mathbf Q = \mathbf J^\top\mathcal F\)</td><td>\(\ddot{\mathbf e}_x + \mathbf K_v\dot{\mathbf e}_x + \mathbf K_p\mathbf e_x = \mathbf 0\)</td></tr>
+<tr><td>Contact force wanted</td><td>Option 2: \(f = mk_e^{-1}[\dots] + f_d\)</td><td>\(E_{ss} = f_{dist}/(1 + mk_e^{-1}k_p)\)</td></tr>
+<tr><td>Force on some axes, motion on others</td><td>\(\mathcal F = \mathbf S\mathcal F_{pos} + \mathbf S'\mathcal F_{force}\)</td><td>each axis follows its own law</td></tr></table></div>
+<p>Not in this deck (do not expect it from these slides): Lyapunov stability proofs, impedance/admittance control, and the gain-selection rule (Week 8).</p>
+</div>
+</div>
+
+<!-- ================= guided problems ================= -->
+<h3 id="w9-problems">Guided problems: solve on paper first</h3>
+<p>Problems P9.1–P9.7 are the practical sheet’s items (a)–(i) in order, solved as exam questions. The sheet gives no trajectory duration; I assume <b>T = 2 s</b> (speeds scale as 1/T, accelerations as 1/T²) and gains \(k_p = 100\) s⁻², \(k_v = 20\) s⁻¹ (critical damping). Gravity acts along −y with g = 9.81 m/s² (the arm moves in a vertical plane), and the joint angles \(\theta_1,\theta_2,\theta_3\) are the figure’s: \(\theta_1\) from the horizontal, the others relative to the previous link.</p>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.1 · Practical (a): the joint trajectory</b><span class="chip calc">calculate</span><span class="chip derive">derive</span><span class="chip sketch">sketch</span><span class="marks" data-id="w09-p1" data-topic="w09"></span></div>
+  <p>The 3-link arm (L = 3, 2, 1 m) starts at rest at pose (x, y, φ) = (5, 1, 90°) and must stop at (−3, 3, 180°). Find the start and goal joint angles (take the elbow branch with \(\theta_2\ge0\)), then the rest-to-rest cubic for each joint over T = 2 s. Give the goal angles \(\theta_1,\theta_3\) in degrees and the peak speed of joint 1 in rad/s. Sketch q(t), \(\dot q\)(t), \(\ddot q\)(t) for joint 1.</p>
+  <details class="hint"><summary>Hint 1: remove the last link</summary><p>The wrist is the point where link 3 starts: \((x - L_3\cos\varphi,\ y - L_3\sin\varphi)\). Then it is a 2-link IK, and \(\theta_3 = \varphi - \theta_1 - \theta_2\).</p></details>
+  <details class="hint"><summary>Hint 2: 2-link IK</summary><p>\(\cos\theta_2 = (w_x^2 + w_y^2 - L_1^2 - L_2^2)/(2L_1L_2)\), \(\theta_1 = \operatorname{atan2}(w_y,w_x) - \operatorname{atan2}(L_2\sin\theta_2,\ L_1 + L_2\cos\theta_2)\).</p></details>
+  <details class="hint"><summary>Hint 3: rest-to-rest cubic</summary><p>With \(\dot q(0) = \dot q(T) = 0\): \(q(t) = q_0 + \Delta\,(3s^2 - 2s^3)\), \(s = t/T\), \(\Delta = q_f - q_0\). Peak speed at \(t = T/2\).</p></details>
+  <div class="ansrow"><label>θ₁ goal (°)<input data-ans="90" data-tol="0.5" data-label="theta1 goal" inputmode="decimal" aria-label="theta 1 at the goal in degrees"></label><label>θ₃ goal (°)<input data-ans="0" data-tol="0.5" data-label="theta3 goal" inputmode="decimal" aria-label="theta 3 at the goal in degrees"></label><label>peak speed (rad/s)<input data-ans="1.1781" data-tol="0.002" data-label="peak speed joint 1" inputmode="decimal" aria-label="peak speed of joint 1 in rad per second"
+    data-wrong='[{"v":2.3562,"msg":"that is the peak acceleration 6Δ/T², not the peak speed 1.5Δ/T."},{"v":0.7854,"msg":"that is the average speed Δ/T; the peak of a rest-to-rest cubic is 1.5 times the average."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p><b>Start.</b> Wrist = \((5 - 0,\ 1 - 1) = (5, 0)\) m. \(\cos\theta_2 = (25 - 9 - 4)/12 = 1\), so \(\theta_2 = 0\): the arm is <b>fully stretched</b> along x, \(\theta_1 = \operatorname{atan2}(0,5) - 0 = 0\), \(\theta_3 = 90^\circ - 0 = 90^\circ\). Start \(\mathbf q_0 = (0, 0, 90^\circ)\). FK check: \(x = 3 + 2 + 0 = 5\), \(y = 0 + 0 + 1 = 1\) ✓.</p>
+  <p><b>Goal.</b> Wrist = \((-3 - \cos180^\circ,\ 3 - \sin180^\circ) = (-2, 3)\) m, \(|w|^2 = 13\). \(\cos\theta_2 = (13 - 9 - 4)/12 = 0\), so \(\theta_2 = 90^\circ\). \(\theta_1 = \operatorname{atan2}(3,-2) - \operatorname{atan2}(2, 3) = 123.69^\circ - 33.69^\circ = 90^\circ\). \(\theta_3 = 180^\circ - 90^\circ - 90^\circ = 0\). Goal \(\mathbf q_f = (90^\circ, 90^\circ, 0)\). FK check: link 1 up to (0, 3), link 2 along 180° to (−2, 3), link 3 along 180° to (−3, 3) ✓. <span class="chk">checked</span> The other elbow, \(\theta_2 = -90^\circ\), gives \((157.38^\circ, -90^\circ, 112.62^\circ)\); the sheet does not say which branch, and the integers make \((90^\circ,90^\circ,0)\) the intended one.</p>
+  <p><b>Cubics.</b> \(\Delta = (90^\circ, 90^\circ, -90^\circ) = (\pi/2, \pi/2, -\pi/2)\). With \(a_0 = q_0\), \(a_1 = 0\): \(a_2 = 3\Delta/T^2\), \(a_3 = -2\Delta/T^3\). For joints 1 and 2: \(a_2 = 1.1781\) rad/s², \(a_3 = -0.3927\) rad/s³. For joint 3 the signs flip: \(a_2 = -1.1781\), \(a_3 = +0.3927\). Peak speed \(1.5\Delta/T = 1.1781\) rad/s at t = 1 s; peak acceleration \(6\Delta/T^2 = 2.3562\) rad/s² at t = 0 (and \(-2.3562\) at t = T). <span class="chk">checked</span></p>
+  <p><b>Sketch (joint 1).</b> q(t): an S-curve from 0 to 90°, flat at both ends, midpoint 45° at t = 1 s. \(\dot q\): a parabola, 0 at both ends, peak 1.18 rad/s at t = 1 s. \(\ddot q\): a straight line from +2.36 to −2.36 rad/s², crossing 0 at t = 1 s. Note the acceleration is non-zero at t = 0 and T: it <i>jumps</i> when the trajectory stops, which the servo sees as a step.</p>
+  <p><b>Remarks.</b> The start pose is a singularity (\(\det\mathbf J\propto\sin\theta_2 = 0\)), so Cartesian-space control with \(\mathbf J^{-1}\) cannot start here; the joint-space law of this problem has no such trouble. A joint-space cubic does not move the tool in a straight line: at t = 1 s the joints are (45°, 45°, 45°), the tool is at (1.414, 4.828) m with φ = 135°, nowhere near the straight-line midpoint (1, 2). <span class="chk">checked</span></p>
+  <p>Common wrong answer: dividing by T instead of using \(1.5\Delta/T\) for the peak speed (0.785 rad/s).</p></details>
+  <p class="blank">Close everything and derive the rest-to-rest cubic coefficients and the peak speed from the four boundary conditions in 3 minutes.</p>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.2 · Practical (b), (c): Lagrangian model and the matrices at the start</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w09-p2" data-topic="w09"></span></div>
+  <p>Point masses \(m_1=3,\ m_2=2,\ m_3=1\) kg at the distal ends of links of lengths 3, 2, 1 m. Obtain \(\mathbf Q = \mathbf M(\mathbf q)\ddot{\mathbf q} + \mathbf C(\mathbf q,\dot{\mathbf q}) + \mathbf g(\mathbf q)\) (ignore friction). Evaluate \(\mathbf M\), \(\mathbf C\), \(\mathbf g\) at the start, \(\mathbf q_0 = (0,0,90^\circ)\), \(\dot{\mathbf q} = \mathbf 0\).</p>
+  <details class="hint"><summary>Hint 1: positions of the three masses</summary><p>\(p_1 = L_1(c_1,s_1)\); \(p_2 = p_1 + L_2(c_{12},s_{12})\); \(p_3 = p_2 + L_3(c_{123},s_{123})\), with \(c_{12} = \cos(\theta_1+\theta_2)\) etc.</p></details>
+  <details class="hint"><summary>Hint 2: what you need from \(K\) and \(P\)</summary><p>\(K = \sum\tfrac12 m_i|\dot p_i|^2\), \(P = g\sum m_iy_i\). Then \(M_{ij} = \partial^2K/\partial\dot q_i\partial\dot q_j\) and \(g_i = \partial P/\partial q_i\).</p></details>
+  <details class="hint"><summary>Hint 3: at the start</summary><p>\(c_2 = 1\), \(c_3 = 0\), \(c_{23} = \cos90^\circ = 0\); since \(\dot{\mathbf q} = \mathbf 0\), \(\mathbf C = \mathbf 0\).</p></details>
+  <div class="ansrow"><label>M₁₁<input data-ans="103" data-tol="0.1" data-label="M11" inputmode="decimal" aria-label="M11 in kg m squared"></label><label>M₁₂<input data-ans="31" data-tol="0.1" data-label="M12" inputmode="decimal" aria-label="M12 in kg m squared"></label><label>g₁ (N·m)<input data-ans="235.44" data-tol="0.05" data-label="g1" inputmode="decimal" aria-label="g1 in newton metres"
+    data-wrong='[{"v":58.86,"msg":"that is g2: link 1 carries all three masses, so its lever arm sums over all of them."},{"v":24,"msg":"you left out the factor g = 9.81."}]'></label><label>g₂ (N·m)<input data-ans="58.86" data-tol="0.05" data-label="g2" inputmode="decimal" aria-label="g2 in newton metres"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Let \(A = (m_2+m_3)L_1L_2 = 18\), \(B = m_3L_1L_3 = 3\), \(D = m_3L_2L_3 = 2\) (kg·m²). The inertia matrix (symmetric):</p>
+  \[ \begin{aligned} M_{11} &= (m_1+m_2+m_3)L_1^2 + (m_2+m_3)L_2^2 + m_3L_3^2 + 2Ac_2 + 2Bc_{23} + 2Dc_3 = 67 + 36c_2 + 6c_{23} + 4c_3\\ M_{12} &= (m_2+m_3)L_2^2 + m_3L_3^2 + Ac_2 + Bc_{23} + 2Dc_3 = 13 + 18c_2 + 3c_{23} + 4c_3\\ M_{13} &= m_3L_3^2 + Bc_{23} + Dc_3 = 1 + 3c_{23} + 2c_3\\ M_{22} &= (m_2+m_3)L_2^2 + m_3L_3^2 + 2Dc_3 = 13 + 4c_3,\quad M_{23} = m_3L_3^2 + Dc_3 = 1 + 2c_3,\quad M_{33} = m_3L_3^2 = 1 \end{aligned} \]
+  <p>Velocity terms, with \(s_2 = \sin\theta_2\), \(s_{23} = \sin(\theta_2+\theta_3)\), \(s_3 = \sin\theta_3\):</p>
+  \[ \begin{aligned} C_1 &= -As_2(2\dot q_1\dot q_2 + \dot q_2^2) - Bs_{23}\big(2\dot q_1(\dot q_2+\dot q_3) + (\dot q_2+\dot q_3)^2\big) - Ds_3\big(2(\dot q_1+\dot q_2)\dot q_3 + \dot q_3^2\big)\\ C_2 &= (As_2 + Bs_{23})\dot q_1^2 - Ds_3\big(2(\dot q_1+\dot q_2)\dot q_3 + \dot q_3^2\big),\qquad C_3 = Bs_{23}\dot q_1^2 + Ds_3(\dot q_1+\dot q_2)^2 \end{aligned} \]
+  <p>Gravity (\(g_i = \partial P/\partial q_i\), g = 9.81 m/s²):</p>
+  \[ \begin{aligned} g_1 &= g\big[6(3)c_1 + 3(2)c_{12} + 1(1)c_{123}\big],\quad g_2 = g\big[3(2)c_{12} + 1(1)c_{123}\big],\quad g_3 = g\,(1)(1)\,c_{123}\end{aligned} \]
+  <p><span class="chk">checked</span> (M, C and g against a symbolic Lagrangian derivation at random poses)</p>
+  <p><b>At the start.</b> With \(c_2 = 1\), \(c_3 = c_{23} = 0\):</p>
+  \[ \mathbf M = \begin{bmatrix}103&31&1\\31&13&1\\1&1&1\end{bmatrix}\ \text{kg·m}^2,\qquad \mathbf C = \begin{bmatrix}0\\0\\0\end{bmatrix},\qquad \mathbf g = 9.81\begin{bmatrix}18+6+0\\6+0\\0\end{bmatrix} = \begin{bmatrix}235.44\\58.86\\0\end{bmatrix}\ \text{N·m}. \]
+  <p>Sanity check: \(g_1\) is the torque of all three weights about joint 1, all at horizontal distances 3, 5, 5 m (the arm lies along x, last link points up): \(9.81(3\cdot3 + 2\cdot5 + 1\cdot5) = 9.81\cdot24\) ✓. \(g_3 = 0\): the last link points straight up, so its weight has no lever arm. <span class="chk">checked</span> Inverse-dynamics demand at t = 0 on the T = 2 s cubic: \(\mathbf Q = \mathbf M\ddot{\mathbf q}_d + \mathbf g = (548.8,\ 160.2,\ 2.4)\) N·m.</p>
+  <p>If gravity were perpendicular to the arm’s plane (horizontal arm on a table), \(\mathbf g = \mathbf 0\); the sheet lists \(\mathbf g\) as a term, so I take a vertical plane.</p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.3 · Practical (d), (e): the partitioned law for the first link</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w09-p3" data-topic="w09"></span></div>
+  <p>Ignore friction and consider joint 1 only. State what “the desired position is known, at each time step the next position” means, then write the partitioned control law. Treat the first link on its own (m₁ = 3 kg at the tip, L₁ = 3 m, which is why the sheet quotes “3 kg”) and give \(\alpha\), \(\beta\) at q₁ = 0 and the torque needed at t = 0 on the T = 2 s cubic when the error is zero.</p>
+  <details class="hint"><summary>Hint 1: what is q_d?</summary><p>\(q_d(t)\), \(\dot q_d(t)\), \(\ddot q_d(t)\) come from the cubic of P9.1, evaluated at the next servo time \(t_{k+1}\).</p></details>
+  <details class="hint"><summary>Hint 2: the model</summary><p>\(\tau = m_1L_1^2\ddot q + m_1gL_1\cos q\) (no friction).</p></details>
+  <div class="ansrow"><label>α (kg·m²)<input data-ans="27" data-tol="0.05" data-label="alpha" inputmode="decimal" aria-label="alpha in kilogram metre squared"></label><label>β at q=0 (N·m)<input data-ans="88.29" data-tol="0.05" data-label="beta" inputmode="decimal" aria-label="beta in newton metres"></label><label>τ(0) (N·m)<input data-ans="151.91" data-tol="0.05" data-label="tau at t=0" inputmode="decimal" aria-label="torque at t equals zero in newton metres"
+    data-wrong='[{"v":63.62,"msg":"that is only α q̈_d; add β = 88.29 N·m for gravity."},{"v":88.29,"msg":"that is only the gravity torque; add α q̈_d = 63.62 N·m."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p><b>(d)</b> The reference supplies \(q_d,\dot q_d,\ddot q_d\) at every servo step. “The next position” is the cubic sampled at the next sample time; the servo law uses the error \(e = q_d - q\) and \(\dot e = \dot q_d - \dot q\), and \(\ddot q_d\) as feed-forward.</p>
+  <p><b>(e)</b> EoM: \(\tau = mL^2\ddot q + mgL\cos q\). Partition: \(\alpha = m_1L_1^2 = 3(9) = 27\) kg·m², \(\beta = m_1gL_1\cos q = 88.29\cos q\) N·m, \(\tau' = \ddot q_d + k_v\dot e + k_pe\). Law:</p>
+  \[ \tau = 27\big(\ddot q_d + 20\,\dot e + 100\,e\big) + 88.29\cos q\quad\text{(N·m, with q in rad)}. \]
+  <p>At t = 0 on the cubic: \(q = 0\), \(e = \dot e = 0\), \(\ddot q_d = 2.3562\): \(\tau(0) = 27(2.3562) + 88.29 = 63.62 + 88.29 = 151.91\) N·m. <span class="chk">checked</span></p>
+  <p><b>The other reading.</b> If “the first link” means joint 1 of the <i>full</i> arm (joints 2, 3 held), then \(\alpha = M_{11} = 103\) kg·m² and \(\beta = g_1 = 235.44\) N·m at the start (\(C_1 = 0\)). The structure is identical; only the numbers change, and holding joints 2, 3 would need their own torques. The sheet’s “2.8 kg” (against \(m_1 = 3\)) fits the single-link reading best.</p>
+  <p>Common wrong answer: using \(\alpha = m_1L_1\) (units kg·m, not kg·m²) or leaving \(\mathrm{cos}\,q\) out of \(\beta\).</p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.4 · Practical (f): the forward-dynamics simulator</b><span class="chip derive">derive</span><span class="chip explain">explain</span><span class="marks" data-id="w09-p4" data-topic="w09"></span></div>
+  <p>Describe, as an algorithm, a program that takes joint torque as input and returns positions and velocities. Why forward dynamics for simulation but inverse dynamics for control? Then: for P9.3, with the true model and zero error at t = 0, what joint acceleration does the simulator return?</p>
+  <details class="hint"><summary>Hint 1: the equation to integrate</summary><p>Solve the EoM for the acceleration: \(\ddot{\mathbf q} = \mathbf M^{-1}(\mathbf Q - \mathbf C - \mathbf g - \mathbf f)\).</p></details>
+  <details class="hint"><summary>Hint 2: state</summary><p>Stack \(\mathbf x = [\mathbf q;\dot{\mathbf q}]\), \(\dot{\mathbf x} = [\dot{\mathbf q};\ \ddot{\mathbf q}]\) and integrate.</p></details>
+  <div class="ansrow"><label>q̈(0) (rad/s²)<input data-ans="2.3562" data-tol="0.002" data-label="qddot at t=0" inputmode="decimal" aria-label="joint acceleration at t equals zero in radians per second squared"
+    data-wrong='[{"v":151.91,"msg":"that is the torque. The simulator divides (τ − β) by α = 27."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p><b>Algorithm</b> (state \(\mathbf x_k = [\mathbf q_k;\dot{\mathbf q}_k]\), step \(h\)):</p>
+  <pre class="mono" style="font-size:.85rem;white-space:pre-wrap">for k = 0, 1, 2, ...
+    Q = controller(t_k, q_k, qdot_k)               # partitioned law, from the *model*
+    qddot = solve(M_true(q_k), Q - C_true - g_true - f_true)   # forward dynamics (solve, do not invert)
+    (q_{k+1}, qdot_{k+1}) = integrate(q_k, qdot_k, qddot, h)   # RK4, or semi-implicit Euler for small h
+    log q_{k+1}, qdot_{k+1}, e = q_d(t_{k+1}) - q_{k+1}</pre>
+  <p><b>Why.</b> The <i>plant</i> maps torque to motion, so simulating it is forward dynamics: input \(\mathbf Q\), output \(\ddot{\mathbf q}\). The <i>controller</i> needs the torque that produces a desired acceleration, which is inverse dynamics: input \(\ddot{\mathbf q}\), output \(\mathbf Q\). Computed torque is inverse dynamics inside the controller; the simulator is forward dynamics standing in for the real robot.</p>
+  <p><b>Numbers.</b> \(\ddot q(0) = (\tau - \beta)/\alpha = (151.91 - 88.29)/27 = 2.3562\) rad/s², exactly \(\ddot q_d(0)\) as the closed-loop theory says. <span class="chk">checked</span></p>
+  <p>Keep the controller’s model and the simulator’s “true” model separate in the code: part (h) works only because the two differ.</p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.5 · Practical (g): the error plot</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="marks" data-id="w09-p5" data-topic="w09"></span></div>
+  <p>The simulator of P9.4 runs with the <b>exact</b> model and the law of P9.3 (\(k_p=100\), \(k_v=20\)). (i) What does e(t) look like if the link starts on the trajectory? (ii) If it starts 0.1 rad behind (e(0) = 0.1 rad, \(\dot e(0) = 0\)), what is e at t = 0.1 s? (iii) What does a slow controller (torque updated every 50 ms) do?</p>
+  <details class="hint"><summary>Hint 1</summary><p>Exact model: \(\ddot e + 20\dot e + 100e = 0\). Its roots: \(s^2 + 20s + 100 = (s+10)^2\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>A double root at \(-\omega\) gives \(e(t) = (c_1 + c_2t)e^{-\omega t}\). Fit \(e(0) = e_0\), \(\dot e(0) = 0\).</p></details>
+  <div class="ansrow"><label>e(0.1 s) (rad)<input data-ans="0.0736" data-tol="0.0004" data-label="e at 0.1 s" inputmode="decimal" aria-label="error at 0.1 seconds in radians"
+    data-wrong='[{"v":0.0368,"msg":"that is e0·e^(−10t) with no (1+10t) factor; a double root gives (c1 + c2 t)e^(−10t)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>(i) \(e(t)\equiv0\): the model part cancels the plant exactly, \(\ddot q = \ddot q_d\) at every instant. In my simulation (RK4, step 0.1 ms, law evaluated continuously) the largest error before t = 1.99 s is below \(10^{-10}\) rad, i.e. numerical noise. Expect a flat line at zero (a classic “is the plot broken?” moment).</p>
+  <p>(ii) Roots \(s = -10\) twice. \(e = (c_1 + c_2t)e^{-10t}\); \(e(0) = c_1 = 0.1\); \(\dot e(0) = c_2 - 10c_1 = 0\Rightarrow c_2 = 1\). So \(e(t) = 0.1(1 + 10t)e^{-10t}\), \(e(0.1) = 0.1(2)e^{-1} = 0.0736\) rad. Also \(e(0.25) = 0.0287\), \(e(0.5) = 0.00404\) rad: no overshoot, settling in about 0.5 s. <span class="chk">checked against the simulation</span></p>
+  <p>(iii) The law only changes every 50 ms, the torque is stale in between, and the cancellation is imperfect: the error is small but not zero. In my simulation the peak error is 0.26 mrad with a 10 ms update and 1.13 mrad with a 50 ms update, against about 0 for continuous control. <span class="chk">checked</span> This is the discretisation problem of slides 23–25: the slower the model-based part runs, the larger the residual error.</p>
+  <p>Sketch: (i) a flat line at 0; (ii) a monotone decay from 0.1 to 0, tangent to zero slope at t = 0; (iii) small ripples (sawtooth) of 1 mrad riding on the reference acceleration.</p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.6 · Practical (h): an imprecise mass of 2.8 kg</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w09-p6" data-topic="w09"></span></div>
+  <p>The controller now uses \(\hat m = 2.8\) kg while the simulated link has m = 3 kg (L = 3 m, \(k_p=100\), \(k_v=20\)). (i) Write the closed-loop error equation. (ii) With the link held at q_d = 0 (horizontal), what steady-state error does it predict, in mrad? (iii) What happens to that error if the link is held vertical? (iv) Give the sign of e and say why.</p>
+  <details class="hint"><summary>Hint 1</summary><p>Use the scalar form: right side \(=\dfrac{m-\hat m}{\hat m}\big[\ddot q + \dfrac gL\cos q\big]\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>Static: \(\ddot q = \dot e = \ddot e = 0\), so \(k_pe_{ss} = \dfrac{m-\hat m}{\hat m}\dfrac gL\cos q\).</p></details>
+  <div class="ansrow"><label>e<sub>ss</sub> at q=0 (mrad)<input data-ans="2.336" data-tol="0.01" data-label="steady-state error in mrad" inputmode="decimal" aria-label="steady state error in milliradians"
+    data-wrong='[{"v":2.18,"msg":"you divided the mass error by m instead of by m̂: the coefficient is (m − m̂)/m̂ = 1/14, not 1/15."},{"v":0.134,"msg":"that is the same error in degrees; the question asks for mrad."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>(i) \(\ddot e + 20\dot e + 100e = \dfrac{0.2}{2.8}\Big[\ddot q + 3.27\cos q\Big] = 0.0714\big[\ddot q + 3.27\cos q\big]\) (slide 28 specialised to a mass error; the \(\ddot q\) is the actual acceleration).</p>
+  <p>(ii) At q = 0, \(\cos q = 1\): \(e_{ss} = 0.0714(3.27)/100 = 2.336\times10^{-3}\) rad \(= 2.34\) mrad \(= 0.134^\circ\). A simulation with the link held at q_d = 0 reaches the same value to 7 digits. <span class="chk">checked</span></p>
+  <p>(iii) At q = 90°, \(\cos q = 0\): the gravity mismatch has no lever arm and the static error vanishes (to ~\(10^{-19}\) rad here). Mass error only matters through \(\hat\alpha\) when the link accelerates.</p>
+  <p>(iv) \(e>0\): \(\hat m\lt m\) means gravity is under-compensated, the link sags below the reference, and \(e = q_d - q\) is positive.</p>
+  <p><b>On the cubic trajectory (T = 2 s).</b> The simulated error peaks at 3.35 mrad (0.19°) at t ≈ 0.47 s, when the acceleration is still large and the link is still near horizontal. At t = 2 s (link vertical) it is −1.21 mrad, caused by the deceleration term \(\tfrac{1}{14}\ddot q\), then it dies out at rest (4×10⁻¹¹ rad at 4 s). The forcing at t = 0 is \(\tfrac1{14}(2.3562 + 3.27) = 0.4019\) rad/s². <span class="chk">checked</span></p>
+  <p><b>Full-arm reading.</b> If joint 1’s \(m_1\) is 2.8 kg in the full 3-link model: \(\hat M_{11} = 103 - 0.2(9) = 101.2\), \(\hat g_1 = 235.44 - 0.2(9.81)(3) = 229.554\) N·m, static forcing \((g_1-\hat g_1)/\hat M_{11} = 0.0582\) rad/s² at the start. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.7 · Practical (i): all joints</b><span class="chip derive">derive</span><span class="chip explain">explain</span><span class="marks" data-id="w09-p7" data-topic="w09"></span></div>
+  <p>Extend the law to the full 3-link arm. Then suppose a student uses \(\boldsymbol\alpha = \mathrm{diag}(M_{11},M_{22},M_{33})\) instead of the full \(\mathbf M\), with everything else exact. At t = 0 on the T = 2 s cubic (\(\ddot{\mathbf q}_d = (2.3562, 2.3562, -2.3562)\) rad/s², zero error), how big is the forcing on the joint-1 error equation?</p>
+  <details class="hint"><summary>Hint 1</summary><p>Use the slide-28 pattern with \(\hat{\mathbf M} = \mathrm{diag}(\mathbf M)\): row 1 of \(\hat{\mathbf M}^{-1}(\mathbf M-\hat{\mathbf M})\ddot{\mathbf q}\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>Off-diagonals of row 1 are \(M_{12} = 31\) and \(M_{13} = 1\); the actual \(\ddot{\mathbf q} = \ddot{\mathbf q}_d\) at t = 0 (zero error).</p></details>
+  <div class="ansrow"><label>forcing on joint 1 (rad/s²)<input data-ans="0.6863" data-tol="0.002" data-label="coupling forcing" inputmode="decimal" aria-label="forcing on joint 1 in radians per second squared"
+    data-wrong='[{"v":0.6634,"msg":"31 − 1 = 30, not 29."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p><b>The law.</b> \(\mathbf Q = \mathbf M(\mathbf q)\big(\ddot{\mathbf q}_d + \mathbf K_v\dot{\mathbf E} + \mathbf K_p\mathbf E\big) + \mathbf C(\mathbf q,\dot{\mathbf q}) + \mathbf g(\mathbf q)\), with \(\mathbf K_p = 100\,\mathbf I\), \(\mathbf K_v = 20\,\mathbf I\), and \(\mathbf M,\mathbf C,\mathbf g\) from P9.2 re-evaluated at every step from the measured \(\mathbf q,\dot{\mathbf q}\). Closed loop: \(\ddot{\mathbf E} + 20\dot{\mathbf E} + 100\mathbf E = \mathbf 0\), three decoupled critically damped loops (slide 21). <span class="chk">checked on random states</span></p>
+  <p><b>What is new compared with one joint.</b> (1) \(\boldsymbol\alpha\) is a full matrix: the off-diagonal entries are the inertial coupling. (2) \(\mathbf C\) and \(\mathbf g\) change with the whole pose, not only with joint 1. (3) Cost: \(\mathbf M,\mathbf C,\mathbf g\) must be recomputed every update, which is why slides 23–25 move them to a slower outer loop. (4) All three torques must be applied together; joint 1 cannot be controlled alone.</p>
+  <p><b>Numbers.</b> Row 1 of \((\mathbf M - \mathrm{diag}\mathbf M)\ddot{\mathbf q}\) is \(31(2.3562) + 1(-2.3562) = 30(2.3562) = 70.69\). Divide by \(\hat M_{11} = 103\): forcing \(= 0.6863\) rad/s², about 29% of the commanded \(\ddot q_{d,1}\) (2.36), which at \(k_p = 100\) leaves a tracking error of order \(0.6863/100 = 6.9\) mrad. <span class="chk">checked</span></p>
+  <p>Common wrong answer: “\(\mathbf K_p,\mathbf K_v\) are diagonal, therefore \(\boldsymbol\alpha\) is”. Diagonal gains give decoupling <i>only because</i> \(\boldsymbol\alpha = \mathbf M\) is full.</p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.8 · Spot the error: three claims about computed torque</b><span class="chip spot">spot the error</span><span class="marks" data-id="w09-p8" data-topic="w09"></span></div>
+  <p>A study note says: (1) “Computed torque guarantees \(\ddot E + K_v\dot E + K_pE = 0\) for any robot.” (2) “Since \(K_p\) and \(K_v\) are diagonal, \(\alpha\) is diagonal.” (3) “\(f' = \ddot x_d + k_v\dot e + k_pe\) has units of force, so \(f = f' + \beta\).” Find the error in each and correct it.</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>(1) It holds only if the model is exact (and the law runs continuously). With hats the right-hand side is the slide-28 term \(\hat{\mathbf M}^{-1}[\dots]\ne0\). “Guarantees” and “any” are the absolute words to distrust. (2) \(\boldsymbol\alpha = \mathbf M(\mathbf q)\) is a full matrix (slide 18); diagonal gains plus full \(\mathbf M\) are what give decoupled errors. (3) \(f'\) is an acceleration (m/s²); the law is \(f = \alpha f' + \beta\) with \(\alpha = m\) (kg), so \(\alpha f'\) is in newtons.</p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.9 · Force control: which option, and how big is the error?</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w09-p9" data-topic="w09"></span></div>
+  <p>A 2 kg end effector presses on a wall of stiffness \(k_e = 1000\) N/m with \(k_p = 100\) s⁻². An unknown disturbance of 5 N acts on it. Using the Option 2 law, find the steady-state force error. Then say which option you would use, and why.</p>
+  <details class="hint"><summary>Hint 1</summary><p>\(x = mk_e^{-1}k_p\). Check it is dimensionless.</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>Option 2: \(E_{ss} = f_{dist}/(1 + x)\).</p></details>
+  <div class="ansrow"><label>E<sub>ss</sub> Option 2 (N)<input data-ans="4.1667" data-tol="0.01" data-label="Option 2 steady-state error" inputmode="decimal" aria-label="Option 2 steady state force error in newtons"
+    data-wrong='[{"v":25,"msg":"that is Option 1, f_dist/(m k_e⁻¹ k_p); Option 2 has the 1 + in the denominator."},{"v":4.5455,"msg":"you left the mass out of x = m k_e⁻¹ k_p (that gives x = 0.1)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(mk_e^{-1} = 2/1000 = 0.002\) s². \(x = 0.002(100) = 0.2\). \(E_2 = 5/(1 + 0.2) = 4.17\) N; Option 1 would give \(5/0.2 = 25\) N. Use Option 2: it always has the smaller error (\(E_2/E_1 = x/(1+x)\)), and the gap is largest on a stiff wall (small \(x\)). Both still leave a steady error because \(f_{dist}\) is not cancelled; with this wall even Option 2 stays near \(f_{dist}\) unless \(k_p\) is raised greatly (to get 1% of 5 N you need \(k_p = 49\,500\) s⁻²). In implementation use \(f = m[k_e^{-1}k_pE - k_v\dot x] + f_d\) (slide 43) so that the force is never differentiated. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.10 · Cartesian control: Q from a tool force</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w09-p10" data-topic="w09"></span></div>
+  <p>A 2-link planar arm with \(l_1 = l_2 = 1\) m is at \(\mathbf q = (30^\circ, 60^\circ)\). The Cartesian controller commands the tool force \(\mathcal F = (3, -4)\) N. Find the joint torques, and explain in one line why slide 31’s joint-space route is costlier.</p>
+  <details class="hint"><summary>Hint 1</summary><p>\(\mathbf Q = \mathbf J^\top\mathcal F\) with the position Jacobian of Section 5.</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>At this pose \(s_{12} = 1\), \(c_{12} = 0\).</p></details>
+  <div class="ansrow"><label>Q₁ (N·m)<input data-ans="-7.9641" data-tol="0.002" data-label="Q1" inputmode="decimal" aria-label="Q1 in newton metres"
+    data-wrong='[{"v":-1.0359,"msg":"check the sign of the second term: +0.8660 times (−4) is −3.4641, so it adds to −4.5, it does not cancel it."}]'></label><label>Q₂ (N·m)<input data-ans="-3" data-tol="0.002" data-label="Q2" inputmode="decimal" aria-label="Q2 in newton metres"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(\mathbf J = \begin{bmatrix}-1.5&-1\\0.8660&0\end{bmatrix}\), \(\mathbf Q = \mathbf J^\top\mathcal F = (-1.5\cdot3 + 0.8660\cdot(-4),\ -1\cdot3 + 0) = (-7.9641,\ -3.0)\) N·m. Cross-check with moments: the tool is at (0.8660, 1.5) m, so \(xF_y - yF_x = 0.8660(-4) - 1.5(3) = -7.9641\) ✓. <span class="chk">checked</span></p>
+  <p>Joint-space route: before any control can run, the whole Cartesian path needs \(\mathcal K^{-1}\) (inverse kinematics, possibly multi-valued and iterative), \(\mathbf J^{-1}\) and the derivative of \(\mathbf J^{-1}\) at every point (slide 31). The Cartesian route only needs forward kinematics and \(\mathbf J\) on the feedback side and one transpose to get torques.</p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.11 · Hybrid control: choose S and S′</b><span class="chip sketch">sketch</span><span class="chip explain">explain</span><span class="chip calc">calculate</span><span class="marks" data-id="w09-p11" data-topic="w09"></span></div>
+  <p>A robot wipes a horizontal table, pressing with a constant 10 N. Use axes (x, y, z) with z vertical. Write S and S′ for the three translational directions, say which law feeds which, and compute \(\mathcal F\) when the position law outputs (12, −3, 9) N and the force law outputs (1, 2, 10) N. Sketch the controller diagram.</p>
+  <details class="hint"><summary>Hint 1</summary><p>The table blocks motion along its normal, z. Sliding along x and y is free.</p></details>
+  <div class="ansrow"><label>F<sub>z</sub> (N)<input data-ans="10" data-tol="0.01" data-label="Fz" inputmode="decimal" aria-label="commanded force along z in newtons"
+    data-wrong='[{"v":9,"msg":"you used the position law on z; z is force-controlled so the force law (10 N) passes."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Normal z is force-controlled; x, y are position-controlled: \(\mathbf S = \mathrm{diag}(1,1,0)\) (applied to the position law), \(\mathbf S' = \mathbf I - \mathbf S = \mathrm{diag}(0,0,1)\) (applied to the force law; complementary, inferred). Then</p>
+  \[ \mathcal F = \mathbf S\begin{bmatrix}12\\-3\\9\end{bmatrix} + \mathbf S'\begin{bmatrix}1\\2\\10\end{bmatrix} = \begin{bmatrix}12\\-3\\0\end{bmatrix} + \begin{bmatrix}0\\0\\10\end{bmatrix} = \begin{bmatrix}12\\-3\\10\end{bmatrix}\ \text{N}. \]
+  <p>The force law’s \(f_d\) is 10 N along z. Draw the slide-47 diagram: position law (\(\ddot x_d,\dot x_d,x_d\), feedback \(x\)) → S; force law (\(\mathcal F_d\), feedback \(\mathcal F_E\)) → S′; both into a sum → \(\mathcal F\) → arm; “constraints” into both S and S′. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w09">
+  <div class="head"><b>P9.12 · Sketch and label the computed-torque diagram</b><span class="chip sketch">sketch</span><span class="chip explain">explain</span><span class="marks" data-id="w09-p12" data-topic="w09"></span></div>
+  <p>Draw the MIMO computed-torque block diagram (slide 20). Mark which part linearises and which stabilises, and state what each feedback path carries.</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>Blocks, left to right: inputs \(\ddot{\mathbf q}_d,\dot{\mathbf q}_d,\mathbf q_d\); servo = sum of \(\ddot{\mathbf q}_d\), \(\mathbf K_v\dot{\mathbf E}\), \(\mathbf K_p\mathbf E\) giving \(\mathbf Q'\); multiply by \(\mathbf M(\mathbf q)\); add \(\mathbf C(\mathbf q,\dot{\mathbf q}) + \mathbf g(\mathbf q) + \mathbf f(\dot{\mathbf q})\); output \(\mathbf Q\) into the manipulator, giving \(\mathbf q,\dot{\mathbf q}\). Two feedback paths: \(\mathbf q,\dot{\mathbf q}\) subtract from \(\mathbf q_d,\dot{\mathbf q}_d\) to form \(\mathbf E,\dot{\mathbf E}\) (servo); \(\mathbf q,\dot{\mathbf q}\) also feed the model blocks \(\mathbf M\), \(\mathbf C+\mathbf g+\mathbf f\). The model-based group (\(\mathbf M\) and the \(\mathbf C+\mathbf g+\mathbf f\) path) “linearises the system”; the servo group (\(\mathbf K_p,\mathbf K_v\) and the error loops) “stabilises the closed-loop system”. See the figure in Section 1.</p></details>
+</div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w09"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w09-q1" data-topic="w09"></span></div>
+<p>In computed-torque control, what does the model-based part do and what does the servo part do?</p><details class="sol"><summary>Answer</summary><p>The model-based part (\(\alpha\), \(\beta\)) cancels the non-linear dynamics so the system looks like \(\ddot q = q'\); the servo part (\(\ddot q_d + k_v\dot e + k_pe\)) makes that linear system stable and tracking (slide 49). The first linearises, the second stabilises.</p></details></div>
+<div class="gp" data-topic="w09"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w09-q2" data-topic="w09"></span></div>
+<p>A single link has m = 1.5 kg, L = 0.4 m, no friction, and is at q = 60° with \(\ddot q_d = 0\), e = 0.1 rad, \(\dot e = 0\), \(k_p = 25\) s⁻², \(k_v = 10\) s⁻¹. Find the commanded torque.</p><details class="sol"><summary>Answer</summary><p>\(\alpha = 1.5(0.16) = 0.24\) kg·m². \(\tau' = 0 + 0 + 25(0.1) = 2.5\) rad/s². \(\beta = 1.5(9.81)(0.4)\cos60^\circ = 2.943\) N·m. \(\tau = 0.24(2.5) + 2.943 = 3.543\) N·m. <span class="chk">checked</span></p></details></div>
+<div class="gp" data-topic="w09"><div class="head"><b>Q3</b><span class="chip spot">spot the error</span><span class="marks" data-id="w09-q3" data-topic="w09"></span></div>
+<p>A student writes the Option 2 steady-state force error as \(f_{dist}/(mk_e^{-1}k_p)\) and concludes that Option 2 gets better as the wall gets stiffer. What is wrong?</p><details class="sol"><summary>Answer</summary><p>That is Option 1’s formula. Option 2 is \(f_{dist}/(1 + mk_e^{-1}k_p)\). For a stiffer wall (\(k_e\) larger) \(x = mk_e^{-1}k_p\) shrinks, so both errors grow; but Option 2 saturates at \(f_{dist}\) while Option 1 grows without bound. So Option 2 is the better option on a stiff wall, but its error does not improve as the wall stiffens.</p></details></div>
+
+<div class="box" data-reading="w09"></div>
+
+<script data-after>
+(function () {
+/*SIM-BEGIN*/
+const WP = { m: 1.0, L: 1.0, g: 9.81, bv: 0.6, bc: 1.0, eps: 0.01, q0: 0.4, A: 0.8, dt: 0.001, Tend: 8.0 };
+function sgnS(v) { return Math.tanh(v / WP.eps); }
+// o = { k (m_hat/m), kf (friction estimate factor), wn (rad/s), wr (rad/s), e0 (rad), Ts (ms; 1 = continuous law) }
+function ctcSim(o) {
+  const p = WP, dt = p.dt, nSteps = Math.round(p.Tend / dt), N = Math.round(o.Ts);
+  const kp = o.wn * o.wn, kv = 2 * o.wn, mh = o.k * p.m, ah = mh * p.L * p.L;
+  const ref = t => { const s = Math.sin(o.wr * t), c = Math.cos(o.wr * t); return [p.q0 + p.A * s, p.A * o.wr * c, -p.A * o.wr * o.wr * s]; };
+  const acc = (q, v, tau) => (tau - p.bv * v - p.bc * sgnS(v) - p.m * p.g * p.L * Math.cos(q)) / (p.m * p.L * p.L);
+  const es = {}, stats = {};
+  for (const ctl of ['a', 'b', 'c']) {
+    const law = (t, q, v) => {
+      const r = ref(t), e = r[0] - q, ed = r[1] - v;
+      if (ctl === 'a') return ah * (kp * e + kv * ed);
+      if (ctl === 'b') return ah * (kp * e + kv * ed) + mh * p.g * p.L * Math.cos(q);
+      return ah * (r[2] + kv * ed + kp * e) + o.kf * p.bv * v + o.kf * p.bc * sgnS(v) + mh * p.g * p.L * Math.cos(q);
+    };
+    const arr = new Float64Array(nSteps + 1);
+    let q = ref(0)[0] - o.e0, v = ref(0)[1], tau = 0;
+    for (let n = 0; n <= nSteps; n++) {
+      const t = n * dt;
+      arr[n] = ref(t)[0] - q;
+      if (n === nSteps) break;
+      let k1q, k1v, k2q, k2v, k3q, k3v, k4q, k4v;
+      if (N === 1) {
+        k1q = v; k1v = acc(q, v, law(t, q, v));
+        let q2 = q + dt / 2 * k1q, v2 = v + dt / 2 * k1v; k2q = v2; k2v = acc(q2, v2, law(t + dt / 2, q2, v2));
+        let q3 = q + dt / 2 * k2q, v3 = v + dt / 2 * k2v; k3q = v3; k3v = acc(q3, v3, law(t + dt / 2, q3, v3));
+        let q4 = q + dt * k3q, v4 = v + dt * k3v; k4q = v4; k4v = acc(q4, v4, law(t + dt, q4, v4));
+      } else {
+        if (n % N === 0) tau = law(t, q, v);
+        k1q = v; k1v = acc(q, v, tau);
+        k2q = v + dt / 2 * k1v; k2v = acc(q + dt / 2 * k1q, v + dt / 2 * k1v, tau);
+        k3q = v + dt / 2 * k2v; k3v = acc(q + dt / 2 * k2q, v + dt / 2 * k2v, tau);
+        k4q = v + dt * k3v; k4v = acc(q + dt * k3q, v + dt * k3v, tau);
+      }
+      q += dt / 6 * (k1q + 2 * k2q + 2 * k3q + k4q); v += dt / 6 * (k1v + 2 * k2v + 2 * k3v + k4v);
+    }
+    es[ctl] = arr;
+    let s2 = 0, mx = 0;
+    for (let n = 0; n <= nSteps; n++) { s2 += arr[n] * arr[n]; mx = Math.max(mx, Math.abs(arr[n])); }
+    stats[ctl] = { rms: Math.sqrt(s2 / (nSteps + 1)), max: mx, final: arr[nSteps], e_1s: arr[1000], e_4s: arr[4000] };
+  }
+  return { es, stats };
+}
+/*SIM-END*/
+
+W3D.kinds.ctc = function (root) {
+  const stage = root.querySelector('.stage'), side = root.querySelector('.side'), id = root.id;
+  const defs = { k: 1.0, kf: 1.0, wn: 8, wr: 2.0, e0: 0.1, Ts: 1 };
+  const o = Object.assign({}, defs); let zoom = false;
+  const H = 340;
+  const cv = document.createElement('canvas'); stage.appendChild(cv); stage.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  side.innerHTML =
+    W3D.sliderRow(id + '-k', 'k = m̂/m', 0.5, 1.5, o.k, 0.01, '') +
+    W3D.sliderRow(id + '-kf', 'friction', 0, 2, o.kf, 0.05, '') +
+    W3D.sliderRow(id + '-wn', 'ωn', 2, 30, o.wn, 1, ' /s') +
+    W3D.sliderRow(id + '-wr', 'ω ref', 0.5, 4, o.wr, 0.1, ' /s') +
+    W3D.sliderRow(id + '-e0', 'e(0)', -0.3, 0.3, o.e0, 0.01, ' rad') +
+    W3D.sliderRow(id + '-Ts', 'period', 1, 100, o.Ts, 1, ' ms') +
+    '<label class="eyebrow"><input type="checkbox" id="' + id + '-zoom"> zoom the y-axis to curve (c)</label>' +
+    '<div class="out mono" style="font-size:.82rem"></div>';
+  const out = side.querySelector('.out');
+  function fmt(v, d) { return (v * 1000).toFixed(d == null ? 2 : d); }
+  function draw(res) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), W = Math.max(stage.clientWidth, 280);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const ink = W3D.css('--ink'), muted = W3D.css('--muted'), acc = W3D.css('--accent'), exam = W3D.css('--exam'), line = W3D.css('--line');
+    const m = { l: 52, r: 12, t: 36, b: 34 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+    const ser = zoom ? ['c'] : ['a', 'b', 'c'];
+    let ym = 1e-6; ser.forEach(k => { const a = res.es[k]; for (let i = 0; i < a.length; i += 5) ym = Math.max(ym, Math.abs(a[i])); });
+    const mag = Math.pow(10, Math.floor(Math.log10(ym))); let step = mag; [1, 2, 5, 10].some(f => { step = f * mag / 2; return ym / step <= 4; });
+    const top = Math.ceil(ym / step) * step;
+    const X = t => m.l + pw * t / WP.Tend, Y = e => m.t + ph * (0.5 - e / (2 * top));
+    ctx.font = '11px IBM Plex Mono, monospace'; ctx.lineWidth = 1;
+    ctx.strokeStyle = line; ctx.fillStyle = muted; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let v = -top; v <= top + 1e-12; v += step) { const y = Y(v); ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + pw, y); ctx.stroke(); ctx.fillText((Math.abs(v) < 1e-12 ? 0 : v * 1000).toFixed(step * 1000 < 1 ? 1 : 0), m.l - 6, y); }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let t = 0; t <= WP.Tend; t += 1) { ctx.beginPath(); ctx.moveTo(X(t), m.t); ctx.lineTo(X(t), m.t + ph); ctx.stroke(); ctx.fillText(String(t), X(t), m.t + ph + 4); }
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(m.l, Y(0)); ctx.lineTo(m.l + pw, Y(0)); ctx.stroke();
+    ctx.fillStyle = ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('e = q_d − q (mrad)', m.l, 13); ctx.textAlign = 'right'; ctx.fillText('t (s)', W - m.r, H - 6);
+    const cols = { a: muted, b: exam, c: acc };
+    ser.forEach(k => {
+      const a = res.es[k]; ctx.strokeStyle = cols[k]; ctx.lineWidth = k === 'c' ? 2.4 : 1.6; ctx.beginPath();
+      for (let i = 0; i < a.length; i += 4) { const x = X(i * WP.dt), y = Math.max(m.t - 4, Math.min(m.t + ph + 4, Y(a[i]))); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      ctx.stroke();
+    });
+    ctx.lineWidth = 1; ctx.textAlign = 'left';
+    [['a', '(a) PD'], ['b', '(b) PD + gravity'], ['c', '(c) computed torque']].forEach((it, i) => {
+      if (zoom && it[0] !== 'c') return; const x = m.l + 8 + i * 124; ctx.fillStyle = cols[it[0]]; ctx.fillRect(x, 26, 10, 3); ctx.fillStyle = ink; ctx.fillText(it[1], x + 14, 32);
+    });
+  }
+  let res = null;
+  function update() {
+    res = ctcSim(o); draw(res);
+    const kp = o.wn * o.wn, kv = 2 * o.wn, S = res.stats, ratio = (1 - o.k) / o.k;
+    out.innerHTML =
+      '<table><tr><th>controller</th><th>RMS</th><th>max |e|</th></tr>' +
+      ['a', 'b', 'c'].map(k => '<tr><td>' + { a: '(a) PD', b: '(b) PD + g', c: '(c) CTC' }[k] + '</td><td>' + fmt(S[k].rms) + ' mrad</td><td>' + fmt(S[k].max) + ' mrad</td></tr>').join('') + '</table>' +
+      'k<sub>p</sub> = ω<sub>n</sub>² = ' + kp.toFixed(0) + ' s⁻², k<sub>v</sub> = 2ω<sub>n</sub> = ' + kv.toFixed(0) + ' s⁻¹ (ζ = 1)<br>' +
+      'm̂ = ' + (o.k * WP.m).toFixed(3) + ' kg: (m − m̂)/m̂ = ' + ((WP.m - o.k * WP.m) / (o.k * WP.m)).toFixed(4) + '<br>' +
+      (o.Ts === 1 ? 'law evaluated continuously' : 'torque held for ' + o.Ts + ' ms');
+    window.__state[id] = { k: o.k, kf: o.kf, wn: o.wn, wr: o.wr, e0: o.e0, Ts: o.Ts, kp, kv,
+      rms_a: S.a.rms, rms_b: S.b.rms, rms_c: S.c.rms, max_a: S.a.max, max_b: S.b.max, max_c: S.c.max,
+      final_c: S.c.final, e_1s_c: S.c.e_1s, e_4s_c: S.c.e_4s, ratio };
+    return window.__state[id];
+  }
+  function bind(name) {
+    const inp = side.querySelector('#' + id + '-' + name), outEl = side.querySelector('output[for="' + id + '-' + name + '"]');
+    inp.addEventListener('input', () => { o[name] = parseFloat(inp.value); outEl.textContent = (name === 'k' ? o.k.toFixed(2) : String(o[name])) + (outEl.textContent.replace(/^[-\d.]+/, '')); update(); });
+  }
+  ['k', 'kf', 'wn', 'wr', 'e0', 'Ts'].forEach(bind);
+  side.querySelector('#' + id + '-zoom').addEventListener('change', ev => { zoom = ev.target.checked; update(); });
+  window.addEventListener('enn-theme', () => res && draw(res));
+  window.addEventListener('resize', () => res && draw(res));
+  W3D.instances[id] = { set(v) {
+    Object.keys(v).forEach(k => { if (k === 'zoom') { zoom = !!v[k]; side.querySelector('#' + id + '-zoom').checked = zoom; return; } o[k] = v[k]; const inp = side.querySelector('#' + id + '-' + k); if (inp) { inp.value = v[k]; const oe = side.querySelector('output[for="' + id + '-' + k + '"]'); if (oe) oe.textContent = String(v[k]) + oe.textContent.replace(/^[-\d.]+/, ''); } });
+    return update(); } };
+  update();
+};
+})();
+</script>

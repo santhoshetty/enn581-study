@@ -1,0 +1,563 @@
+<p class="eyebrow">Week 1 · Mechanisms</p>
+<h2>How many ways can it move, and how many motors does it need?</h2>
+<p class="lead">A mechanism is a set of rigid links joined by joints. Its <b>degrees of freedom</b> (DoF, also called <b>mobility</b>) say how many numbers fix its configuration, and so the minimum number of actuators needed to control it. The Grübler–Kutzbach (G–K) equation counts the DoF from the number of links and joints alone. Master that count, and know when it lies.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Introduction to mechanisms<small>65 slides (content pp. 18–62) · Dr KM Digumarti · notebook “1 basics of mechanisms”</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w01-lec">📖 View here</button>
+    <button type="button" class="btn" data-dl="notes/w01-lec.pdf" data-name="ENN581 W1 Introduction to Mechanisms.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w01-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>Sample questions 6 and 7</b> are both mobility counts. <b>Q6</b> (<a class="pg" data-doc="w13-lec" data-page="12">W13 p.12</a>): “Mobility of parallel manipulators”, a planar platform on three R–P–R legs, answered as \(3(8-9-1)+9 = 3\) (<a class="pg" data-doc="w13-lec" data-page="13">W13 p.13</a>). <b>Q7</b> (<a class="pg" data-doc="w13-lec" data-page="14">W13 pp.14–17</a>): a delta mechanism. Plain G–K gives \(6(11-15-1)+(1+4\times3)\times3 = 9\) (<a class="pg" data-doc="w13-lec" data-page="15">p.15</a>), but the extended equation \(M=D(N-J-1)+\sum F_i+R_C-R_M\) with \(R_C=0,\ R_M=6\) gives <b>3</b> (<a class="pg" data-doc="w13-lec" data-page="17">p.17</a>). Week 4 owns the extended equation; this week gives you the count and the habit of checking it.</p>
+  <p><b>Where the marks are (indicative; marks not published):</b> the right D (3 planar, 6 spatial); N counted <i>with</i> the ground; J and every F<sub>i</sub> listed; the substitution shown; the answer; and, for a delta or a parallel robot, one sentence saying why plain G–K and the real mobility may differ.</p>
+  <p><b>Where marks are lost:</b> forgetting the ground link (N one too small); counting the two halves of a prismatic joint as one link; using D = 6 on a planar drawing; treating a drawing’s “3D look” as planar (W13 p.14: the delta “is still 3D despite this depiction”); stopping at 9 for the delta; and writing “M = 0, so it cannot move” without the p.49 caveat.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (optional, no coding in the exam)</span>
+  <p>The Week 1 practical folder holds <code>test.py</code> and a CoppeliaSim scene <code>testScene.ttt</code> (the scene file was not opened). <code>test.py</code> connects to a running CoppeliaSim through the ZeroMQ remote API, gets the joint <code>/Joint1</code>, turns on stepping mode, starts the simulation, then sets that joint’s target position to 60° (written as <code>60 * math.pi/180</code>) on every step until 3 s of simulated time have passed, and stops. It exercises one revolute joint (1 DoF). No outputs are saved. The lecture notebook’s seven questions are solved below.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>DoF = how many knobs</h4>A coin slid on a table needs three knobs: left–right, forward–back, spin. Pin a stick on a nail and one knob is enough: its angle. DoF counts the independent knobs, nothing else.</div>
+    <div class="card"><h4>Joints take freedom away</h4>Two loose coins have 3 + 3 = 6 knobs. Push a drawing pin through both: the second coin can only spin about the pin, so 3 + 1 = 4 knobs remain. The pin removed 2.</div>
+    <div class="card"><h4>G–K is an allowance sheet</h4>Every moving link starts with D freedoms. Every joint confiscates D, then hands back the F it allows. Ground never spends. What is left is the mobility M.</div>
+    <div class="card"><h4>The third rope that adds nothing</h4>Hang a plank from two equal parallel ropes: it swings, one knob. A third identical rope between the same bars restricts nothing new, but the formula charges for it and says 0. The count assumes every constraint is a fresh one.</div>
+    <div class="card"><h4>Reach vs dexterity</h4>You can touch a spot on a wall (reachable). You can touch it with your palm facing up, down, left and right (dexterous). Everything dexterous is reachable; not the reverse.</div>
+  </div>
+  <div class="vids" data-vids="w01"></div>
+</div>
+
+<div class="widget" data-w3d="mobility" id="w1-mob">
+  <div class="wh"><b>Mobility counter and four-bar</b><span class="eyebrow">M = D(N − J − 1) + ΣF + R<sub>C</sub> − R<sub>M</sub>, live; the four-bar is drawn to scale</span></div>
+  <div class="wbody"><div class="stage"><span class="legend">crank orange-brown · coupler dark · rocker blue · ground dashed</span></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> pick “Planar four-bar”: M = 1, and the drawing has one free crank angle. Pick “Three equal parallel legs (p.49)”: the count says 0 but the note says the real answer is 1. Pick “Delta, plain G–K” (9), then “Delta, extended” (3). Edit N and watch the ground-link trap: lower N by one in the 3-RPR preset and M drops from 3 to 0. In the four-bar, set the rocker c = 1 and coupler b = 1: it cannot close (|AO<sub>4</sub>| exceeds b + c). Tick “crossed assembly” to flip the coupler to its mirror position.</div>
+</div>
+
+<!-- ================= 1 ================= -->
+<div class="sub" id="w1-basics">
+<h3>1 · Kinematics, mechanisms and kinematic chains <span class="pgs"><a class="pg" data-doc="w01-lec" data-page="18">pp. 18–26</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>Kinematics</b> is the geometry of motion with no forces (<a class="pg" data-doc="w01-lec" data-page="18">p.18</a>). <b>Dynamics</b> is the forces and torques that cause motion, split into <b>statics</b> (no acceleration) and <b>kinetics</b> (acceleration) (<a class="pg" data-doc="w01-lec" data-page="19">p.19</a>). The notebook warns that these words are used loosely in other languages and that the course sticks to this split.</p>
+<p>A <b>mechanism</b> is “a mechanical system that transfers/modifies motion and/or forces from one or more sources to one or more outputs” (<a class="pg" data-doc="w01-lec" data-page="21">p.21</a>). A <b>kinematic chain</b> is “a system of rigid bodies connected by joints” (<a class="pg" data-doc="w01-lec" data-page="22">p.22</a>). Parts: <b>links</b> (rigid), <b>joints</b> (allow relative motion), an <b>end effector</b> (touches the world), a <b>base</b> (rigidly fixed to the ground) (<a class="pg" data-doc="w01-lec" data-page="23">p.23</a>).</p>
+</div>
+<div class="layer derive"><span class="tag">Classifying chains</span>
+<div class="tbl"><table><tr><th>Word</th><th>Meaning</th><th>Example on the slides</th></tr>
+<tr><td>Closed chain</td><td>forms a closed loop (<a class="pg" data-doc="w01-lec" data-page="25">p.25</a>)</td><td>gripper linkage, delta robot (<a class="pg" data-doc="w01-lec" data-page="24">p.24</a>)</td></tr>
+<tr><td>Open chain</td><td>not closed</td><td>an industrial arm</td></tr>
+<tr><td>Serial chain</td><td>open chain in which every link except the first and last connects to two other links</td><td>an industrial arm (<a class="pg" data-doc="w01-lec" data-page="24">p.24</a>)</td></tr>
+<tr><td>Parallel mechanism <span class="added">added</span></td><td>the end effector is joined to the base through several chains at once, so there are closed loops. The slides show pictures only, no definition</td><td>ABB FlexPicker delta; Stewart platform</td></tr></table></div>
+<p>Why use closed loops (<a class="pg" data-doc="w01-lec" data-page="26">p.26</a>): the actuators can sit on the base, so the moving parts are lighter; the load capacity is larger (several legs share it); and loops give interesting motion paths (Strandbeest, Cyber Tiger).</p>
+</div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>A 6-joint industrial arm: open and serial. A delta robot: closed loops, parallel. A four-bar linkage: closed, and no link is a “first” or “last”, so it is not serial. Motor placement is the usual exam justification: a delta’s three motors sit on the base, so the light rods are all that move quickly.</p>
+</div>
+<div class="angle">Definition questions here are easy marks lost by a swapped word: <i>kinematics</i> (no forces) against <i>kinetics</i> (forces with acceleration); <i>statics</i> against <i>kinetics</i>. A scenario question asking “why a parallel robot for a fast pick-and-place line” wants: base-mounted actuators, low moving mass, larger load.</div>
+</div>
+
+<!-- ================= 2 ================= -->
+<div class="sub" id="w1-dof">
+<h3>2 · Degrees of freedom and joints <span class="pgs"><a class="pg" data-doc="w01-lec" data-page="27">pp. 27–36</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>DoF</b> = “number of independent parameters that define the configuration of a mechanism” (<a class="pg" data-doc="w01-lec" data-page="27">p.27</a>). Link lengths are taken as known; the DoF do not depend on the lengths (notebook). Examples (<a class="pg" data-doc="w01-lec" data-page="28">pp. 28–33</a>): a point in 2D has 2 DoF; a pendulum in 2D has 1 (x and y are tied together by the fixed length, so one angle is enough); a rigid body in 3D has 6 (three translations, three rotations); a rigid body in 2D has 3 (two translations, one rotation; notebook Q1).</p>
+<figure class="svg"><svg viewBox="0 0 520 175" role="img" aria-label="Two planar links, unjoined and pinned">
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">
+  <text x="30" y="16" font-weight="600">unjoined: 3 + 3 = 6 DoF</text>
+  <line x1="30" y1="60" x2="120" y2="45" stroke="var(--accent)" stroke-width="6" stroke-linecap="round"/>
+  <line x1="60" y1="120" x2="190" y2="130" stroke="var(--exam)" stroke-width="6" stroke-linecap="round"/>
+  <text x="30" y="35" fill="var(--accent)">link 1: x, y, θ</text>
+  <text x="60" y="155" fill="var(--exam)">link 2: x, y, θ</text>
+  <text x="290" y="16" font-weight="600">pinned (R): 3 + 1 = 4 DoF</text>
+  <line x1="290" y1="60" x2="390" y2="45" stroke="var(--accent)" stroke-width="6" stroke-linecap="round"/>
+  <line x1="390" y1="45" x2="475" y2="105" stroke="var(--exam)" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="390" cy="45" r="7" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+  <text x="290" y="35" fill="var(--accent)">link 1: x, y, θ</text>
+  <text x="400" y="135" fill="var(--exam)">link 2: θ only</text>
+  <text x="290" y="100" fill="var(--muted)">the pin removes 2</text>
+  </g></svg><figcaption>Schematic, not to scale. Slides pp. 35–36 and notebook cell 7: the revolute joint takes the DoF from 6 to 4, because the pin forces the two links to share one point (two equations).</figcaption></figure>
+<p>Joint types (<a class="pg" data-doc="w01-lec" data-page="34">p.34</a>). The last two columns are <span class="added">added</span>: the constraints a joint removes are \(D - F\).</p>
+<div class="tbl"><table><tr><th>Joint</th><th>Symbol</th><th>DoF \(F\)</th><th>Removes in 3D (\(6-F\))</th><th>Removes in 2D (\(3-F\))</th></tr>
+<tr><td>Revolute (hinge, pin)</td><td>R</td><td>1</td><td>5</td><td>2</td></tr>
+<tr><td>Prismatic (slider)</td><td>P</td><td>1</td><td>5</td><td>2</td></tr>
+<tr><td>Helical (screw)</td><td>H</td><td>1</td><td>5</td><td>spatial only</td></tr>
+<tr><td>Cylindrical</td><td>C</td><td>2</td><td>4</td><td>spatial only</td></tr>
+<tr><td>Universal</td><td>U</td><td>2</td><td>4</td><td>spatial only</td></tr>
+<tr><td>Spherical (ball)</td><td>S</td><td>3</td><td>3</td><td>spatial only</td></tr></table></div>
+<p>The slides list no planar joint, so planar mechanisms in this unit use only R and P.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>A free rigid body has \(D\) DoF (\(D = 3\) planar, \(D = 6\) spatial). Two free bodies have \(2D\). A joint with \(F\) DoF between them leaves \(F\) relative freedoms, so it removes \(D - F\) of the \(D\) relative freedoms. For the planar revolute pair: \(6 - (3-1) = 4\) (<a class="pg" data-doc="w01-lec" data-page="36">p.36</a>). <span class="chk">checked</span></p>
+</div>
+<div class="angle">Typical short question: “how many DoF does a rigid body have in 2D?” (3, not 2: a point has 2, but a body also has orientation), “a rigid body in 3D?” (6), “the DoF of a spherical joint?” (3), “a helical joint?” (1: rotation and translation are locked together by the pitch). Do not confuse the DoF of a <i>joint</i> with the <i>mobility</i> of the mechanism.</div>
+</div>
+
+<!-- ================= 3 ================= -->
+<div class="sub" id="w1-actuation">
+<h3>3 · Controllable versus total DoF <span class="pgs"><a class="pg" data-doc="w01-lec" data-page="37">pp. 37–38</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A DoF is <b>controllable</b> if an actuator drives it (a motor on a joint). Unactuated DoF are <b>uncontrollable</b> (<a class="pg" data-doc="w01-lec" data-page="37">p.37</a>). Compare the number of actuators with the total DoF:</p>
+<div class="tbl"><table><tr><th>Controllable vs total</th><th>Name on the slide</th></tr>
+<tr><td>equal</td><td>fully actuated</td></tr><tr><td>less</td><td>under-actuated: fewer actuators than joints; low cost, simpler design, lower weight (<a class="pg" data-doc="w01-lec" data-page="38">p.38</a>)</td></tr>
+<tr><td>more</td><td>“redundant”</td></tr></table></div>
+</div>
+<div class="layer derive"><span class="tag">The “redundant” wording</span>
+<p>Slide 37 reads, word for word: “Controllable DOF &gt; Total DOF, the robot is called redundant”. Notebook cell 8 adds “An example of this is a 7DOF robot arm in 3D space”. Taken literally these disagree. A serial arm with 7 revolute joints has mobility 7 by G–K, and with 7 motors its controllable DoF equal its total DoF, so by the wording it would be <i>fully actuated</i>.</p>
+<p>The standard meaning <span class="added">added</span> is <b>kinematic redundancy</b>: the arm has more joint DoF than the <i>task</i> needs. A 3D end-effector pose has 6 numbers, so a 7-joint arm is redundant (7 &gt; 6), and so is a planar 3R arm used only to position a point (3 &gt; 2). Redundancy gives a family of joint configurations for the same tool pose (the usual use: avoiding obstacles and joint limits).</p>
+<p><b>What to write in the exam:</b> for “fully / under / redundant” compare actuators with the DoF of the mechanism as the slide does; if the question names a 7-DoF arm as redundant, answer “redundant: more joint DoF than the 6-DoF task” and say that you are using this meaning. <span class="chk">checked</span></p>
+</div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>A 6R arm with 6 motors: fully actuated. The same arm with 4 motors: under-actuated (two joints free-swinging). A Stewart platform (M = 6, section 5) with 6 linear actuators: fully actuated. A delta robot with 3 motors and true M = 3: fully actuated, whereas the plain G–K value 9 would wrongly suggest under-actuated. <span class="chk">checked</span></p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs notebook</span><p>The definition on p.37 and the “7DOF arm” example (notebook cell 8) do not match unless “total DOF” means the task’s pose DoF (6). Use the standard meaning above for redundancy; for under-actuated and fully actuated the slide’s comparison with the mechanism’s DoF is the one to quote.</p></div>
+<div class="angle">A scenario question may ask “why build an under-actuated robot?” Answer from p.38: fewer actuators means lower cost, simpler design and lower weight, at the price that not every DoF can be commanded.</div>
+</div>
+
+<!-- ================= 4 ================= -->
+<div class="sub" id="w1-gk">
+<h3>4 · Mobility and the Grübler–Kutzbach equation <span class="pgs"><a class="pg" data-doc="w01-lec" data-page="39">pp. 39–47</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>Mobility</b> is the DoF that remain after all joints have applied their constraints. It is the commonly used word for a mechanism, and the “minimum number of actuators you need” (<a class="pg" data-doc="w01-lec" data-page="39">p.39</a>). The equation does bookkeeping: start with every moving link free, subtract what each joint takes, add back what each joint allows. It uses only the topology (how many links, which joints), never the lengths.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Form 2</b> (<a class="pg" data-doc="w01-lec" data-page="41">p.41</a>), the one used in the W13 sample questions:</p>
+\[ M = D\,(N-1) - D\,J + \sum_{i=1}^{J}F_i \;=\; D\,(N-J-1)+\sum_{i=1}^{J}F_i \]
+<p>\(M\) mobility; \(D = 3\) (planar) or \(6\) (spatial); \(N\) number of links <b>including the grounded link</b>; \(J\) number of joints; \(F_i\) DoF of joint \(i\). The \(N-1\) moving links have \(D(N-1)\) DoF if free; each joint removes \(D\) and returns \(F_i\).</p>
+<p><b>Form 1</b> (<a class="pg" data-doc="w01-lec" data-page="40">p.40</a>) collects the joints by their DoF, \(P_i\) = number of joints with \(i\) DoF. A joint with \(i\) DoF removes \(D-i\) (section 2):</p>
+\[ M_{3D} = 6(N-1) - 5P_1 - 4P_2 - 3P_3 - 2P_4 - P_5, \qquad M_{2D} = 3(N-1) - 2P_1 - P_2 \]
+<p>The two forms are the same sum grouped differently: \(\sum_i (D-F_i) = \sum_i (D-i)\,P_i\). <span class="chk">checked</span> Both forms agree on every count on this page.</p>
+<p><b>Counting links.</b> Ground is link 0 and counts. A prismatic joint joins two parts that slide on each other (cylinder and rod); these are two links. Several ground pivots are still one link (the ground).</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Decide D: planar drawing with joint axes all perpendicular to the page gives D = 3. Anything with S, U, C, or a note that it is “still 3D” gives D = 6.</li>
+<li>Number the links, <b>ground = 0</b>. Split every prismatic joint into its two links.</li>
+<li>List every joint with its F (R, P = 1; C, U = 2; S = 3). Count J and \(\sum F_i\).</li>
+<li>Substitute into \(M = D(N-J-1)+\sum F_i\) and show the line.</li>
+<li>Cross-check with form 1 if time allows.</li>
+<li>Sanity checks: a serial chain has \(N = J+1\), so \(M = \sum F_i\); M should be at least 1 for a moving machine; if M is 0 or negative, ask whether constraints are dependent (section 6).</li></ol></div>
+<div class="worked"><span class="tag">Worked examples from the slides (all planar, D = 3)</span>
+<p><b>Planar serial RPR</b> (<a class="pg" data-doc="w01-lec" data-page="42">pp. 42–43</a>): links 0–3, so \(N = 4\); three 1-DoF joints, \(P_1 = 3\), \(P_2 = 0\).<br>
+Form 1: \(M = 3(4-1) - 2\times3 - 1\times0 = 3\). Form 2: \(M = 3(4-3-1) + (1+1+1) = 3\). <span class="chk">checked</span> (A serial chain: M = sum of joint DoF.)</p>
+<p><b>Planar four-bar</b> (<a class="pg" data-doc="w01-lec" data-page="44">pp. 44–45</a>, notebook Q2): ground plus three moving bars, \(N = 4\); four revolutes, \(P_1 = 4\).<br>
+Form 1: \(M = 3(4-1) - 2\times4 - 0 = 1\). Form 2: \(M = 3(4-4-1) + 4 = 1\). <span class="chk">checked</span> One motor on the crank drives the whole linkage.</p>
+<p><b>Planar parallel manipulator</b> (<a class="pg" data-doc="w01-lec" data-page="46">pp. 46–47</a>, notebook Q3; the same figure is W13 Q6): a triangular platform on three R–P–R legs. Links: ground, platform, and \(3\times2\) leg parts (each prismatic joint has a cylinder and a rod), so \(N = 8\). Joints: \(3\times3 = 9\), all 1 DoF.<br>
+Form 1: \(M = 3(8-1) - 2\times9 - 0 = 3\). Form 2: \(M = 3(8-9-1) + 9 = 3\). <span class="chk">checked</span> Three actuators (one per leg) position the platform’s x, y and angle.</p>
+<p>Two extra planar counts <span class="added">added</span> that exam questions like: <b>five-bar</b> (N = 5, five R): \(3(5-5-1)+5 = 2\); <b>slider-crank</b> (N = 4, three R and one P): \(3(4-4-1)+4 = 1\). <span class="chk">checked</span> Both are presets in the widget above.</p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs notebook</span><p>Notebook cell 9 introduces the equation for “simple serial” kinematic chains, yet the slides and notebook then apply it to the closed four-bar and the parallel manipulator, and the answers (1 and 3) are the standard ones. Treat G–K as valid for any rigid-body mechanism <i>whose constraints are independent</i> (the real condition, section 6).</p></div>
+<div class="angle">The classic traps are all in the bookkeeping: N without ground (3-RPR gives 0 instead of 3), \(D=6\) on a planar drawing (four-bar gives −2), swapping “constraints removed” with “DoF allowed” (four-bar gives 5), and counting each prismatic joint as one link. Writing the substitution line earns method marks even when the count is off. <span class="chk">checked</span> All four wrong answers are reproduced in the check script.</div>
+</div>
+
+<!-- ================= 5 ================= -->
+<div class="sub" id="w1-spatial">
+<h3>5 · Spatial mechanisms: Stewart platform and the delta <span class="pgs"><a class="pg" data-doc="w01-lec" data-page="48">p. 48</a> · <a class="pg" data-doc="w13-lec" data-page="14">W13 pp. 14–17</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>The <b>Stewart platform</b> (<a class="pg" data-doc="w01-lec" data-page="48">p.48</a>) is a base and a platform joined by six identical legs. Each leg is ground–U–P–S–platform: a universal joint at the base, a prismatic actuator, a spherical joint at the platform. The slide shows <i>one</i> leg and asks “What is the mobility of this system?” as homework. It gives no answer, so the count below is <span class="added">added</span>.</p>
+<p>The <b>delta</b> (W13 Q7, <a class="pg" data-doc="w13-lec" data-page="14">p.14</a>) has a base, a platform and three legs. Each leg is a revolute joint at the base driving an upper arm, then a parallelogram of two rods with a spherical joint at each of its four ends.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Stewart platform</b>, D = 6. Links: ground, platform, and \(6\times2\) leg parts (lower cylinder, upper rod), so \(N = 14\). Joints: six U (2 DoF), six P (1), six S (3), so \(J = 18\) and \(\sum F_i = 6(2+1+3) = 36\):</p>
+\[ M = 6\,(14-18-1) + 36 = -30 + 36 = 6 \]
+<p>Six DoF, driven by the six prismatic actuators: fully actuated, and the platform can take any 3D pose. <span class="chk">checked</span> The one leg drawn on p.48 has \(N=4\), \(J=3\): \(M = 6(4-3-1) + 6 = 6\), the same number because a serial chain has \(M=\sum F_i\) (here \(2+1+3\)). <span class="chk">checked</span></p>
+<p>Why the U matters <span class="added">added</span>: with an S at <i>both</i> ends of each leg (six SPS), \(\sum F_i = 42\) and \(M = 12\). The extra 6 are the legs spinning about their own axes, which move nothing. The U at the base blocks that spin, so the UPS count of 6 is the real one. <span class="chk">checked</span></p>
+<p><b>Delta</b>, D = 6 (W13 p.14: “still 3D despite this depiction”). Links: base, platform, and per leg one upper arm plus two rods: \(N = 2 + 3\times3 = 11\). Joints: per leg 1 R and 4 S, so \(J = 3\times5 = 15\), \(\sum F_i = (1 + 4\times3)\times3 = 39\) (<a class="pg" data-doc="w13-lec" data-page="15">W13 p.15</a>):</p>
+\[ M = 6\,(11-15-1) + 39 = 9 \quad\text{(plain G–K)} \]
+<p>The delta’s platform really has 3 DoF (it translates in x, y, z and stays parallel to the base). The six rods each spin freely about their own axis, since a rod has a ball joint at both ends. These six spins are <b>local mobility</b> \(R_M = 6\) and have no effect on the platform. The extended equation (<a class="pg" data-doc="w13-lec" data-page="16">W13 p.16</a>) subtracts them, with \(R_C = 0\) over-constraints (<a class="pg" data-doc="w13-lec" data-page="17">p.17</a>):</p>
+\[ M = D(N-J-1) + \sum F_i + R_C - R_M = 6(11-15-1) + 39 + 0 - 6 = 3 \]
+<p><span class="chk">checked</span> Week 4 derives \(R_C\) and \(R_M\) in full. For now: plain G–K is a first estimate; local spins add fake DoF (subtract \(R_M\)) and dependent constraints hide real ones (add \(R_C\)).</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe (W13 Q7 style)</span><ol>
+<li>Write D = 6 (state why: spherical joints, “still 3D”).</li>
+<li>List the links by name (base, platform, each leg’s parts) and sum to N.</li>
+<li>List the joints by leg and sum J and \(\sum F_i\). Each S is 3.</li>
+<li>Give the plain answer (9). Then say: six rods spin about their own axes, so \(R_M=6\); with \(R_C = 0\) the extended equation gives 3.</li>
+<li>Final check: a delta robot has 3 motors and moves a point in x, y, z, consistent with 3.</li></ol></div>
+<div class="angle">A short-answer version expects you to say whether 9 or 3 is wanted. The trap is stopping at the plain-G–K value. If the question only quotes the plain equation, 9 is the answer it wants; if it quotes the extended equation or asks for the platform’s real DoF, it is 3. Read which equation is given.</div>
+</div>
+
+<!-- ================= 6 ================= -->
+<div class="sub" id="w1-fail">
+<h3>6 · Where G–K fails <span class="pgs"><a class="pg" data-doc="w01-lec" data-page="49">pp. 49–51</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Slide 49 shows a body hung from the ground by three legs, each with an R at the ground and an R at the body (the notebook’s Q4 uses the same figure). The count gives 0, “but the system can move: it has 1 degree of freedom!”. The slide’s reason: the equation “assumes that the constraints on motion are independent”; one of the middle links can be removed without changing what the mechanism does, so it is redundant “and should not be counted”.</p>
+<figure class="svg"><svg viewBox="0 0 440 230" role="img" aria-label="Three equal parallel legs between ground pivots and a bar, drawn at two crank angles">
+  <g font-family="IBM Plex Mono, monospace" font-size="12">
+  <line x1="40" y1="214" x2="260" y2="214" stroke="var(--muted)" stroke-width="2"/>
+  <g fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"><polygon points="70,200 62,214 78,214"/><polygon points="150,200 142,214 158,214"/><polygon points="230,200 222,214 238,214"/></g>
+  <g stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 4" fill="none"><line x1="70" y1="200" x2="53.3" y2="105.5"/><line x1="150" y1="200" x2="133.3" y2="105.5"/><line x1="230" y1="200" x2="213.3" y2="105.5"/><line x1="53.3" y1="105.5" x2="213.3" y2="105.5" stroke-width="4"/></g>
+  <g stroke="var(--accent)" stroke-width="3" fill="none" stroke-linecap="round"><line x1="70" y1="200" x2="118" y2="116.9"/><line x1="150" y1="200" x2="198" y2="116.9"/><line x1="230" y1="200" x2="278" y2="116.9"/></g>
+  <line x1="118" y1="116.9" x2="278" y2="116.9" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>
+  <g fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"><circle cx="70" cy="200" r="5"/><circle cx="150" cy="200" r="5"/><circle cx="230" cy="200" r="5"/><circle cx="118" cy="116.9" r="5"/><circle cx="198" cy="116.9" r="5"/><circle cx="278" cy="116.9" r="5"/></g>
+  <text x="285" y="112" fill="var(--ink)">bar, legs at 60°</text>
+  <text x="62" y="92" fill="var(--muted)">legs at 100° (dashed)</text>
+  <text x="270" y="180" fill="var(--accent)">3 equal,</text><text x="270" y="196" fill="var(--accent)">parallel legs</text>
+  </g></svg><figcaption>Illustrative geometry, drawn to scale at 80 px per unit: ground pivots 1.0 apart, legs 1.2 long, bar pivots 1.0 apart (the slide gives no numbers). The bar slides along a circular arc without turning, so the linkage moves with one DoF.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Counting it, and why it miscounts</span>
+<p>Links: ground, three legs, the body: \(N = 5\). Joints: six R, \(P_1 = 6\), \(P_2 = 0\) (<a class="pg" data-doc="w01-lec" data-page="49">p.49</a>):</p>
+\[ M = 3(5-1) - 2\times6 - 1\times0 = 0, \qquad\text{form 2: } 3(5-6-1)+6 = 0 \]
+<p><b>Counted 0, real 1.</b> Why, in terms of the geometry <span class="added">added</span>: the unknowns are the three leg angles and the body’s \(x, y, \theta\) (6 numbers); each leg gives two closure equations (6 equations). G–K treats the 6 equations as independent, hence \(6-6 = 0\). But when the three legs are <b>equal in length and parallel</b>, and the body’s pivots are spaced exactly like the ground pivots, the third leg’s two equations are implied by the first two (they say the same thing again). Only 5 of the 6 are independent, leaving 1 free motion. The remedy on the slide, deleting one middle leg, gives \(N=4,\ J=4\): \(M = 3(4-1) - 2\times4 = 1\), the parallelogram four-bar, which is correct. <span class="chk">checked</span> The constraint Jacobian has rank 5 at the parallel geometry (so 1 DoF) and the whole family closes exactly; with unequal legs, 20 random assemblies all give rank 6 (0 DoF).</p>
+<p>So the miscount is a property of the <i>special geometry</i>, not of the topology: change one leg length slightly and the structure locks, and then G–K’s 0 is right. G–K only sees N, J and F, never the lengths, so it cannot tell the two cases apart. W13 p.16 names the correction: over-constraints \(R_C\) are added back (Week 4).</p>
+<p><b>Hoberman mechanism</b> (<a class="pg" data-doc="w01-lec" data-page="51">p.51</a>): the slide gives only “24 links and 36 revolute joints”, no calculation. Putting those into G–K (my arithmetic, taking one link as the frame, <span class="added">added</span>) gives \(3(24-36-1)+36 = -3\) for D = 3 and \(6(24-36-1)+36 = -42\) for D = 6. Both are negative, yet the object expands and contracts: the same lesson, G–K is not a proof that nothing moves. <span class="chk">checked</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe: “Did you notice anything odd?”</span><ol>
+<li>Do the count and show it (M = 0).</li>
+<li>State the observation: the mechanism visibly moves (1 DoF).</li>
+<li>Give the reason in the slide’s words: G–K assumes the constraints are independent; here one leg is redundant.</li>
+<li>Show the fix: remove one leg, recount, N = 4, J = 4, M = 1.</li>
+<li>Add the geometry caveat: it works because the legs are equal and parallel.</li></ol></div>
+<div class="angle">Absolute-word traps live here: “M = 0 means the mechanism cannot move” (false, p.49) and “G–K always gives the true mobility” (false). The true statement: M from G–K is exact only if the constraints are independent; otherwise it can undercount (p.49) or, with local motions, overcount (the delta).</div>
+</div>
+
+<!-- ================= 7 ================= -->
+<div class="sub" id="w1-workspace">
+<h3>7 · Workspace: reachable and dexterous <span class="pgs"><a class="pg" data-doc="w01-lec" data-page="52">pp. 52–57</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>The <b>workspace</b> is the set of points the end effector can reach. Its size and shape come from (1) the geometry (link lengths) and (2) the constraints on the joints (limits on angles or strokes) (<a class="pg" data-doc="w01-lec" data-page="52">p.52</a>).</p>
+<p><b>Reachable workspace</b>: points the end effector can reach in <i>one</i> orientation. <b>Dexterous workspace</b>: points it can reach in <i>all possible</i> orientations. So \(W_{Dexterous}\subseteq W_{Reachable}\) (<a class="pg" data-doc="w01-lec" data-page="57">p.57</a>; notebook Q7 answer \(W_R \supseteq W_D\)). The inclusion is non-strict: the sets can be equal in a degenerate case, so “\(\subset\)” is a trap.</p>
+<p>The four arm types on the slides, with the shapes shown in the pictures (<a class="pg" data-doc="w01-lec" data-page="53">pp. 53–56</a>; figures by A. Becker et al., “Robot Manipulator Workspaces”). Joint-limit cut-outs are visible in the slide images; the shape descriptions are <span class="added">added</span> from reading those images.</p>
+<div class="tbl"><table><tr><th>Arm</th><th>Joints</th><th>Workspace shape (as drawn)</th></tr>
+<tr><td>PUMA (<a class="pg" data-doc="w01-lec" data-page="53">p.53</a>)</td><td>RRR</td><td>thick spherical shell around the shoulder, with a wedge cut out by joint limits</td></tr>
+<tr><td>SCARA (<a class="pg" data-doc="w01-lec" data-page="54">p.54</a>)</td><td>RRP</td><td>a flat ring (annulus) swept by the two vertical-axis revolutes, made thick by the vertical stroke; a gap where the limits stop it</td></tr>
+<tr><td>Cylindrical, PlateCrane EX (<a class="pg" data-doc="w01-lec" data-page="55">p.55</a>)</td><td>RPP</td><td>a thick-walled cylinder sector: angle from the R, height and radius ranges from the two P</td></tr>
+<tr><td>Cartesian, Yamaha (<a class="pg" data-doc="w01-lec" data-page="56">p.56</a>)</td><td>PPP</td><td>a rectangular box with edges equal to the three strokes</td></tr></table></div>
+<figure class="svg"><svg viewBox="0 0 480 246" role="img" aria-label="Reachable annulus of a planar 2R arm, and reachable and dexterous discs of an equal-link planar 3R arm">
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">
+  <path d="M30,120 a80,80 0 1,0 160,0 a80,80 0 1,0 -160,0 Z M90,120 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0 Z" fill="var(--accent)" fill-opacity="0.2" fill-rule="evenodd" stroke="var(--accent)" stroke-width="1.5"/>
+  <circle cx="110" cy="120" r="3" fill="var(--ink)"/>
+  <text x="14" y="16" font-weight="600">2R, L = 0.5 m, 0.3 m</text>
+  <text x="14" y="236" fill="var(--muted)">reachable: 0.2 m ≤ r ≤ 0.8 m</text>
+  <text x="72" y="82" fill="var(--muted)">r = 0.8</text>
+  <path d="M270,120 a90,90 0 1,0 180,0 a90,90 0 1,0 -180,0 Z" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.5"/>
+  <path d="M330,120 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0 Z" fill="var(--exam)" fill-opacity="0.45" stroke="var(--exam)" stroke-width="1.5"/>
+  <circle cx="360" cy="120" r="3" fill="var(--ink)"/>
+  <text x="262" y="16" font-weight="600">3R, L = 0.3 m each</text>
+  <text x="262" y="228" fill="var(--muted)">reachable: r ≤ 0.9 m</text><text x="262" y="244" fill="var(--exam)">dexterous: r ≤ 0.3 m</text>
+  </g></svg><figcaption>Drawn to scale at 100 px per metre, base at the dot. Left: a 2R arm has only 2 DoF, so it cannot set the tool angle independently and has no dexterous workspace. Right: the 3R arm with equal links reaches a 0.9 m disc but can reach every tool angle only inside the inner 0.3 m disc (shaded darker).</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation (planar examples) <span class="added">added</span></span>
+<p><b>2R arm</b>, links \(L_1, L_2\): the tip distance \(r\) from the base satisfies \(|L_1-L_2| \le r \le L_1+L_2\) (elbow fully folded to fully stretched). For \(L = 0.5, 0.3\) m this is \(0.2 \le r \le 0.8\) m. <span class="chk">checked</span></p>
+<p><b>3R arm</b>, links \(L_1, L_2, L_3\), tool at \(\mathbf p\) with direction angle \(\phi\): the wrist is at \(\mathbf w = \mathbf p - L_3(\cos\phi, \sin\phi)\), and \(\mathbf p\) is reachable at that \(\phi\) iff \(|L_1-L_2| \le |\mathbf w| \le L_1+L_2\). Reachable: some \(\phi\) works. Dexterous: <i>every</i> \(\phi\) works, i.e. the whole circle of radius \(L_3\) about \(\mathbf p\) lies inside the 2R annulus. For equal links \(L\): the annulus is \(0 \le |\mathbf w| \le 2L\), so the circle fits iff \(r + L \le 2L\), that is \(r \le L\). With \(L = 0.3\) m: \(W_R\) is the disc \(r \le 0.9\) m and \(W_D\) the disc \(r \le 0.3\) m. <span class="chk">checked</span> by sampling points and tool angles.</p>
+<p>A mechanism with fewer DoF than the pose has (3 planar, 6 spatial) cannot reach all orientations at any point, so its dexterous workspace is empty.</p>
+</div>
+<div class="angle">Expect: “which is true, \(W_R \subseteq W_D\), \(W_R \subset W_D\), \(W_R \supseteq W_D\), \(W_R \supset W_D\)?” Answer \(W_R \supseteq W_D\) (dexterous is the harder condition, so the smaller set). The strict options are traps. Also expect to name the arm from its joint string (RRR PUMA, RRP SCARA, RPP cylindrical, PPP Cartesian) and to say what limits a workspace (link geometry, joint limits).</div>
+</div>
+
+<!-- ================= 8 ================= -->
+<div class="sub" id="w1-preview">
+<h3>8 · The manipulation problems this unit solves <span class="pgs"><a class="pg" data-doc="w01-lec" data-page="58">pp. 58–62</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Slide 59 previews the unit. <b>Forward kinematics</b>: joint coordinates to end-effector pose (W2). <b>Inverse kinematics</b>: tip pose to joint coordinates (W3). <b>Velocity kinematics</b>: how fast the end effector moves for given joint rates, or the joint rates needed (W6). <b>Dynamics</b>: the torque to accelerate the tip, or the force it exerts (W7–W9). <b>Trajectory generation</b>: a path in joint or tool space (W5). A <b>pose</b> is position plus orientation (<a class="pg" data-doc="w01-lec" data-page="60">p.60</a>). Relating two frames takes 6 numbers, 3 translation and 3 rotation, written as a 4×4 homogeneous matrix (<a class="pg" data-doc="w01-lec" data-page="62">p.62</a>). Frames named: {B} base, {W} wrist, {T} tool, {S} station, {G} goal, {C} camera (<a class="pg" data-doc="w01-lec" data-page="61">p.61</a>).</p>
+</div>
+<div class="angle">Low weight alone, but the 6-number pose is why a 6-DoF arm is the minimum for arbitrary tool poses, and why 7 joints are “redundant”.</div>
+</div>
+
+<!-- ================= guided problems ================= -->
+<h3 id="w1-problems">Guided problems: solve on paper first</h3>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.1 · Planar serial RPR (slides pp. 42–43)</b><span class="chip calc">calculate</span><span class="marks" data-id="w01-p1" data-topic="w01"></span></div>
+  <p>A planar chain has a revolute, a prismatic and a revolute joint in series from the ground. Find M with both forms of the equation.</p>
+  <details class="hint"><summary>Hint 1: D and N</summary><p>Planar, so D = 3. Links: ground (0) and three moving links.</p></details>
+  <details class="hint"><summary>Hint 2: the joints</summary><p>All three joints have F = 1, so \(P_1 = 3\), \(P_2 = 0\).</p></details>
+  <div class="ansrow"><label>M<input data-ans="3" data-tol="0.01" data-label="M" inputmode="decimal" aria-label="mobility" data-wrong='[{"v":0,"msg":"you left out the ground link (N = 3) or took N one too small."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Form 1: \(M = 3(N-1) - 2P_1 - P_2 = 3(4-1) - 2\times3 - 0 = 9 - 6 = 3\).</p>
+  <p>Form 2: \(M = D(N-J-1) + \sum F_i = 3(4-3-1) + 3 = 0 + 3 = 3\). Both agree. For any serial chain \(N = J+1\), so \(M\) is simply the sum of the joint DoF: here 3. Three actuators (one per joint) are needed, and they are enough to set the tip’s x, y and angle. <span class="chk">checked</span></p>
+  <p>Common wrong answer: N = 3 (forgetting ground) gives \(3(3-1)-6 = 0\).</p></details>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.2 · Planar four-bar (notebook Q2)</b><span class="chip calc">calculate</span><span class="chip derive">derive</span><span class="marks" data-id="w01-p2" data-topic="w01"></span></div>
+  <p>Determine the mobility of the planar four-bar mechanism (four revolute joints, ground link included). Then explain in one line why the answer is not 3 even though each moving bar is a planar body.</p>
+  <details class="hint"><summary>Hint 1</summary><p>Three moving bars have \(3\times3 = 9\) DoF if free.</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>Each revolute removes 2, so 4 revolutes remove 8.</p></details>
+  <div class="ansrow"><label>M<input data-ans="1" data-tol="0.01" data-label="M" inputmode="decimal" aria-label="mobility" data-wrong='[{"v":-2,"msg":"that uses D = 6; a planar drawing needs D = 3."},{"v":5,"msg":"you subtracted the DoF the joints allow (1 each) instead of the constraints they remove (2 each)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(N = 4\), \(P_1 = 4\), \(P_2 = 0\): \(M = 3(4-1) - 2\times4 - 0 = 1\). Form 2: \(3(4-4-1) + 4 = 1\).</p>
+  <p>Why not 3: the loop closes, so the joints impose 8 constraints on 9 DoF. One motor on the crank sets the whole linkage. <span class="chk">checked</span></p>
+  <p>Common wrong answers: −2 (D = 6) and 5 (constraints counted as 1 each).</p></details>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.3 · Planar parallel manipulator (notebook Q3, W13 Q6)</b><span class="chip calc">calculate</span><span class="chip spot">spot the error</span><span class="marks" data-id="w01-p3" data-topic="w01"></span></div>
+  <p>A triangular platform is connected to the ground by three legs, each R–P–R (revolute at the ground, prismatic, revolute at the platform). Find M. A student gets 0 by taking N = 7: what did they miss?</p>
+  <details class="hint"><summary>Hint 1: count the links</summary><p>Ground, platform, and each leg has two parts because a prismatic joint joins a cylinder to a rod.</p></details>
+  <details class="hint"><summary>Hint 2: count the joints</summary><p>Three legs times three joints each, all 1 DoF.</p></details>
+  <div class="ansrow"><label>M<input data-ans="3" data-tol="0.01" data-label="M" inputmode="decimal" aria-label="mobility" data-wrong='[{"v":0,"msg":"N = 7 means the ground was not counted."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(N = 1 + 1 + 3\times2 = 8\), \(J = 9\), \(\sum F_i = 9\), \(D = 3\): \(M = 3(8-9-1) + 9 = 3\). Form 1: \(3(8-1) - 2\times9 = 3\). Three actuators, one per leg, control the platform’s x, y and angle: fully actuated.</p>
+  <p><b>Spot the error:</b> N = 7 omits the ground link. Then \(3(7-1) - 18 = 0\), which would call a working robot a rigid structure. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.4 · The odd mechanism (notebook Q4 and Q5, slide p.49)</b><span class="chip explain">explain</span><span class="chip calc">calculate</span><span class="marks" data-id="w01-p4" data-topic="w01"></span></div>
+  <p>Three equal, parallel legs connect a body to the ground, each with an R at both ends. (a) What does G–K give? (b) What is the true number of DoF? (c) Explain the difference in two sentences.</p>
+  <details class="hint"><summary>Hint 1</summary><p>\(N = 5\) (ground, 3 legs, body), \(P_1 = 6\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>Delete one middle leg and recount: four-bar.</p></details>
+  <div class="ansrow"><label>G–K gives<input data-ans="0" data-tol="0.01" data-label="G–K value" inputmode="decimal" aria-label="gk value"></label><label>true DoF<input data-ans="1" data-tol="0.01" data-label="true DoF" inputmode="decimal" aria-label="true dof"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>(a) \(M = 3(5-1) - 2\times6 - 0 = 0\). (b) The body moves: 1 DoF (slide: “it has 1 degree of freedom”). Check: remove one leg, \(N=4\), \(J=4\), \(M = 1\).</p>
+  <p>(c) G–K assumes the constraints are independent. Because the legs are equal and parallel, the third leg repeats a restriction already imposed by the other two (a redundant link), so only 5 of the 6 closure equations are independent. With unequal legs the structure would lock and 0 would be right. <span class="chk">checked</span> (rank 5 versus rank 6)</p></details>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.5 · Stewart platform (slide p.48 homework)</b><span class="chip calc">calculate</span><span class="marks" data-id="w01-p5" data-topic="w01"></span></div>
+  <p>Six identical legs, each ground–U–P–S–platform. Find the mobility of the whole platform.</p>
+  <details class="hint"><summary>Hint 1</summary><p>D = 6. Links: ground, platform, and two parts per leg.</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>\(J = 18\); the sum of joint DoF is \(6(2+1+3)\).</p></details>
+  <div class="ansrow"><label>M<input data-ans="6" data-tol="0.01" data-label="M" inputmode="decimal" aria-label="mobility" data-wrong='[{"v":0,"msg":"N = 13 forgets the ground link."},{"v":21,"msg":"that uses D = 3; a Stewart platform is spatial, D = 6."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(N = 14\), \(J = 18\), \(\sum F_i = 36\): \(M = 6(14-18-1) + 36 = 6\). Six DoF, six actuators: fully actuated. <span class="chk">checked</span></p>
+  <p>Caution: counting only the single drawn leg also gives 6 (a serial chain’s M is the sum of its joint DoF), but that is the leg’s DoF, not the platform’s count. Common wrong answers: 0 (no ground), 21 (D = 3).</p></details>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.6 · Delta mechanism (W13 Q7)</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w01-p6" data-topic="w01"></span></div>
+  <p>A delta has a base, a platform and three legs. Each leg is one R at the base driving an arm, then two rods, each rod with a spherical joint at both ends. Find M by plain G–K, then with the extended equation using \(R_C = 0\) and \(R_M = 6\).</p>
+  <details class="hint"><summary>Hint 1</summary><p>\(N = 2 + 3\times3 = 11\); per leg 1 R and 4 S, so \(J = 15\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>\(\sum F_i = 3\times(1 + 4\times3)\). Then subtract \(R_M\).</p></details>
+  <div class="ansrow"><label>plain M<input data-ans="9" data-tol="0.01" data-label="plain G–K" inputmode="decimal" aria-label="plain mobility"></label><label>extended M<input data-ans="3" data-tol="0.01" data-label="extended" inputmode="decimal" aria-label="extended mobility" data-wrong='[{"v":9,"msg":"you stopped at the plain value; subtract R_M = 6 (the rods’ free spins)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Plain: \(6(11-15-1) + 39 = -30 + 39 = 9\). Extended: \(9 + 0 - 6 = 3\). The six rods can each spin about their own axis (ball joints at both ends); these local spins do not move the platform, so they are subtracted. The delta moves its platform in 3 DoF (x, y, z) with 3 motors. <span class="chk">checked</span></p>
+  <p>Explain in the exam: “plain G–K counts local rod spins as DoF; \(R_M\) removes them.” Week 4 shows how to find \(R_C\) and \(R_M\) yourself.</p></details>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.7 · Reachable and dexterous workspace (notebook Q7)</b><span class="chip explain">explain</span><span class="chip sketch">sketch</span><span class="chip calc">calculate</span><span class="marks" data-id="w01-p7" data-topic="w01"></span></div>
+  <p>(a) Which relation is true for the reachable workspace \(W_R\) and dexterous workspace \(W_D\): \(W_R\subseteq W_D\), \(W_R\subset W_D\), \(W_R\supseteq W_D\), \(W_R\supset W_D\), or \(W_R=W_D\)? (b) A planar 2R arm has \(L_1 = 0.5\) m and \(L_2 = 0.3\) m and no joint limits. Sketch its reachable workspace and give the inner and outer radii.</p>
+  <details class="hint"><summary>Hint</summary><p>Fold the elbow fully and stretch it fully: the tip distance from the base runs between \(|L_1-L_2|\) and \(L_1+L_2\).</p></details>
+  <div class="ansrow"><label>inner r (m)<input data-ans="0.2" data-tol="0.005" data-label="inner" inputmode="decimal" aria-label="inner radius"></label><label>outer r (m)<input data-ans="0.8" data-tol="0.005" data-label="outer" inputmode="decimal" aria-label="outer radius" data-wrong='[{"v":0.15,"msg":"that is L1 x L2; the outer reach is the sum L1 + L2."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>(a) \(W_R\supseteq W_D\): every point reachable in <i>all</i> orientations is certainly reachable in one. \(W_R\subseteq W_D\) and \(W_R\subset W_D\) are backwards. The strict \(W_R\supset W_D\) is not guaranteed, because the sets can be equal (for example both empty), and \(W_R=W_D\) is not true in general.</p>
+  <p>(b) An annulus (a flat ring) centred on the base: \(r_{min} = |0.5-0.3| = 0.2\) m, \(r_{max} = 0.5 + 0.3 = 0.8\) m. Sketch two concentric circles and shade between them. The 2R arm has 2 DoF, fewer than the 3 of a planar pose, so it has no dexterous workspace. <span class="chk">checked</span></p></details>
+  <p class="blank">Close everything and draw the W<sub>R</sub> and W<sub>D</sub> of a planar 3R arm with equal links L, with the radii in terms of L (3 minutes).</p>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.8 · Classify the actuation</b><span class="chip explain">explain</span><span class="marks" data-id="w01-p8" data-topic="w01"></span></div>
+  <p>Name each as fully actuated, under-actuated or redundant, and say which meaning you use: (a) a 6R arm with 6 motors; (b) the same arm with 4 motors; (c) a 7R arm with 7 motors used to place a tool in a 3D pose; (d) a Stewart platform with 6 actuators.</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>(a) Fully actuated: controllable = total = 6. (b) Under-actuated: 4 &lt; 6, lighter and cheaper but two joints cannot be commanded. (c) Redundant in the standard sense: 7 joint DoF for a 6-DoF task. By the slide’s literal wording (controllable 7 = total 7) it would be called fully actuated, so state which meaning you use. (d) Fully actuated: M = 6 (section 5), 6 actuators. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.9 · Workspace shapes of four arms (notebook Q6)</b><span class="chip explain">explain</span><span class="chip sketch">sketch</span><span class="marks" data-id="w01-p9" data-topic="w01"></span></div>
+  <p>Describe and sketch the workspace of a PUMA 560 (RRR), a SCARA (RRP), a cylindrical (RPP) and a Cartesian (PPP) arm, and say what limits each.</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p><b>PUMA (RRR):</b> a thick spherical shell about the shoulder, the outer radius set by the sum of the upper-arm and forearm lengths, with a cut-out wedge where the waist angle is limited. <b>SCARA (RRP):</b> a flat ring (annulus) from the two vertical-axis revolutes, extruded by the vertical prismatic stroke, with a gap from joint limits. <b>Cylindrical (RPP):</b> a thick-walled cylinder sector: the R gives the angular span, one P the height, the other P the radial range (the inner hole is the minimum radial extension). <b>Cartesian (PPP):</b> a box whose edges are the three strokes. Every shape is limited by the link geometry and the joint limits (<a class="pg" data-doc="w01-lec" data-page="52">p.52</a>). The shapes are read from the slide figures (pp. 53–56).</p></details>
+</div>
+
+<div class="gp" data-topic="w01">
+  <div class="head"><b>P1.10 · Spot the errors</b><span class="chip spot">spot the error</span><span class="marks" data-id="w01-p10" data-topic="w01"></span></div>
+  <p>A student writes: “Four-bar: D = 6, N = 4, J = 4, so \(M = 6(4-4-1)+4 = -2\); a negative mobility means the mechanism cannot be built.” And: “Delta with three motors: M = 9, so it is under-actuated.” Find all the errors.</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>1) A planar four-bar needs D = 3: \(3(4-4-1)+4 = 1\). 2) A negative or zero G–K value does not prove a mechanism cannot be built or cannot move (p.49, Hoberman p.51); it signals dependent constraints to look for. 3) 9 is the plain-G–K value; the delta’s real mobility is 3 (\(R_M = 6\)), so three motors make it fully actuated. <span class="chk">checked</span></p></details>
+</div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w01"><div class="head"><b>Q1</b><span class="chip spot">trap</span><span class="marks" data-id="w01-q1" data-topic="w01"></span></div>
+<p>Which is true? (a) \(W_R\subset W_D\) (b) \(W_R\supseteq W_D\) (c) \(W_R=W_D\) always (d) \(W_R\subseteq W_D\)</p><details class="sol"><summary>Answer</summary><p>(b). Dexterous (all orientations) is the stronger condition. (a) and (d) are backwards; (c) is “always”.</p></details></div>
+<div class="gp" data-topic="w01"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w01-q2" data-topic="w01"></span></div>
+<p>A serial 6R arm in 3D: N = ?, J = ?, M = ? With 4 motors, what is it called?</p><details class="sol"><summary>Answer</summary><p>N = 7 (ground plus 6 links), J = 6, \(M = 6(7-6-1)+6 = 6\). With 4 motors it is under-actuated.</p></details></div>
+<div class="gp" data-topic="w01"><div class="head"><b>Q3</b><span class="chip explain">concept</span><span class="marks" data-id="w01-q3" data-topic="w01"></span></div>
+<p>G–K gives M = 0 for a mechanism you can see moving. Give the reason and the usual fix.</p><details class="sol"><summary>Answer</summary><p>G–K assumes the constraints are independent; here some are redundant (an extra link repeating a constraint, as in the three equal parallel legs). Remove the redundant link (or add the over-constraint term \(R_C\), Week 4) and recount.</p></details></div>
+
+<div class="box" data-reading="w01"></div>
+
+<script data-after>
+W3D.kinds.mobility = function (root) {
+  const id = root.id, stage = root.querySelector('.stage'), side = root.querySelector('.side');
+  const DEG = Math.PI / 180, css = W3D.css;
+  const TYPES = [['R', 1, 'revolute'], ['P', 1, 'prismatic'], ['H', 1, 'helical'], ['C', 2, 'cylindrical'], ['U', 2, 'universal'], ['S', 3, 'spherical']];
+  const DOFOF = {}; TYPES.forEach(t => DOFOF[t[0]] = t[1]);
+  const PRE = {
+    fourbar:     { t: 'Planar four-bar (pp.44-45)', D: 3, N: 4, c: { R: 4 }, RC: 0, RM: 0, note: 'Slide answer 1.' },
+    fivebar:     { t: 'Planar five-bar', D: 3, N: 5, c: { R: 5 }, RC: 0, RM: 0, note: 'Two motors needed.' },
+    slidercrank: { t: 'Slider-crank', D: 3, N: 4, c: { R: 3, P: 1 }, RC: 0, RM: 0, note: 'One DoF, like the four-bar.' },
+    rpr:         { t: 'Planar serial RPR (pp.42-43)', D: 3, N: 4, c: { R: 2, P: 1 }, RC: 0, RM: 0, note: 'Serial chain: M is the sum of joint DoF.' },
+    rpr3:        { t: 'Planar 3-RPR parallel (pp.46-47, W13 Q6)', D: 3, N: 8, c: { R: 6, P: 3 }, RC: 0, RM: 0, note: 'N = ground + platform + 3 legs x 2 parts = 8.' },
+    gkfail:      { t: 'Three equal parallel legs (p.49)', D: 3, N: 5, c: { R: 6 }, RC: 0, RM: 0, note: 'Real DoF is 1: the legs are equal and parallel, so one leg is redundant. G-K assumes independent constraints.' },
+    delta:       { t: 'Delta, plain G-K (W13 Q7)', D: 6, N: 11, c: { R: 3, S: 12 }, RC: 0, RM: 0, note: 'Plain G-K counts the six rod spins as DoF.' },
+    delta_ext:   { t: 'Delta, extended (W13 p.17)', D: 6, N: 11, c: { R: 3, S: 12 }, RC: 0, RM: 6, note: 'R_M = 6: each rod spins about its own axis. Real mobility 3.' },
+    stewart:     { t: 'Stewart platform, 6 UPS legs (p.48)', D: 6, N: 14, c: { U: 6, P: 6, S: 6 }, RC: 0, RM: 0, note: 'Six DoF with six actuators.' },
+    ups_leg:     { t: 'One UPS leg only (p.48 drawing)', D: 6, N: 4, c: { U: 1, P: 1, S: 1 }, RC: 0, RM: 0, note: 'Serial chain: 2 + 1 + 3 = 6.' },
+    sps:         { t: 'Six SPS legs (extra spins)', D: 6, N: 14, c: { S: 12, P: 6 }, RC: 0, RM: 0, note: '12 = 6 real + 6 leg spins; the U at the base removes the spins.' }
+  };
+  const cur = { D: 3, N: 4, c: { R: 4 }, RC: 0, RM: 0, preset: 'fourbar', note: PRE.fourbar.note };
+  const fb = { d: 4, a: 1.5, b: 3.5, c: 3, th: 60, mode: 0 };
+  let state = {};
+
+  /* ---------- pure maths (same formulas as checks/w01.py) ---------- */
+  function mobility(s) {
+    let J = 0, sumF = 0;
+    Object.keys(s.c).forEach(k => { const n = Math.max(0, Math.round(s.c[k] || 0)); J += n; sumF += n * DOFOF[k]; });
+    const M = s.D * (s.N - J - 1) + sumF + s.RC - s.RM;
+    return { J, sumF, M };
+  }
+  function fourbar(d, a, b, c, thDeg, mode) {
+    const th = thDeg * DEG, A = [a * Math.cos(th), a * Math.sin(th)], vx = d - A[0], vy = -A[1], rho = Math.hypot(vx, vy);
+    if (rho > b + c + 1e-12 || rho < Math.abs(b - c) - 1e-12 || rho === 0) return { closed: false, A, B: null, rho };
+    const x = (b * b - c * c + rho * rho) / (2 * rho), h = Math.sqrt(Math.max(b * b - x * x, 0));
+    const P = [A[0] + x * vx / rho, A[1] + x * vy / rho], px = -vy / rho, py = vx / rho, s = mode ? -h : h;
+    return { closed: true, A, B: [P[0] + s * px, P[1] + s * py], rho };
+  }
+  function grashof(d, a, b, c) { const l = [d, a, b, c].sort((x, y) => x - y); return l[0] + l[3] <= l[1] + l[2] + 1e-12; }
+  function closing(d, a, b, c) {
+    const cmin = (d * d + a * a - (b + c) * (b + c)) / (2 * a * d), cmax = (d * d + a * a - (b - c) * (b - c)) / (2 * a * d);
+    if (cmin > 1 || cmax < -1) return null;
+    return [cmax < 1 ? Math.acos(cmax) / DEG : 0, cmin > -1 ? Math.acos(cmin) / DEG : 180];
+  }
+  const r4 = v => Math.round(v * 1e4) / 1e4;
+
+  /* ---------- side panel ---------- */
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  side.innerHTML =
+    '<div class="eyebrow">Mobility counter</div>' +
+    '<select id="' + id + '-p" aria-label="preset mechanism">' + Object.keys(PRE).map(k => '<option value="' + k + '">' + esc(PRE[k].t) + '</option>').join('') + '<option value="custom">Custom (edit below)</option></select>' +
+    '<div class="row" style="grid-template-columns:4.2rem 1fr 1fr"><label>D, N</label><select id="' + id + '-D" aria-label="D"><option value="3">D = 3 (planar)</option><option value="6">D = 6 (spatial)</option></select><input type="number" id="' + id + '-N" min="1" max="30" step="1" aria-label="N, number of links including ground"></div>' +
+    '<div class="row" style="grid-template-columns:4.2rem repeat(3,1fr)"><label>joints</label>' + TYPES.slice(0, 3).map(t => '<span style="font:500 .78rem var(--f-mono)">' + t[0] + ' (F=' + t[1] + ') <input type="number" id="' + id + '-n' + t[0] + '" min="0" max="30" step="1" style="width:3.4rem" aria-label="number of ' + t[2] + ' joints"></span>').join('') + '</div>' +
+    '<div class="row" style="grid-template-columns:4.2rem repeat(3,1fr)"><label></label>' + TYPES.slice(3).map(t => '<span style="font:500 .78rem var(--f-mono)">' + t[0] + ' (F=' + t[1] + ') <input type="number" id="' + id + '-n' + t[0] + '" min="0" max="30" step="1" style="width:3.4rem" aria-label="number of ' + t[2] + ' joints"></span>').join('') + '</div>' +
+    '<div class="row" style="grid-template-columns:4.2rem repeat(3,1fr)"><label>J, ΣF</label><span class="mono" id="' + id + '-J"></span><span style="font:500 .78rem var(--f-mono)">R<sub>C</sub> <input type="number" id="' + id + '-RC" step="1" style="width:3.4rem" aria-label="R_C over-constraints"></span><span style="font:500 .78rem var(--f-mono)">R<sub>M</sub> <input type="number" id="' + id + '-RM" step="1" style="width:3.4rem" aria-label="R_M local mobility"></span></div>' +
+    '<div class="out" id="' + id + '-out" aria-live="polite"></div>' +
+    '<hr style="border:0;border-top:1px solid var(--line);width:100%">' +
+    '<div class="eyebrow">Planar four-bar (to scale)</div>' +
+    W3D.sliderRow(id + '-th', 'crank θ', 0, 360, fb.th, 1, '°') +
+    W3D.sliderRow(id + '-fd', 'ground d', 1, 8, fb.d, 0.1, '') +
+    W3D.sliderRow(id + '-fa', 'crank a', 0.5, 5, fb.a, 0.1, '') +
+    W3D.sliderRow(id + '-fb', 'coupler b', 0.5, 8, fb.b, 0.1, '') +
+    W3D.sliderRow(id + '-fc', 'rocker c', 0.5, 8, fb.c, 0.1, '') +
+    '<label style="font-size:.85rem"><input type="checkbox" id="' + id + '-mode"> crossed assembly (mirror coupler position)</label>' +
+    '<label style="font-size:.85rem"><input type="checkbox" id="' + id + '-anim"> animate the crank</label>' +
+    '<div class="fb" id="' + id + '-fbinfo" aria-live="polite"></div>';
+  const $ = s => side.querySelector('#' + id + '-' + s);
+
+  function readInputs() {
+    cur.D = +$('D').value; cur.N = Math.round(+$('N').value || 0); cur.RC = Math.round(+$('RC').value || 0); cur.RM = Math.round(+$('RM').value || 0);
+    TYPES.forEach(t => cur.c[t[0]] = Math.max(0, Math.round(+$('n' + t[0]).value || 0)));
+  }
+  function writeInputs() {
+    $('D').value = cur.D; $('N').value = cur.N; $('RC').value = cur.RC; $('RM').value = cur.RM;
+    TYPES.forEach(t => $('n' + t[0]).value = cur.c[t[0]] || 0);
+  }
+  function loadPreset(k) {
+    const p = PRE[k]; cur.D = p.D; cur.N = p.N; cur.RC = p.RC; cur.RM = p.RM; cur.preset = k; cur.note = p.note;
+    cur.c = {}; TYPES.forEach(t => cur.c[t[0]] = p.c[t[0]] || 0);
+    $('p').value = k; writeInputs();
+  }
+  function verdict(m) {
+    if (cur.N < 2) return 'Need at least the ground and one moving link.';
+    if (m.M > 0) return 'Mechanism with ' + m.M + ' DoF: it needs ' + m.M + ' actuator' + (m.M > 1 ? 's' : '') + ' to be fully actuated.';
+    if (m.M === 0) return 'Structure by this count (M = 0). Check for dependent constraints before saying it cannot move (p.49).';
+    return 'Negative: over-constrained by this count. Look for redundant links or dependent constraints (p.49, Hoberman p.51).';
+  }
+  function renderCounter() {
+    const m = mobility(cur), D = cur.D;
+    $('J').textContent = 'J=' + m.J + ', ΣF=' + m.sumF;
+    const ext = (cur.RC || cur.RM) ? ' + ' + cur.RC + ' − ' + cur.RM : '';
+    const warn = (D === 3 && (cur.c.H || cur.c.C || cur.c.U || cur.c.S)) ? '<p class="fb bad">Planar mechanisms use only R and P joints; C, U, S, H are spatial.</p>' : '';
+    $('out').innerHTML = '<div class="mono" style="font-size:.84rem">M = ' + D + '(' + cur.N + ' − ' + m.J + ' − 1) + ' + m.sumF + ext + '<br>&nbsp;&nbsp;= <b>' + m.M + '</b></div>' +
+      '<p style="margin:.3rem 0;font-weight:600">' + esc(verdict(m)) + '</p>' + warn + (cur.note && cur.preset !== 'custom' ? '<p style="margin:.2rem 0;color:var(--muted);font-size:.82rem">' + esc(cur.note) + '</p>' : '');
+    return m;
+  }
+
+  /* ---------- four-bar canvas ---------- */
+  const cv = document.createElement('canvas'); stage.insertBefore(cv, stage.firstChild);
+  cv.style.position = 'absolute'; cv.style.left = '0'; cv.style.top = '0';
+  const ctx = cv.getContext('2d'); let W = 300, H = 340;
+  function size() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1); W = Math.max(260, stage.clientWidth || 300); H = Math.max(340, stage.clientHeight || 340);
+    cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function view() {
+    let x0 = 0, x1 = fb.d, y0 = 0, y1 = 0;
+    for (let t = 0; t < 360; t += 5) for (let m = 0; m < 2; m++) {
+      const r = fourbar(fb.d, fb.a, fb.b, fb.c, t, m);
+      [r.A, r.B].forEach(p => { if (p) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); } });
+    }
+    const pad = 36, k = Math.min((W - 2 * pad) / Math.max(x1 - x0, 1e-6), (H - 2 * pad) / Math.max(y1 - y0, 1e-6));
+    return { k, ox: pad + ((W - 2 * pad) - k * (x1 - x0)) / 2 - k * x0, oy: pad + ((H - 2 * pad) - k * (y1 - y0)) / 2 + k * y1 };
+  }
+  function draw() {
+    const ink = css('--ink'), muted = css('--muted'), acc = css('--accent'), exam = css('--exam'), bg = css('--bg');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    const v = view(), S = p => [v.ox + p[0] * v.k, v.oy - p[1] * v.k];
+    const r = fourbar(fb.d, fb.a, fb.b, fb.c, fb.th, fb.mode), g = fourbar(fb.d, fb.a, fb.b, fb.c, fb.th, 1 - fb.mode);
+    const O2 = S([0, 0]), O4 = S([fb.d, 0]), A = S(r.A);
+    const line = (p, q, col, w, dash) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash || []); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); ctx.setLineDash([]); };
+    const pin = (p, rad) => { ctx.fillStyle = bg; ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p[0], p[1], rad || 6, 0, 7); ctx.fill(); ctx.stroke(); };
+    const tri = p => { ctx.fillStyle = bg; ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0] - 10, p[1] + 18); ctx.lineTo(p[0] + 10, p[1] + 18); ctx.closePath(); ctx.fill(); ctx.stroke(); };
+    const txt = (s, p, col, dx, dy) => { ctx.fillStyle = col; ctx.font = '12px IBM Plex Mono, monospace'; ctx.fillText(s, p[0] + (dx || 0), p[1] + (dy || 0)); };
+    line(O2, O4, muted, 2, [6, 4]); tri(O2); tri(O4);
+    if (g.closed) { const Bg = S(g.B); line(A, Bg, muted, 1.5, [3, 4]); line(Bg, O4, muted, 1.5, [3, 4]); }
+    line(O2, A, exam, 5);
+    if (r.closed) { const B = S(r.B); line(A, B, ink, 5); line(B, O4, acc, 5); pin(B); txt('B', B, ink, 8, -8); }
+    else {
+      ctx.strokeStyle = muted; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(A[0], A[1], fb.b * v.k, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(O4[0], O4[1], fb.c * v.k, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = css('--bad'); ctx.font = '600 13px IBM Plex Mono, monospace'; ctx.fillText('cannot close: |AO₄| = ' + r4(r.rho) + (r.rho > fb.b + fb.c ? ' > b + c' : ' < |b − c|'), 12, 22);
+    }
+    pin(O2); pin(O4); pin(A); txt('O₂', O2, ink, -22, 32); txt('O₄', O4, ink, -4, 36); txt('A', A, ink, 8, -8);
+    txt('a = ' + fb.a, [12, H - 66], exam); txt('b = ' + fb.b, [12, H - 52], ink); txt('c = ' + fb.c, [12, H - 38], acc); txt('d = ' + fb.d, [W - 74, H - 38], muted);
+  }
+  function fbInfo(r) {
+    const gr = grashof(fb.d, fb.a, fb.b, fb.c), cl = closing(fb.d, fb.a, fb.b, fb.c);
+    const rng = cl === null ? 'never closes' : (cl[0] === 0 && cl[1] === 180 ? 'closes at every crank angle' : 'closes only for |θ| between ' + r4(cl[0]) + '° and ' + r4(cl[1]) + '°');
+    const s = [...[fb.d, fb.a, fb.b, fb.c]].sort((x, y) => x - y);
+    $('fbinfo').className = 'fb ' + (r.closed ? 'ok' : 'bad');
+    $('fbinfo').innerHTML = (r.closed ? 'Closed. A = (' + r4(r.A[0]) + ', ' + r4(r.A[1]) + '), B = (' + r4(r.B[0]) + ', ' + r4(r.B[1]) + '). ' : 'Cannot close at θ = ' + fb.th + '°. ') +
+      'Crank angle is measured from O<sub>2</sub>O<sub>4</sub>. This linkage ' + rng + '. Shortest + longest = ' + r4(s[0] + s[3]) + (gr ? ' ≤ ' : ' &gt; ') + r4(s[1] + s[2]) + ': ' + (gr ? 'Grashof, at least one link can turn fully' : 'not Grashof, no link turns fully') + ' (extra, not in the slides).';
+  }
+
+  /* ---------- state and redraw ---------- */
+  function publish() {
+    const m = mobility(cur), r = fourbar(fb.d, fb.a, fb.b, fb.c, fb.th, fb.mode), cl = closing(fb.d, fb.a, fb.b, fb.c);
+    state = { D: cur.D, N: cur.N, J: m.J, sumF: m.sumF, RC: cur.RC, RM: cur.RM, M: m.M, preset: cur.preset, verdict: m.M > 0 ? 'mechanism' : (m.M === 0 ? 'structure' : 'over-constrained'),
+      fourbar: { d: fb.d, a: fb.a, b: fb.b, c: fb.c, theta_deg: fb.th, mode: fb.mode, closed: r.closed, A: [r4(r.A[0]), r4(r.A[1])], B: r.B ? [r4(r.B[0]), r4(r.B[1])] : null, grashof: grashof(fb.d, fb.a, fb.b, fb.c), closing_deg: cl } };
+    window.__state = window.__state || {}; window.__state[id] = state;
+    return state;
+  }
+  function update() { const m = renderCounter(); const r = fourbar(fb.d, fb.a, fb.b, fb.c, fb.th, fb.mode); fbInfo(r); draw(); return publish(); }
+
+  /* ---------- events ---------- */
+  $('p').addEventListener('change', e => { if (e.target.value === 'custom') { cur.preset = 'custom'; update(); } else { loadPreset(e.target.value); update(); } });
+  ['D', 'N', 'RC', 'RM'].concat(TYPES.map(t => 'n' + t[0])).forEach(k => $(k).addEventListener('input', () => { readInputs(); cur.preset = 'custom'; $('p').value = 'custom'; update(); }));
+  [['th', 'th', 1, '°'], ['fd', 'd', 1, ''], ['fa', 'a', 1, ''], ['fb', 'b', 1, ''], ['fc', 'c', 1, '']].forEach(([sid, key, , unit]) => {
+    const el = $(sid); el.addEventListener('input', () => { fb[key] = +el.value; el.nextElementSibling.textContent = el.value + unit; update(); });
+  });
+  $('mode').addEventListener('change', e => { fb.mode = e.target.checked ? 1 : 0; update(); });
+  let raf = 0;
+  function tick() {
+    if (!$('anim').checked || !root.offsetParent) { $('anim').checked = false; raf = 0; return; }
+    fb.th = (fb.th + 0.8) % 360; const s = $('th'); s.value = Math.round(fb.th); s.nextElementSibling.textContent = Math.round(fb.th) + '°'; update(); raf = requestAnimationFrame(tick);
+  }
+  $('anim').addEventListener('change', e => { if (e.target.checked && !raf) raf = requestAnimationFrame(tick); });
+  window.addEventListener('enn-theme', () => draw());
+  window.addEventListener('resize', () => { size(); draw(); });
+  if (window.ResizeObserver) new ResizeObserver(() => { size(); draw(); }).observe(stage);
+
+  W3D.instances[id] = {
+    setPreset(k) { loadPreset(k); return update(); },
+    set(o) { Object.assign(cur, { D: o.D, N: o.N, RC: o.RC || 0, RM: o.RM || 0, preset: 'custom' }); cur.c = {}; TYPES.forEach(t => cur.c[t[0]] = (o.counts && o.counts[t[0]]) || 0); $('p').value = 'custom'; writeInputs(); return update(); },
+    setFourbar(o) {
+      Object.assign(fb, { d: o.d, a: o.a, b: o.b, c: o.c, th: o.th_deg, mode: o.mode || 0 });
+      [['th', fb.th], ['fd', fb.d], ['fa', fb.a], ['fb', fb.b], ['fc', fb.c]].forEach(([sid, val]) => { const el = $(sid); el.value = val; el.nextElementSibling.textContent = val + (sid === 'th' ? '°' : ''); });
+      $('mode').checked = !!fb.mode; return update();
+    }
+  };
+  size(); loadPreset('fourbar'); update();
+};
+</script>

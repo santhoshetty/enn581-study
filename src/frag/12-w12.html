@@ -1,0 +1,768 @@
+<p class="eyebrow">Week 12 · Planning algorithms</p>
+<h2>How does a robot find a collision-free route?</h2>
+<p class="lead">Motion planning turns “get from here to there without hitting anything” into a search problem. First squeeze the robot down to a point by working in configuration space. Then either build a graph of the free space and search it (BFS, DFS, Dijkstra, A*), or skip the explicit map and sample random points (PRM, RRT). Know what each method guarantees, what it costs, and be able to run Dijkstra and A* by hand.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Planning Algorithms<small>83 slides · Dr KM Digumarti · practical sheet is a PDF (no notebook)</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w12-lec">📖 View here</button>
+    <button type="button" class="btn" data-view="w12-prac">📖 Practical sheet</button>
+    <button type="button" class="btn" data-dl="notes/w12-lec.pdf" data-name="ENN581 W12 Planning Algorithms.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w12-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>No lecturer-solved archetype.</b> The W13 revision deck (<a class="pg" data-doc="w13-lec" data-page="2">W13</a>) contains no planning question; we searched its text for planning, A*, Dijkstra, RRT and PRM and found none. So the styles below are our inference from the lecture’s own questions (<a class="pg" data-doc="w12-lec" data-page="22">p.22</a>, <a class="pg" data-doc="w12-lec" data-page="58">p.58</a>, <a class="pg" data-doc="w12-lec" data-page="77">p.77</a>) and the practical sheet. Treat them as likely, not certain.</p>
+  <p><b>Likely questions (marks not published):</b> (1) run Dijkstra or A* on a small weighted graph and give the expansion order, the path and its cost, with a table of g, h, f; (2) say whether a heuristic is admissible or consistent; (3) pick the right planner for a scenario (high-DoF arm, car with turning limits, clearance, known polygon map); (4) state a completeness property; (5) inflate an obstacle by the robot radius; (6) a short calculation with the practical’s PRM or RRT geometry.</p>
+  <p><b>Where marks are lost:</b> not showing the open and closed sets; stopping when a goal is <i>discovered</i> instead of when it is <i>expanded</i>; adding h to the wrong node; saying A* is “always optimal” without “admissible h”; calling BFS optimal on a weighted graph; saying PRM or RRT is “complete”; missing that DFS finds <i>a</i> path, not the best one.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (optional, no coding in the exam)</span>
+  <p>The sheet <code>ENN581 - Week 12 - Practicals - Planning Algorithms.pdf</code> has three questions and <b>no notebook and no saved results</b>: (1) turn a maze into a graph, run BFS and DFS, compare, and say how to upgrade to A*; (2) implement a PRM on a 10 × 10 map with three polygons; (3, bonus) an RRT on the same map. Its title says “mobile robot kinematics”, a copy error. <code>diffdrive.py</code> in the same folder is differential-drive kinematics left over from W10, not planning; its update uses the angular rate × dt where a heading belongs, so do not learn from it. Every question on the sheet is solved by hand below (P12.5 to P12.7).</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>Configuration space shrinks the robot to a dot</h4>Walking a sofa through a door is hard because the sofa has size. Pretend instead the sofa is a dot and thicken the walls by the sofa’s reach. Then “can it pass?” is just “can a dot get through?”.</div>
+    <div class="card"><h4>BFS is a ripple, Dijkstra is a ripple that counts distance</h4>Drop a stone in a pond and the ripple reaches every point at the same number of steps. Dijkstra’s ripple instead advances by travelled <i>cost</i>, so it is the right ripple when roads have different lengths.</div>
+    <div class="card"><h4>A* is Dijkstra with a compass</h4>You still add up the distance walked so far (g), but you also add a guess of the distance left (h) and always follow the smallest total. If the guess is never too pessimistic about how <i>short</i> the rest is, you still arrive by the best route.</div>
+    <div class="card"><h4>Sampling is throwing darts at the floor plan</h4>Throw random darts (points), keep those that land on free floor, and join near ones with straight strings that do not cross a wall. PRM builds the whole web first and then searches it. RRT grows one tree outward from the start, like a plant seeking light.<span class="inprac">In the practical: Q2 asks for the web (PRM), Q3 for the plant (RRT).</span></div>
+  </div>
+  <div class="vids" data-vids="w12"></div>
+</div>
+
+<div class="widget" data-w3d="gridplan" id="w12-grid">
+  <div class="wh"><b>Grid planner</b><span class="eyebrow">BFS · Dijkstra · A* on a grid; click cells to draw walls</span></div>
+  <div class="wbody"><div class="stage"></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> load “Wall with a gap (grid 1)”, 4-connected. BFS and Dijkstra both expand 62 cells and find a path of cost 10; A* with Manhattan expands 19 and Euclidean 30, same cost 10. Switch to 8-connected: Dijkstra 59 expansions, cost 8.243 (= 7 steps with 3 diagonals). Load “Manhattan trap (grid 5)”, 8-connected: A* with Manhattan returns cost 10.243, but Dijkstra and A* with Euclidean find 9.657. Manhattan overestimates when diagonals are allowed (it says 2 for a step that costs 1.414), so A* loses its guarantee. Load “Sealed cup (grid 4)” to see failure: every algorithm expands all 55 reachable cells and reports no path. Expansion counts include the goal cell. Costs: straight step 1, diagonal √2, no corner cutting.</div>
+</div>
+
+<!-- ================= 1 ================= -->
+<div class="sub" id="w12-problem">
+<h3>1 · What planning means, and the framework <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="5">pp. 4–9</a>, <a class="pg" data-doc="w12-lec" data-page="25">pp. 25–26</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Planning here means <b>motion or path planning</b>: given a map, a start and a goal, find a trajectory the robot can execute (<a class="pg" data-doc="w12-lec" data-page="5">p.5</a>). It sits on top of everything earlier in the unit: kinematics tells you which motions are possible, trajectory generation (W5) smooths the route, control (W8–9) follows it.</p>
+<p><b>Inputs</b> (<a class="pg" data-doc="w12-lec" data-page="7">p.7</a>): geometry of robot and obstacles (the map); kinematics of the robot (degrees of freedom, constraints); start and goal configurations. <b>Output</b>: a continuous sequence of collision-free configurations from start to goal, or a report of failure if none exists. <b>Simplifying assumptions</b> (<a class="pg" data-doc="w12-lec" data-page="8">p.8</a>): the representation is expressive enough, we know where we are and where we want to go, we have a motion model, and the task is usually cast as optimisation (minimum time or distance within constraints).</p>
+<p>The field moved from <i>classical</i> (mid-70s: exact models, no sensing), to <i>reactive</i> (mid-80s: no models, heavy sensing), to <i>hybrid</i> (90s: models at high level, reactive at low level), to <i>probabilistic</i> (since mid-90s: models plus sensing, both inaccurate) (<a class="pg" data-doc="w12-lec" data-page="9">p.9</a>).</p>
+<p><b>The framework</b> (<a class="pg" data-doc="w12-lec" data-page="25">p.25</a>): start from the continuous C-space, then <i>discretise</i>, because computers store digital things and standard graph-search algorithms then apply (<a class="pg" data-doc="w12-lec" data-page="26">p.26</a>). Two families:</p>
+<div class="tbl"><table><tr><th></th><th>Combinatorial planning</th><th>Sampling-based planning</th></tr>
+<tr><td>Idea</td><td>Describe C<sub>free</sub> explicitly, capture its connectivity in a graph, search the graph</td><td>Use a collision detector to probe C-space point by point; no explicit C<sub>free</sub> / C<sub>obs</sub> split</td></tr>
+<tr><td>Slide examples</td><td>visibility graph, Voronoi, cell decomposition, grid + BFS/DFS/Dijkstra/A*</td><td>PRM (1996), RRT (1998)</td></tr>
+<tr><td>Completeness (<a class="pg" data-doc="w12-lec" data-page="81">p.81</a>)</td><td>visibility graph and Voronoi: complete; BFS: resolution complete; DFS: not complete on infinite trees</td><td>probabilistically complete</td></tr></table></div>
+</div>
+<div class="layer derive"><span class="tag">Completeness (p. 80)</span>
+<ul>
+<li><b>Complete</b>: finds a collision-free path whenever one exists and reports failure otherwise.</li>
+<li><b>Resolution complete</b>: discretises the space and returns a path wherever one exists <i>at the chosen resolution</i>. A gap narrower than a cell is invisible to it.</li>
+<li><b>Probabilistically complete</b>: returns a path with high probability if one exists, and <i>may not terminate</i> if none exists. As samples tend to infinity, the probability of finding a path tends to 1.</li>
+</ul>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>For “which planner?”, first ask: is the map known and polygonal (visibility graph, cells), is clearance wanted (Voronoi), is it a grid with costs (Dijkstra, A*), is the space high-dimensional or the robot non-holonomic (PRM, RRT)?</li>
+<li>For a completeness statement, always add the qualifier: “complete”, “resolution complete” or “probabilistically complete”.</li>
+<li>Never write “guarantees the shortest path” unless the method is on the list: visibility graph (for the polygon map), Dijkstra, or A* with an admissible heuristic.</li>
+<li>Sanity check: does the answer mention what the planner does when no path exists?</li></ol></div>
+<div class="angle"><b>Trap:</b> “PRM and RRT are complete” is false; they are probabilistically complete. “BFS is complete” needs “on a finite graph / at the grid resolution”. DFS fails on infinite trees because it can dive forever.</div>
+</div>
+
+<!-- ================= 2 ================= -->
+<div class="sub" id="w12-cspace">
+<h3>2 · Configuration space, C<sub>free</sub>, C<sub>obs</sub> and inflation <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="12">pp. 11–24</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>Task space</b> is the frame where the task is performed, such as the end effector or a mobile robot’s body frame (<a class="pg" data-doc="w12-lec" data-page="12">p.12</a>). <b>Configuration space</b> (C-space) is the set of generalised coordinates that completely describe the robot: joint parameters for an arm, position and orientation for a mobile robot (<a class="pg" data-doc="w12-lec" data-page="14">p.14</a>). One robot configuration is <b>one point</b> in C-space.</p>
+<p>The workspace obstacles map to a region <b>C<sub>obs</sub></b> in C-space; everything else is <b>C<sub>free</sub></b>. Planning means finding a continuous curve inside C<sub>free</sub> from q<sub>start</sub> to q<sub>goal</sub> (<a class="pg" data-doc="w12-lec" data-page="15">p.15</a>).</p>
+<p>Why work there (<a class="pg" data-doc="w12-lec" data-page="17">p.17</a>): nearby configurations are close together, collision checks and joining nearby poses become easy, one algorithm serves many robots (abstraction), and it handles wraparound for rotary joints.</p>
+<p><b>Arm example</b> (<a class="pg" data-doc="w12-lec" data-page="19">p.19</a>): a planar 2-link arm among four rectangles. Each rectangle becomes a curved blob in the (θ<sub>1</sub>, θ<sub>2</sub>) plane, and the largest rectangle becomes a large region. The slide shows a vertical line at one θ<sub>1</sub>: the arm’s second joint can only avoid the blobs along that line.</p>
+<p><b>Mobile robot example, inflation</b> (<a class="pg" data-doc="w12-lec" data-page="20">pp. 20–24</a>): shrink the robot to a point and grow each obstacle by the robot’s size. A circular robot gives a margin of constant width with rounded corners; a polygonal robot gives a polygonal margin. The problem “twist and turn this polygon past that polygon” becomes “find a path for a <i>point</i> past an <i>augmented</i> polygon” (<a class="pg" data-doc="w12-lec" data-page="24">p.24</a>).</p>
+<figure class="svg"><svg width="480" viewBox="0 0 480 225" role="img" aria-label="Obstacle inflation by the robot radius"><rect x="100" y="45" width="80" height="80" fill="var(--sunk)" stroke="var(--ink)" stroke-width="2"/><rect x="80.0" y="25.0" width="120" height="120" rx="20.0" fill="none" stroke="var(--exam)" stroke-width="2" stroke-dasharray="6 4"/><circle cx="80.0" cy="85" r="20.0" fill="var(--eli-bg)" stroke="var(--accent)" stroke-width="2"/><circle cx="80.0" cy="85" r="3.5" fill="var(--accent)"/><circle cx="194.14213562373095" cy="30.85786437626905" r="20.0" fill="var(--eli-bg)" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 3"/><circle cx="194.14213562373095" cy="30.85786437626905" r="3.5" fill="var(--accent)"/><g font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink)"><text x="120.0" y="89">obstacle</text><text x="250" y="50">grey box: obstacle 2 m x 2 m</text><text x="250" y="72">dashed: obstacle grown by r = 0.5 m</text><text x="250" y="94">blue disc: robot, r = 0.5 m, centre dot</text><text x="250" y="116">dotted: robot touching the corner</text></g></svg><figcaption>Obstacle 2 m × 2 m at (2,2) to (4,4) m; robot disc radius 0.5 m. The robot touches the obstacle exactly when its centre is on the dashed boundary, which is the obstacle grown by 0.5 m with rounded corners (at the corner (4,4) the centre sits on a quarter-circle arc of radius 0.5 m, at 0.354 m along each axis). Scale 40 px per metre. Drawn by us to illustrate pp. 20–24.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Free space (<a class="pg" data-doc="w12-lec" data-page="15">p.15</a>), with \(\mathcal C\) the C-space, \(\mathcal C_{obs}\) the obstacle region, \(\phi\) the empty set:</p>
+\[ \mathcal C_{free}=\{\,\mathbf q\in\mathcal C \mid \mathbf q\cap\mathcal C_{obs}=\phi\,\} \]
+<div class="box warn-box"><span class="tag">Slides vs textbook</span><p>p.15 writes “𝒪 ∈ 𝒲 or 𝒞<sub>obs</sub> ∈ 𝒞”. The obstacle set is a <i>subset</i> of the workspace or of C-space, so the symbol should be ⊂ (a set, not an element).</p></div>
+<p><b>Inflation by a disc of radius \(r\)</b> is the Minkowski sum of the obstacle with the disc. Each straight edge moves outward by \(r\), each convex corner becomes a circular arc of radius \(r\). For a convex polygon of area \(A\) and perimeter \(P\) the grown area is (Steiner formula)</p>
+\[ A_{grown}=A+P\,r+\pi r^{2} \]
+<p>For a <i>square</i> robot of half-side \(r\), aligned with the obstacle, the margin is a square one: a 2 × 2 m square grows to 3 × 3 m when \(r=0.5\) m.</p>
+<p><b>Wraparound:</b> a rotary joint angle \(q\) and \(q+2\pi\) are the same configuration, so C-space for revolute joints is a torus, not a flat rectangle. A path that leaves one edge of the plot re-enters at the opposite edge.</p>
+<p><b>One workspace point can give several C-space points.</b> For a 2-link arm with \(L_1=L_2=1\) m, the tip is at \((1,1)\) m for \(\mathbf q=(0^\circ,\,90^\circ)\) and also for \(\mathbf q=(90^\circ,\,-90^\circ)\) (the two inverse-kinematics branches). A single point obstacle at \((1,1)\) therefore blocks both configurations. A real obstacle has area and the whole arm (not just the tip) can hit it, so the blocked set is a curved region of C-space (the blobs on p.19). <span class="chk">checked in checks/w12.py</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>State the robot’s configuration variables (joint angles, or x, y, θ).</li>
+<li>Replace the robot by a point; grow every obstacle by the robot’s radius (circle) or by its footprint (polygon).</li>
+<li>Draw C<sub>obs</sub> and C<sub>free</sub>, mark q<sub>start</sub> and q<sub>goal</sub>.</li>
+<li>For a corridor of width \(w\) and robot radius \(r\), the point robot’s free width is \(w-2r\). If it is negative, the robot cannot pass.</li>
+<li>Sanity check: the inflated obstacle must contain the original and, for a disc robot, never be thinner than \(r\) on any side.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>Triangle with vertices (5,3), (6,3), (5,1) m, disc robot \(r=0.5\) m. Area \(A=\tfrac12\cdot1\cdot2=1\) m². Perimeter \(P=1+\sqrt5+2=5.236\) m (edges (5,3)–(6,3) = 1, (6,3)–(5,1) = √5, (5,1)–(5,3) = 2).</p>
+<p>\(A_{grown}=1+5.236(0.5)+\pi(0.5)^2=1+2.618+0.785=4.403\ \text{m}^2\). <span class="chk">checked</span></p>
+<p>Corridor 1.0 m wide, robot radius 0.4 m: free width \(1.0-2(0.4)=0.2\) m for the point robot, so it fits. A robot of radius 0.55 m gives \(1.0-1.1\lt0\): it cannot enter. <span class="chk">checked</span></p>
+</div>
+<div class="angle">Slide questions (<a class="pg" data-doc="w12-lec" data-page="22">pp. 22–23</a>): “Where can the robot move in the vicinity of the obstacle?” (anywhere its <i>centre</i> stays outside the grown obstacle) and the same question for the point. Exam style: draw the inflated obstacle, or decide whether a gap is passable.</div>
+</div>
+
+<!-- ================= 3 ================= -->
+<div class="sub" id="w12-roadmaps">
+<h3>3 · Visibility graph and Voronoi diagram <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="28">pp. 27–40</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>Visibility graph</b> (<a class="pg" data-doc="w12-lec" data-page="28">pp. 28–36</a>): “find all non-blocked lines between polygon vertices, start and goal, then search the graph of these lines for the shortest path”. Steps: draw lines from start and goal to every visible vertex (<a class="pg" data-doc="w12-lec" data-page="30">p.30</a>); then lines of sight from every obstacle vertex, including along edges (<a class="pg" data-doc="w12-lec" data-page="31">p.31</a>); repeat; search (<a class="pg" data-doc="w12-lec" data-page="34">p.34</a>). The shortest path touches obstacle corners. The <b>reduced</b> graph (<a class="pg" data-doc="w12-lec" data-page="36">p.36</a>) keeps only lines that go around an object or pass through its extremes; lines through concave corners can sometimes be dropped.</p>
+<p>Pros (<a class="pg" data-doc="w12-lec" data-page="35">p.35</a>): the shortest path is easy to find; simple for polygons. Cons: nodes and edges grow with the number of polygons (slow when dense); the path hugs obstacles as closely as possible.</p>
+<p><b>Voronoi diagram</b> (<a class="pg" data-doc="w12-lec" data-page="38">pp. 37–40</a>): ignore optimality and keep as far from obstacles as possible; the path follows curves equidistant from the nearest obstacles and so maximises the closest distance. Pros: a robot with a range sensor (sonar, laser) can follow it with a simple rule, “maximise the sensor readings” (<a class="pg" data-doc="w12-lec" data-page="40">p.40</a>). Cons: a short-range sensor may lose all obstacles and fail. With polygon obstacles the diagram has straight and parabolic segments.</p>
+<figure class="svg"><svg width="350" viewBox="0 0 350 345" role="img" aria-label="Practical Q2 map with a hand-made roadmap path and the visibility-graph path"><rect x="20" y="20" width="300" height="300" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.5"/><g font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--muted)" text-anchor="middle"><text x="20" y="334">0</text><text x="11" y="323">0</text><text x="80" y="334">2</text><text x="11" y="263">2</text><text x="140" y="334">4</text><text x="11" y="203">4</text><text x="200" y="334">6</text><text x="11" y="143">6</text><text x="260" y="334">8</text><text x="11" y="83">8</text><text x="320" y="334">10</text><text x="11" y="23">10</text></g><polygon points="80,110 140,170 110,200" fill="var(--sunk)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><polygon points="200,140 200,80 260,80 260,140" fill="var(--sunk)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><polygon points="170,230 200,230 170,290" fill="var(--sunk)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="290" cy="50" r="30" fill="var(--exam-bg)" fill-opacity="0.6" stroke="var(--exam)" stroke-width="1.5"/><polyline points="65,275 260,140 290,50" fill="none" stroke="var(--exam)" stroke-width="2" stroke-dasharray="6 4"/><polyline points="65,275 140,245 230,185 290,110 290,65" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/><g fill="var(--ink)"><circle cx="65" cy="275" r="4"/><circle cx="140" cy="245" r="4"/><circle cx="230" cy="185" r="4"/><circle cx="290" cy="110" r="4"/><circle cx="290" cy="65" r="4"/></g><g font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink)"><text x="61" y="291">S</text><text x="134" y="262">P1</text><text x="237" y="189">P2</text><text x="297" y="114">P3</text><text x="297" y="69">P4</text><text x="264" y="16">G (9,9)</text><text x="50" y="110" fill="var(--muted)" font-size="9">(2,7)</text><text x="146" y="174" fill="var(--muted)" font-size="9">(4,5)</text><text x="76" y="214" fill="var(--muted)" font-size="9">(3,4)</text><text x="186" y="74" fill="var(--muted)" font-size="9">(6,8)</text><text x="248" y="73" fill="var(--muted)" font-size="9">(8,8)</text><text x="166" y="154" fill="var(--muted)" font-size="9">(6,6)</text><text x="264" y="154" fill="var(--muted)" font-size="9">(8,6)</text><text x="158" y="223" fill="var(--muted)" font-size="9">(5,3)</text><text x="204" y="234" fill="var(--muted)" font-size="9">(6,3)</text><text x="175" y="300" fill="var(--muted)" font-size="9">(5,1)</text></g></svg><figcaption>Practical Q2 map drawn to scale (30 px per unit). Dashed: the visibility-graph route S, corner (8,6), goal centre G, length 11.07. Solid with dots: our hand roadmap S, P1, P2, P3, P4 (section 9), length 11.00. Polygons from the practical sheet.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Comparison</span>
+<div class="tbl"><table><tr><th></th><th>Visibility graph</th><th>Voronoi</th></tr>
+<tr><td>Optimises</td><td>path length</td><td>clearance (distance to nearest obstacle)</td></tr>
+<tr><td>Path shape</td><td>straight segments through obstacle corners</td><td>straight and parabolic arcs equidistant from obstacles</td></tr>
+<tr><td>Risk</td><td>no safety margin; needs inflated obstacles</td><td>longer than the shortest path; fails with short-range sensors</td></tr>
+<tr><td>Complete? (p.81)</td><td>yes</td><td>yes</td></tr></table></div>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Inflate obstacles first (visibility paths touch corners).</li>
+<li>List vertices: S, G and every polygon corner.</li>
+<li>Join every pair whose segment does not enter an obstacle interior (touching and sliding along an edge is allowed).</li>
+<li>Weight edges by Euclidean length; run Dijkstra or A*.</li>
+<li>Sanity check: the result is no longer than any other route you can sketch, and only bends at obstacle corners.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>Practical Q2 map, start S = (1.5, 1.5), goal centre G = (9, 9). The straight line S–G is the diagonal \(y=x\), which passes through the rectangle (6,6)–(8,8), so it is blocked. Going round the rectangle’s corner (8,6): \(|S-(8,6)|=\sqrt{6.5^2+4.5^2}=7.906\), \(|(8,6)-G|=\sqrt{1^2+3^2}=3.162\), total 11.068. To the <i>edge</i> of the goal disc (radius 1) subtract 1: 10.068. The corner (6,8) gives the same length by symmetry about \(y=x\). <span class="chk">checked</span></p>
+</div>
+<div class="angle">Typical short question: “which method maximises clearance?” (Voronoi) and “which gives the shortest path but hugs obstacles?” (visibility graph). Trap: “Voronoi gives the shortest path”.</div>
+</div>
+
+<!-- ================= 4 ================= -->
+<div class="sub" id="w12-cells">
+<h3>4 · Cell decomposition <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="42">pp. 41–46</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Divide free space into simple connected cells, build an <b>adjacency (connectivity) graph</b> (one node per cell, an edge when two cells touch), find the cells containing start and goal, search the graph, then compute a path inside each cell (<a class="pg" data-doc="w12-lec" data-page="42">p.42</a>). Three flavours (<a class="pg" data-doc="w12-lec" data-page="44">pp. 44–46</a>):</p>
+<div class="tbl"><table><tr><th>Type</th><th>How</th><th>Trade-off</th></tr>
+<tr><td>Exact</td><td>vertical trapezoid cells that exactly cover C<sub>free</sub>, plus adjacency graph</td><td>no information lost; harder to build</td></tr>
+<tr><td>Approximate</td><td>uniform grid; any cell touching an obstacle is blocked</td><td>simple; resolution complete only; can lose narrow gaps</td></tr>
+<tr><td>Adaptive</td><td>big cells in open space, small cells near obstacles</td><td>fewer cells than a uniform grid at the same detail</td></tr></table></div>
+<p>The uniform-grid version is what the rest of the week searches (section 7 onward).</p>
+</div>
+<div class="angle">Explain-style: contrast exact and approximate decomposition. Keywords: <i>exact</i> = complete; <i>approximate</i> = resolution complete, resolution is a trade-off between losing narrow passages and search time (<a class="pg" data-doc="w12-lec" data-page="64">p.64</a>).</div>
+</div>
+
+<!-- ================= 5 ================= -->
+<div class="sub" id="w12-bfsdfs">
+<h3>5 · Graph search, BFS and DFS <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="48">pp. 47–55</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Graph search solves a <b>least-cost problem between two states on a (directed) graph</b> (<a class="pg" data-doc="w12-lec" data-page="48">p.48</a>). The graph is a discrete picture of the world: nodes are places (cells, vertices), edges are moves with a cost. Two limits: discretising the state space puts <b>completeness at stake</b>, and the feasibility of paths (turning limits and so on) is seldom encoded.</p>
+<p>The slide sorts the methods (<a class="pg" data-doc="w12-lec" data-page="49">p.49</a>): deterministic <i>uninformed</i> BFS and DFS, deterministic <i>informed</i> Dijkstra, A*, D*; randomised PRM and RRT. The bracket on the slide is ambiguous about Dijkstra; conventionally Dijkstra is uninformed (it is A* with h = 0), and A* is the informed one.</p>
+<ul>
+<li><b>BFS</b> (<a class="pg" data-doc="w12-lec" data-page="50">p.50</a>): keep a first-in-first-out queue. Expand the oldest node, add its unseen neighbours at the back. Nodes are reached in order of number of edges from the start, so BFS returns the path with the <b>fewest edges</b>. That is the cheapest path only when every edge costs the same. Cost \(O(|V|+|E|)\) (<a class="pg" data-doc="w12-lec" data-page="65">p.65</a>); resolution complete.</li>
+<li><b>DFS</b> (<a class="pg" data-doc="w12-lec" data-page="52">p.52</a>): keep a last-in-first-out stack (or recurse). Follow one branch as deep as it goes, back up only at a dead end. Uses little memory but finds <i>a</i> path, usually a long one, with no cost guarantee. Not complete on infinite trees. The depth can be limited (<a class="pg" data-doc="w12-lec" data-page="54">p.54</a>).</li>
+</ul>
+<p>The grid pictures (<a class="pg" data-doc="w12-lec" data-page="51">p.51</a>, <a class="pg" data-doc="w12-lec" data-page="53">p.53</a>) show the contrast: BFS floods outward as an even front and the path found is short; DFS wanders and the path is long and winding.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>State the tie-break rule (for example alphabetical) before you start; the slides do not give one.</li>
+<li>BFS: write the queue after each pop. Mark a node <i>seen</i> when it is added so it is never added twice.</li>
+<li>DFS: write the stack (or the recursion) after each step; go to the first unvisited neighbour.</li>
+<li>Stop when the goal is popped. Read the path back through parent pointers.</li>
+<li>Add up the edge costs yourself. BFS counts edges, not cost.</li></ol></div>
+<div class="worked"><span class="tag">Worked example (worked by us, verified by script)</span>
+<p>The slide’s graph (<a class="pg" data-doc="w12-lec" data-page="56">p.56</a>): start A, goal K, edges A–B 10, B–E 9, A–C 6, C–F 5, F–H 7, H–J 4, J–K 3, A–D 8, D–G 9, F–G 3, G–I 7, I–K 5. The slide (pp. 50, 52) draws the graph unweighted and gives no answer, so the following uses our tie-break: neighbours in alphabetical order.</p>
+<p><b>BFS</b>: visits A, B, C, D, E, F, G, H, I, J, K (K is popped last, 11th). Path A–D–G–I–K has the fewest edges (4) and costs \(8+9+7+5=29\).<br>
+<b>DFS</b> (recursive, alphabetical): visits A, B, E, (dead end, back to A), C, F, G, D, (dead end), I, K. Path A–C–F–G–I–K, 5 edges, costs \(6+5+3+7+5=26\).<br>
+The best path costs 25 (section 6). Neither BFS (29) nor DFS (26) is cost-optimal. <span class="chk">checked</span></p>
+</div>
+<div class="angle"><b>Typical question:</b> “which path does BFS return?” or “which finds the shortest path in a graph with unequal costs?”. Trap: BFS is optimal only with equal costs. A DFS answer depends on neighbour order, so write your order down; a different order gives a different (still valid) path.</div>
+<div class="box warn-box"><span class="tag">Slides vs lecture notes</span><p>The BFS and DFS slides for the graph (pp. 50, 52) show the unweighted layout only; no queue, order or answer is printed. The orders above are ours. If a question gives a different tie-break, redo the table with it.</p></div>
+</div>
+
+<!-- ================= 6 ================= -->
+<div class="sub" id="w12-dijkstra">
+<h3>6 · Dijkstra’s algorithm <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="56">pp. 56–58</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Dijkstra (1959) “searches outwards in order of cost from the start” (<a class="pg" data-doc="w12-lec" data-page="56">p.56</a>). It always expands the node with the smallest <b>past cost</b> \(g\). Because edge costs are not negative, once a node is expanded no cheaper way to it can appear later, so its \(g\) is final. The slide’s table (<a class="pg" data-doc="w12-lec" data-page="57">p.57</a>) is blank; its rows are <i>past cost</i> and <i>parent node</i>.</p>
+<p>The weakness (<a class="pg" data-doc="w12-lec" data-page="58">p.58</a>): it “doesn’t really know the goal exists until it reaches it”, so it expands nodes in every direction. The slide asks: can we guide the search toward the goal <i>without</i> breaking the rule that a node is accepted only with its lowest cost of arrival? That is A*.</p>
+</div>
+<div class="layer derive"><span class="tag">Algorithm</span>
+<p>Keep an <b>open set</b> (discovered, not yet expanded) with tentative costs, and a <b>closed set</b> (expanded, cost final). Start: \(g(\text{start})=0\).</p>
+<ol>
+<li>Pop the open node \(n\) with the smallest \(g\) (ties: alphabetical). Move it to closed.</li>
+<li>If \(n\) is the goal, stop.</li>
+<li>For each neighbour \(m\) of \(n\) not in closed, with edge cost \(w\): if \(g(n)+w\lt g(m)\) (or \(m\) is new), set \(g(m)=g(n)+w\), parent\((m)=n\), and put \(m\) in open (this is <b>relaxation</b>).</li>
+<li>Repeat. Trace the parents back from the goal.</li>
+</ol>
+<p>Correct only for non-negative edge costs. Dijkstra is A* with \(h=0\).</p>
+</div>
+<div class="worked"><span class="tag">Worked example (worked by us, verified by script)</span>
+<p>The slide’s weighted graph, start A, goal K. Tie-break: alphabetical (no tie actually occurs). Each row lists the open set <i>after</i> expanding the node, as node, tentative \(g\), parent.</p>
+<div class="tbl"><table><tr><th>Step</th><th>Expand n (g)</th><th>Open set after expanding: node g (parent)</th><th>Closed</th></tr>
+<tr><td>1</td><td><b>A</b> (0)</td><td>C 6 (A); D 8 (A); B 10 (A)</td><td>A</td></tr>
+<tr><td>2</td><td><b>C</b> (6)</td><td>D 8 (A); B 10 (A); F 11 (C)</td><td>A C</td></tr>
+<tr><td>3</td><td><b>D</b> (8)</td><td>B 10 (A); F 11 (C); G 17 (D)</td><td>A C D</td></tr>
+<tr><td>4</td><td><b>B</b> (10)</td><td>F 11 (C); G 17 (D); E 19 (B)</td><td>A B C D</td></tr>
+<tr><td>5</td><td><b>F</b> (11)</td><td>G 14 (F); H 18 (F); E 19 (B)</td><td>A B C D F</td></tr>
+<tr><td>6</td><td><b>G</b> (14)</td><td>H 18 (F); E 19 (B); I 21 (G)</td><td>A B C D F G</td></tr>
+<tr><td>7</td><td><b>H</b> (18)</td><td>E 19 (B); I 21 (G); J 22 (H)</td><td>A B C D F G H</td></tr>
+<tr><td>8</td><td><b>E</b> (19)</td><td>I 21 (G); J 22 (H)</td><td>A B C D E F G H</td></tr>
+<tr><td>9</td><td><b>I</b> (21)</td><td>J 22 (H); K 26 (I)</td><td>A B C D E F G H I</td></tr>
+<tr><td>10</td><td><b>J</b> (22)</td><td>K 25 (J)</td><td>A B C D E F G H I J</td></tr>
+<tr><td>11</td><td><b>K</b> (25)</td><td>(empty)</td><td>A B C D E F G H I J K</td></tr>
+</table></div>
+<p>The filled-in version of the slide’s empty table (<a class="pg" data-doc="w12-lec" data-page="57">p.57</a>):</p>
+<div class="tbl"><table><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th><th>I</th><th>J</th><th>K</th></tr>
+<tr><td>Past cost g</td><td>0</td><td>10</td><td>6</td><td>8</td><td>19</td><td>11</td><td>14</td><td>18</td><td>21</td><td>22</td><td>25</td></tr>
+<tr><td>Parent</td><td>–</td><td>A</td><td>A</td><td>A</td><td>B</td><td>C</td><td>F</td><td>F</td><td>G</td><td>H</td><td>J</td></tr></table></div>
+<p>Path: K ← J ← H ← F ← C ← A, that is <b>A–C–F–H–J–K, cost 25</b>. Two updates to notice: at step 5, G drops from 17 (via D) to 14 (via F); at step 10, K drops from 26 (via I) to 25 (via J). K is expanded last (11th) because it has the largest \(g\), 25. <span class="chk">checked</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Draw the table: columns = nodes; rows = past cost, parent. Set \(g(A)=0\), the rest unknown.</li>
+<li>Repeat: pick the smallest \(g\) among unexpanded nodes, fix it, relax each neighbour.</li>
+<li>Update a node only if the new \(g\) is <i>strictly smaller</i>.</li>
+<li>Stop when the goal is chosen for expansion (not when it is first discovered: K was discovered at step 9 with \(g=26\), but the best is 25).</li>
+<li>Sanity check: the goal’s \(g\) equals the sum of edge costs along the traced path.</li></ol></div>
+<div class="angle"><b>Trap:</b> stopping when K is first reached gives 26, not 25. Another: relaxing a closed node. Dijkstra is “uninformed”: it uses no knowledge of where the goal is.</div>
+</div>
+
+<!-- ================= 7 ================= -->
+<div class="sub" id="w12-astar">
+<h3>7 · A* and heuristics <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="59">pp. 59–62</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A* is a “focused search that prioritises searching towards the goal, exploiting some knowledge about it” (<a class="pg" data-doc="w12-lec" data-page="59">p.59</a>). Each node carries two numbers: the <b>past cost</b> \(g(n)\) (the slide’s blue arrow, A to D = 8, “cost to arrive at node n”) and an <b>optimistic cost to go</b> \(h(n)\) (the red arrow, D to K = 13, “optimistic cost from node n to goal”). A* expands the open node with the smallest sum.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+\[ f(n)=g(n)+h(n) \qquad (\text{p.59}) \]
+<p>\(g(n)\): cost of the best path found so far from the start to \(n\). \(h(n)\): estimated cost from \(n\) to the goal. \(f(n)\): estimated total cost of a path through \(n\). A* = Dijkstra with the priority \(g\) replaced by \(f\); stop when the goal is <i>expanded</i>.</p>
+<p>What a good heuristic needs (<a class="pg" data-doc="w12-lec" data-page="61">p.61</a>): fast to compute, reasonably close to the real cost, <b>admissible</b> and <b>consistent</b>. With \(d(n,\text{goal})\) the true cheapest cost from \(n\) to the goal and \(d(n,m)\) the cost of the edge between neighbours \(n\), \(m\):</p>
+\[ \text{admissible: } h(n)\le d(n,\text{goal})\ \ \forall n, \qquad \text{consistent: } h(n)\le d(n,m)+h(m)\ \ \forall \text{ neighbours } n,m \]
+<p>Admissible means <i>never overestimates</i> (note the non-strict \(\le\): \(h=d\) is allowed). Consistent is the triangle inequality: the estimate may not drop by more than the edge you walked. Consistent \(\Rightarrow\) admissible (given \(h(\text{goal})=0\)), but not the other way round. Typical choices on a grid: Euclidean distance, Manhattan distance, or zero (which turns A* into Dijkstra).</p>
+<ul>
+<li><b>Admissible h</b> keeps A* optimal: if \(h\) never overestimates, no better route can hide behind a node whose \(f\) is too high.</li>
+<li><b>Consistent h</b> additionally makes the popped \(f\) values non-decreasing and means a closed node never needs re-opening. The lecture asks for both; strictly, admissibility gives optimality with re-opening, and consistency is what lets you use a simple closed set.</li>
+<li><b>Overestimating h</b> can send A* the wrong way: it returns a path that may not be optimal.</li>
+</ul>
+<p>Comparison (<a class="pg" data-doc="w12-lec" data-page="62">p.62</a>): on one grid with a wall, A* took <b>277</b> operations, BFS <b>1413</b>, Dijkstra <b>1378</b> (source on the slide: PathFinding.js visualiser). So A* did about \(1378/277=4.97\) times fewer operations than Dijkstra. <span class="chk">checked</span> The figure comes from one demo; do not quote it as a general ratio.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write \(h\) beside every node. Check admissibility: compare each \(h(n)\) with the true remaining cost (find it by inspection or a backward Dijkstra).</li>
+<li>Check consistency edge by edge, in <i>both</i> directions where \(h\) differs: \(h(n)\le w+h(m)\).</li>
+<li>Run the table: pop the smallest \(f=g+h\) (tie: smaller \(h\), then alphabetical; say so). Relax neighbours with \(g(n)+w\).</li>
+<li>Stop when the goal is popped. Trace the parents. Report order, path, cost.</li>
+<li>Sanity check: \(f(\text{goal})=g(\text{goal})\) = path cost; no open node should have \(f\) below it if \(h\) is admissible; unexpanded nodes (E here) are the saving over Dijkstra.</li></ol></div>
+<div class="worked"><span class="tag">Worked example (worked by us, verified by script)</span>
+<p>The slide’s graph with the red heuristic values (<a class="pg" data-doc="w12-lec" data-page="59">p.59</a>): \(h\) = A 20, B 10, C 17, D 13, E 8, G 8, H 7, I 2, J 2; K = 0 (not printed, the goal). <b>F has no red label</b> (see the box below); we use \(h(F)=9\), the one number printed beside F. Tie-break: lowest \(f\), then lowest \(h\), then alphabetical (no ties occur).</p>
+<p><b>Admissibility.</b> True costs to K: \(d(H)=7\) (H–J–K), \(d(J)=3\), \(d(I)=5\), \(d(G)=12\) (G–I–K), \(d(F)=14\) (F–H–J–K), \(d(C)=19\), \(d(D)=21\), \(d(A)=25\), \(d(B)=35\), \(d(E)=44\). Every \(h(n)\le d(n)\), so \(h\) is <b>admissible</b>, tight at H (7 = 7). <span class="chk">checked</span></p>
+<p><b>Consistency.</b> Two edges break it: H→J: \(h(H)=7\gt d(H,J)+h(J)=4+2=6\); and C→F: \(h(C)=17\gt 5+h(F)=14\) (with \(h(F)=9\)). So \(h\) is admissible but <b>not consistent</b>. In fact no value of \(h(F)\) makes it consistent: C needs \(h(F)\ge 12\) but G needs \(h(F)\le 11\). <span class="chk">checked</span></p>
+<div class="tbl"><table><tr><th>Step</th><th>Expand n</th><th>g</th><th>h</th><th>f</th><th>Open set after expanding: node g+h=<b>f</b> (parent), best f first</th></tr>
+<tr><td>1</td><td><b>A</b></td><td>0</td><td>20</td><td>20</td><td>B <small>g10+h10=</small><b>20</b> (A); D <small>g8+h13=</small><b>21</b> (A); C <small>g6+h17=</small><b>23</b> (A)</td></tr>
+<tr><td>2</td><td><b>B</b></td><td>10</td><td>10</td><td>20</td><td>D <small>g8+h13=</small><b>21</b> (A); C <small>g6+h17=</small><b>23</b> (A); E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+<tr><td>3</td><td><b>D</b></td><td>8</td><td>13</td><td>21</td><td>C <small>g6+h17=</small><b>23</b> (A); G <small>g17+h8=</small><b>25</b> (D); E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+<tr><td>4</td><td><b>C</b></td><td>6</td><td>17</td><td>23</td><td>F <small>g11+h9=</small><b>20</b> (C); G <small>g17+h8=</small><b>25</b> (D); E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+<tr><td>5</td><td><b>F</b></td><td>11</td><td>9</td><td>20</td><td>G <small>g14+h8=</small><b>22</b> (F); H <small>g18+h7=</small><b>25</b> (F); E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+<tr><td>6</td><td><b>G</b></td><td>14</td><td>8</td><td>22</td><td>I <small>g21+h2=</small><b>23</b> (G); H <small>g18+h7=</small><b>25</b> (F); E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+<tr><td>7</td><td><b>I</b></td><td>21</td><td>2</td><td>23</td><td>H <small>g18+h7=</small><b>25</b> (F); K <small>g26+h0=</small><b>26</b> (I); E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+<tr><td>8</td><td><b>H</b></td><td>18</td><td>7</td><td>25</td><td>J <small>g22+h2=</small><b>24</b> (H); K <small>g26+h0=</small><b>26</b> (I); E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+<tr><td>9</td><td><b>J</b></td><td>22</td><td>2</td><td>24</td><td>K <small>g25+h0=</small><b>25</b> (J); E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+<tr><td>10</td><td><b>K</b></td><td>25</td><td>0</td><td>25</td><td>E <small>g19+h8=</small><b>27</b> (B)</td></tr>
+</table></div>
+<p>The filled-in version of the slide’s empty table (<a class="pg" data-doc="w12-lec" data-page="60">p.60</a>, which only has columns A–F):</p>
+<div class="tbl"><table><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th><th>I</th><th>J</th><th>K</th></tr>
+<tr><td>Past cost g</td><td>0</td><td>10</td><td>6</td><td>8</td><td>19</td><td>11</td><td>14</td><td>18</td><td>21</td><td>22</td><td>25</td></tr>
+<tr><td>Optimistic h</td><td>20</td><td>10</td><td>17</td><td>13</td><td>8</td><td>9</td><td>8</td><td>7</td><td>2</td><td>2</td><td>0</td></tr>
+<tr><td>Estimated total f</td><td>20</td><td>20</td><td>23</td><td>21</td><td>27</td><td>20</td><td>22</td><td>25</td><td>23</td><td>24</td><td>25</td></tr>
+<tr><td>Parent</td><td>–</td><td>A</td><td>A</td><td>A</td><td>B</td><td>C</td><td>F</td><td>F</td><td>G</td><td>H</td><td>J</td></tr></table></div>
+<p>Path <b>A–C–F–H–J–K, cost 25</b>, found after <b>10 expansions</b> (Dijkstra needed 11). E is discovered (\(g=19\), \(f=27\)) but never expanded. Note the popped \(f\) values: 20, 20, 21, 23, 20, 22, 23, 25, 24, 25. They are <b>not non-decreasing</b> (23 then 20 at F, 25 then 24 at J), which is the visible signature of an inconsistent \(h\). With a consistent \(h\) they never fall. <span class="chk">checked</span></p>
+<p>Same table with a <b>perfect</b> \(h=d\): A* expands only A, C, F, H, J, K. With an <b>overestimating</b> \(h(F)=30\): order A B D C G I E K and a worse path A–D–G–I–K, <b>cost 29</b>. <span class="chk">checked</span></p>
+</div>
+<div class="widget" data-w3d="akgraph" id="w12-akgraph">
+  <div class="wh"><b>A–K graph replay</b><span class="eyebrow">the slide graph, Dijkstra or A*, one expansion at a time</span></div>
+  <div class="wbody"><div class="stage"></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> A*, h(F) = 9, step to the end: 10 expansions, cost 25, E never expanded. Set h(F) anywhere from 0 to 13 and the expansion order does not change (only the f shown at F does), so the answer does not hinge on the stray “9”. Set h(F) = 30: F is never expanded and A* returns cost 29, because h(F) now overestimates the true 14. Switch to Dijkstra to see all 11 expansions.</div>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs lecture notes</span><p><b>1. The stray “9” above F (pp. 56–59).</b> A blue 9 sits above F on the A* slide, where the red h labels sit. It is the edge-weight colour, and it appears in the same place on the Dijkstra slides (pp. 56–57) where there is no heuristic at all, so it is probably a leftover edge label, not h(F). The slide therefore gives no h(F). We solved it two ways: with h(F) = 9 (tables above) and with h(F) = 0 (F unlabeled, treated as no guidance). Both give the same expansion order A B D C F G I H J K, the same path and cost 25. The same holds for any integer h(F) from 0 to 13 (it stays admissible, since d(F) = 14). We print the h(F) = 9 numbers because the table needs a value. <b>2.</b> Both tables (pp. 57, 60) are blank on the slides; the fills are ours. <b>3.</b> The slide asks for a heuristic that is “admissible and consistent”, but its own h fails consistency at H→J (and at C→F with h(F) = 9). A* still returns the optimum here (re-opening closed nodes changes nothing on this graph, checked), but the guarantee for a plain closed set needs consistency. <b>4.</b> K has no printed h; zero is the only valid value at a goal.</p></div>
+<div class="angle"><b>Typical question:</b> “fill in the A* table”, “is this heuristic admissible / consistent?”, “what happens if h overestimates?”. Traps: using h(n) at the wrong node; computing f with the <i>new</i> g of an already-closed node; saying “A* is always optimal” (needs admissible h); saying “Manhattan is always admissible” (not with diagonal moves: it says 2 for a diagonal step costing 1.414); thinking any heuristic makes A* faster (with h = 0 it is exactly Dijkstra).</div>
+</div>
+
+<!-- ================= 8 ================= -->
+<div class="sub" id="w12-grid-dim">
+<h3>8 · Grid-based graphs and the curse of dimensionality <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="63">pp. 63–65</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A grid turns C-space into a graph: each free cell is a node, and edges join neighbouring cells. Problems (<a class="pg" data-doc="w12-lec" data-page="64">p.64</a>): it is hard to choose a resolution that is fine enough to keep valid solutions (obstacles inflated by the grid size) yet coarse enough to solve quickly; connectivity is dictated by the grid shape; and in higher dimensions grids suffer from the <b>curse of dimensionality</b>.</p>
+</div>
+<div class="layer derive"><span class="tag">Counting (p. 65)</span>
+<p>BFS on a uniform grid costs \(O(|V|+|E|)\). With \(N\) cells per dimension and \(d\) dimensions, the node count is \(N^d\).</p>
+<div class="tbl"><table><tr><th>Grid</th><th>Nodes</th><th>Neighbours per cell (slide)</th></tr>
+<tr><td>2D, 100 × 100</td><td>\(100^2=10^4\)</td><td>4 or 8</td></tr>
+<tr><td>3D, 100 × 100 × 100</td><td>\(100^3=10^6\)</td><td>6 to 26</td></tr>
+<tr><td>6D, 100 per dimension</td><td>\(100^6=10^{12}\)</td><td>“Neighbours?”: not answered on the slide. Face neighbours: \(2d=12\); all adjacent cells: \(3^6-1=728\) (our computation)</td></tr></table></div>
+<p>The pattern for neighbours: \(2d\) (axis-aligned) or \(3^d-1\) (including diagonals): \(d=2\): 4 or 8; \(d=3\): 6 or 26. <span class="chk">checked</span> A 4-connected 100 × 100 grid has \(|E|=2\cdot100\cdot99=19\,800\) edges, so \(|V|+|E|=29\,800\). At one byte per node, \(10^{12}\) nodes is about 1 TB. <span class="chk">checked</span></p>
+<p><b>Heuristics on grids.</b> With 4-connected moves of cost 1, Manhattan distance \(|\Delta r|+|\Delta c|\) is admissible and consistent. With 8-connected moves (diagonal cost \(\sqrt2\)), Manhattan overestimates (a diagonal step has \(h=2\) but costs 1.414), so use Euclidean \(\sqrt{\Delta r^2+\Delta c^2}\). In the widget, “Manhattan trap (grid 5)” shows the damage: cost 10.243 against the optimum 9.657. <span class="chk">checked</span></p>
+</div>
+<div class="angle"><b>Typical:</b> “how many nodes in a 6D grid with 100 cells per dimension?” (\(10^{12}\)) and “why do grid methods scale badly?”. Say: the node count grows exponentially with dimension, so memory and time explode; sampling methods avoid building the full grid.</div>
+</div>
+
+<!-- ================= 9 ================= -->
+<div class="sub" id="w12-sampling">
+<h3>9 · Sampling-based planning: PRM and RRT <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="66">pp. 66–79</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>Main idea</b> (<a class="pg" data-doc="w12-lec" data-page="66">p.66</a>): instead of dividing C-space into cells, pick random points and try to connect them. Much of the space is usually free, and two nearby points can be joined by a simple path such as a straight line. We <i>abandon the explicit split</i> of C into C<sub>free</sub> and C<sub>obs</sub>; a collision detector just says whether a picked point is in C<sub>free</sub>. This is “more efficient than grid-based” and needs no explicit obstacle representation (<a class="pg" data-doc="w12-lec" data-page="83">p.83</a>). The two classics: PRM (1996) and RRT (1998) (<a class="pg" data-doc="w12-lec" data-page="68">p.68</a>).</p>
+<p><b>General framework</b> (<a class="pg" data-doc="w12-lec" data-page="69">p.69</a>): (1) start with an empty graph \(G=(V,E)\); (2) sample a random point and add it to \(V\) (needs a <i>sampler</i>); (3) for each new vertex \(v\), pick ‘near’ vertices (needs a <i>distance function</i>) and try to connect them with a <i>local planner</i>; (4) if the local path is collision-free (needs a <i>collision detector</i>) add it to \(E\); (5) repeat from 2 until satisfied; (6) query: find a connection from start to goal.</p>
+<p><b>PRM</b> (<a class="pg" data-doc="w12-lec" data-page="70">pp. 70–72</a>), two phases: <i>learning</i> (a random sample is generated; a local planner connects it to nearby roadmap vertices) then <i>query</i> (start and goal are added; a graph search such as A* connects them through the roadmap). Strengths: conceptually simple; solves high-dimensional problems (snake robots). Limits: assumes <b>holonomic</b> motion (any direction possible); can fail on a <b>narrow passage</b>; not suited to <b>dynamic environments</b> because the roadmap is built first and then searched.</p>
+<p><b>RRT</b> (<a class="pg" data-doc="w12-lec" data-page="73">pp. 73–79</a>): a <i>tree</i> (a special graph) grown from the start. Each iteration: draw a random configuration \(q_{rand}\); find the nearest tree node; grow from it a short step towards \(q_{rand}\) to create \(q_{new}\); add it if collision-free. It terminates when a node is in the goal region; “common implementations will connect directly to the goal” (<a class="pg" data-doc="w12-lec" data-page="74">p.74</a>). The tree <i>rapidly explores free space</i> (<a class="pg" data-doc="w12-lec" data-page="74">p.74</a>); the usual reason, not stated on the slides, is that big empty regions are the nearest region to most random samples, which pulls the tree outward. The local paths are meant to be dynamically feasible.</p>
+<p><b>Non-holonomic robots</b> (<a class="pg" data-doc="w12-lec" data-page="77">pp. 77–79</a>): straight lines in C-space assume a point that can move in any direction. A car cannot. The fix on <a class="pg" data-doc="w12-lec" data-page="78">p.78</a> is to <b>sample controls</b> (steer and speed) and keep the resulting configuration closest to the target, so every edge is a drivable motion. The summary says RRT can be used with non-holonomic systems (<a class="pg" data-doc="w12-lec" data-page="83">p.83</a>).</p>
+<figure class="svg"><svg width="350" viewBox="0 0 350 345" role="img" aria-label="One RRT extension step from S towards a random sample"><rect x="20" y="20" width="300" height="300" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.5"/><g font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--muted)" text-anchor="middle"><text x="20" y="334">0</text><text x="11" y="323">0</text><text x="80" y="334">2</text><text x="11" y="263">2</text><text x="140" y="334">4</text><text x="11" y="203">4</text><text x="200" y="334">6</text><text x="11" y="143">6</text><text x="260" y="334">8</text><text x="11" y="83">8</text><text x="320" y="334">10</text><text x="11" y="23">10</text></g><polygon points="80,110 140,170 110,200" fill="var(--sunk)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><polygon points="200,140 200,80 260,80 260,140" fill="var(--sunk)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><polygon points="170,230 200,230 170,290" fill="var(--sunk)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="290" cy="50" r="30" fill="var(--exam-bg)" fill-opacity="0.6" stroke="var(--exam)" stroke-width="1.5"/><line x1="65.0" y1="275.0" x2="200.0" y2="260.0" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="2 4"/><line x1="65.0" y1="275.0" x2="94.8" y2="271.7" stroke="var(--accent)" stroke-width="3"/><circle cx="65.0" cy="275.0" r="4.5" fill="var(--ink)"/><circle cx="94.8" cy="271.7" r="4" fill="var(--accent)"/><circle cx="200.0" cy="260.0" r="4" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.5"/><g font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink)"><text x="61" y="291">S = q_start</text><text x="81" y="263">q_new</text><text x="206" y="264">q_rand (6,2)</text><text x="264" y="16">G (9,9)</text></g></svg><figcaption>One RRT extension on the practical map (30 px per unit). Tree = {S}. Sample q<sub>rand</sub> = (6, 2); the nearest node is S; the new node is one step of length 1 along that direction: q<sub>new</sub> = (2.494, 1.610). Dotted: the unreached direction to q<sub>rand</sub>.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Building blocks (practical Q2 a–g)</span>
+<ul>
+<li><b>Sampler:</b> uniform random point in \([0,10]^2\). The chance that one uniform sample lands in the goal disc (radius 1, area \(\pi\)) is \(\pi/100=0.0314\); the expected number of samples is about \(100/\pi\approx32\). <span class="chk">checked</span></li>
+<li><b>Point in polygon</b> (ray casting): shoot a ray from the point in the \(+x\) direction; count edges it crosses. <i>Odd</i> means inside. An edge counts when its end points straddle the ray’s \(y\) and the crossing \(x\) is to the right of the point.</li>
+<li><b>Segment against polygon:</b> a segment \(\overline{ab}\) crosses an edge \(\overline{cd}\) if \(c,d\) are on opposite sides of line \(ab\) and \(a,b\) are on opposite sides of line \(cd\), using the sign of the orientation \((b-a)\times(c-a)\). Test all polygon edges. A segment with both end points free can still cross a polygon.</li>
+<li><b>Nearest vertex:</b> smallest Euclidean distance \(\|q-v\|\).</li>
+<li><b>Goal test:</b> \(\|q-G\|\le1\) (the goal is a disc).</li>
+</ul>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li><b>PRM:</b> sample \(N\) points, discard those inside obstacles; connect each to its \(k\) nearest vertices (or all within radius \(r\)) if the straight segment is free; add S and G the same way; run A* or Dijkstra on the graph.</li>
+<li><b>RRT:</b> tree \(=\{S\}\). Loop: sample \(q_{rand}\) (sometimes the goal); nearest node \(q_{near}\); \(q_{new}=q_{near}+\delta\,(q_{rand}-q_{near})/\|q_{rand}-q_{near}\|\); if the segment \(q_{near}\to q_{new}\) is free add it with parent \(q_{near}\); stop when \(\|q_{new}-G\|\le1\).</li>
+<li>State the guarantee: probabilistically complete; the path is usually <i>not</i> shortest; no termination guarantee if no path exists.</li>
+<li>Sanity check: every edge in your path passed the segment test, the first node is S and the last is inside the goal disc.</li></ol></div>
+<div class="worked"><span class="tag">Worked example (worked by us, verified by script)</span>
+<p><b>RRT step.</b> \(S=(1.5,1.5)\), \(q_{rand}=(6,2)\), step \(\delta=1\). \(\|q_{rand}-S\|=\sqrt{4.5^2+0.5^2}=4.528\). \(q_{new}=(1.5+4.5/4.528,\;1.5+0.5/4.528)=(2.494,\,1.610)\). The segment S to \(q_{new}\) misses all three polygons, so it is added. <span class="chk">checked</span></p>
+<p><b>Hand-sized PRM.</b> Roadmap nodes S = (1.5,1.5), P1 = (4,2.5), P2 = (7,4.5), P3 = (9,7), P4 = (9,8.5). All five are in free space and the four segments are collision-free; P4 is 0.5 from G, inside the goal disc. Leg lengths \(\sqrt{2.5^2+1^2}=2.693\), \(\sqrt{3^2+2^2}=3.606\), \(\sqrt{2^2+2.5^2}=3.202\), 1.5: total <b>11.00</b>. The visibility-graph optimum to the disc edge is 10.068, so this roadmap path is 9.3% longer: PRM and RRT paths are usually longer than the best path. <span class="chk">checked</span></p>
+</div>
+<div class="angle"><b>Typical:</b> “PRM or RRT for a car with turning limits?” (RRT with sampled controls). “Which cannot cope with a changing map?” (PRM: roadmap built first). “What does ‘probabilistically complete’ mean?” (probability of finding a path tends to 1 as samples tend to infinity; may run forever if none exists). Trap: “RRT always finds the shortest path” (false).</div>
+<div class="box warn-box"><span class="tag">Slides vs lecture notes</span><p>p.81 says “if the number of samples approaches infinity, the probability of samples approaches 1”. It means the probability of <i>finding a path</i> (when one exists) approaches 1; the probability of a sample is not what tends to 1. Also, the PRM figure (p.70) and RRT figure (p.74) are from Short et al. (2016) with their own polygons; they are not the practical’s map.</p></div>
+</div>
+
+<!-- ================= 10 ================= -->
+<div class="sub" id="w12-choose">
+<h3>10 · Choosing a planner and what each guarantees <span class="pgs"><a class="pg" data-doc="w12-lec" data-page="80">pp. 80–83</a></span></h3>
+<div class="layer derive"><span class="tag">Summary table</span>
+<div class="tbl"><table><tr><th>Method</th><th>Needs</th><th>Returns</th><th>Guarantee (slides p.80–81 unless marked)</th><th>Weakness</th></tr>
+<tr><td>BFS</td><td>graph, unit costs</td><td>fewest edges</td><td>resolution complete; cost-optimal only if edges equal (ours)</td><td>\(O(|V|+|E|)\) but huge in high dimension</td></tr>
+<tr><td>DFS</td><td>graph</td><td>some path</td><td>not complete on infinite trees; no optimality</td><td>long winding paths</td></tr>
+<tr><td>Dijkstra</td><td>non-negative costs</td><td>cheapest path</td><td>optimal (ours: standard result)</td><td>expands in all directions</td></tr>
+<tr><td>A*</td><td>costs + heuristic</td><td>cheapest path</td><td>optimal if \(h\) is admissible (with a plain closed set, also consistent)</td><td>bad heuristic = wasted or wrong</td></tr>
+<tr><td>Visibility graph</td><td>polygon map</td><td>shortest path</td><td>complete</td><td>hugs obstacles; grows with polygons</td></tr>
+<tr><td>Voronoi</td><td>map or range sensor</td><td>max-clearance path</td><td>complete</td><td>not shortest; short-range sensors fail</td></tr>
+<tr><td>PRM</td><td>sampler, collision check, local planner</td><td>roadmap then path</td><td>probabilistically complete</td><td>holonomic only; narrow passages; static maps</td></tr>
+<tr><td>RRT</td><td>same, plus steering</td><td>tree path</td><td>probabilistically complete</td><td>path not optimal; may not terminate if no path</td></tr></table></div>
+<p>The Dijkstra and A* optimality entries are standard results rather than slide text; the slides state them only through the heuristic conditions on p.61.</p>
+</div>
+<div class="layer recipe"><span class="tag">Scenario recipe</span><ol>
+<li>Is the world static and the map known? If not, a roadmap built once (PRM) is a poor fit.</li>
+<li>How many degrees of freedom? High (arm with many joints, snake): sampling. 2D grid: graph search.</li>
+<li>Is the robot non-holonomic (car, diff-drive with limits)? RRT with sampled controls, or lattice-style motions.</li>
+<li>Does clearance matter more than length (sensor-following corridor)? Voronoi. Does length matter and obstacles are polygons? Visibility graph.</li>
+<li>Do you have costs and a good distance-to-goal guess? A*. Costs but no guess? Dijkstra.</li></ol></div>
+<div class="angle">Scenario-style answers earn marks for naming the method <i>and the property that justifies it</i> (“RRT, because the car is non-holonomic and a roadmap of straight lines is not drivable”).</div>
+</div>
+
+<!-- ================= guided problems ================= -->
+<h3 id="w12-problems">Guided problems: solve on paper first</h3>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.1 · Dijkstra on the slide graph</b><span class="chip calc">calculate</span><span class="marks" data-id="w12-p1" data-topic="w12"></span></div>
+  <p>Run Dijkstra from A to K on the weighted graph of p.56 (edges A–B 10, B–E 9, A–C 6, C–F 5, F–H 7, H–J 4, J–K 3, A–D 8, D–G 9, F–G 3, G–I 7, I–K 5). Give the final past cost of E, the cost of the best path to K, and the number of nodes expanded <i>before</i> K is expanded.</p>
+  <details class="hint"><summary>Hint 1: first expansions</summary><p>A (0). Its neighbours get C = 6, D = 8, B = 10. Next smallest is C.</p></details>
+  <details class="hint"><summary>Hint 2: what changes G</summary><p>G is first reached via D with 8 + 9 = 17, then via F with 11 + 3 = 14, which is smaller.</p></details>
+  <details class="hint"><summary>Hint 3: when to stop</summary><p>K is first discovered via I (21 + 5 = 26). It is only final when it is the smallest open node.</p></details>
+  <div class="ansrow"><label>g(E)<input data-ans="19" data-tol="0.1" data-label="g(E)" inputmode="decimal" aria-label="past cost of E"></label><label>cost to K<input data-ans="25" data-tol="0.1" data-label="cost to K" inputmode="decimal" aria-label="cost to K" data-wrong='[{"v":26,"msg":"26 is K discovered via I; J gives 22 + 3 = 25, so keep going until K itself is expanded."},{"v":29,"msg":"29 is the BFS path A-D-G-I-K (fewest edges), not the cheapest."}]'></label><label>expanded before K<input data-ans="10" data-tol="0.1" data-label="expanded before K" inputmode="decimal" aria-label="expansions before K"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Expansion order A (0), C (6), D (8), B (10), F (11), G (14), H (18), E (19), I (21), J (22), K (25). Full table in section 6. \(g(E)=g(B)+9=10+9=19\) (E only connects through B). Best path A–C–F–H–J–K: \(6+5+7+4+3=25\). Ten nodes (everything except K) are expanded first. <span class="chk">checked</span></p>
+  <p>Common wrong answer: 26, stopping when K is first discovered via I.</p></details>
+  <p class="blank">Close everything and run the table again for the start node A, goal K, writing the open set after each expansion.</p>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.2 · A* on the same graph</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w12-p2" data-topic="w12"></span></div>
+  <p>Use the heuristic of p.59 (A 20, B 10, C 17, D 13, E 8, G 8, H 7, I 2, J 2, K 0, and take h(F) = 9). Tie-break: lowest f, then lowest h, then alphabetical. How many nodes does A* expand in total (counting K)? What is the cost of the path it returns? Which node is never expanded?</p>
+  <details class="hint"><summary>Hint 1: start</summary><p>f(A) = 0 + 20 = 20. Its neighbours: B 10 + 10 = 20, D 8 + 13 = 21, C 6 + 17 = 23.</p></details>
+  <details class="hint"><summary>Hint 2: the order</summary><p>A, B, D, C, F, G, I, H, J, K.</p></details>
+  <div class="ansrow"><label>expansions<input data-ans="10" data-tol="0.1" data-label="expansions" inputmode="decimal" aria-label="expansions" data-wrong='[{"v":11,"msg":"11 is every node: that is Dijkstra. A* skips E."}]'></label><label>path cost<input data-ans="25" data-tol="0.1" data-label="path cost" inputmode="decimal" aria-label="path cost"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Table in section 7. Order A, B, D, C, F, G, I, H, J, K: 10 expansions. K is expanded with f = g = 25 and parent J. Path A–C–F–H–J–K, cost 25. <b>E is never expanded</b> (g = 19 but f = 19 + 8 = 27, above 25). <span class="chk">checked</span></p>
+  <p><b>Explain the saving.</b> A* pushes the search towards K, so B and D (low f) are tried but the expensive E branch is not. The answer is the same as Dijkstra’s because h is admissible. The order is identical for any integer h(F) from 0 to 13, so the unlabelled F on the slide does not change the answer.</p>
+  <p>Common wrong answer: adding h(n) of the parent instead of the child when computing f for a new neighbour.</p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.3 · BFS and DFS: what do you observe?</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w12-p3" data-topic="w12"></span></div>
+  <p>On the same graph with neighbours taken in alphabetical order, BFS returns A–D–G–I–K and (recursive) DFS returns A–C–F–G–I–K. Compute each path’s cost, then explain why neither equals the Dijkstra answer.</p>
+  <div class="ansrow"><label>BFS cost<input data-ans="29" data-tol="0.1" data-label="BFS cost" inputmode="decimal" aria-label="BFS cost"></label><label>DFS cost<input data-ans="26" data-tol="0.1" data-label="DFS cost" inputmode="decimal" aria-label="DFS cost" data-wrong='[{"v":25,"msg":"25 is the Dijkstra optimum; DFS found a different route A-C-F-G-I-K."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>BFS: \(8+9+7+5=29\) (4 edges, the fewest). DFS: \(6+5+3+7+5=26\) (5 edges). Dijkstra: 25 (A–C–F–H–J–K, 5 edges). <span class="chk">checked</span></p>
+  <p>BFS minimises <i>edges</i>, which is the same as cost only when all edges cost the same. DFS takes whichever branch it meets first and stops at the first success, so it has no cost guarantee and a different neighbour order gives a different path. Dijkstra and A* use edge costs, so they find 25. Note that the cheapest path here is not the one with the fewest edges (5 versus 4).</p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.4 · Is the heuristic admissible? Consistent?</b><span class="chip spot">spot the error</span><span class="chip calc">calculate</span><span class="marks" data-id="w12-p4" data-topic="w12"></span></div>
+  <p>A student says: “The heuristic on p.59 is both admissible and consistent, so popped f values must never decrease.” Check the claim. Give the violation margin \(h(H)-(d(H,J)+h(J))\) and, taking h(F) = 9, \(h(C)-(d(C,F)+h(F))\).</p>
+  <details class="hint"><summary>Hint 1</summary><p>d(H,J) = 4, h(J) = 2, h(H) = 7. Compare 7 with 4 + 2.</p></details>
+  <div class="ansrow"><label>H→J margin<input data-ans="1" data-tol="0.1" data-label="H to J" inputmode="decimal" aria-label="H to J margin"></label><label>C→F margin<input data-ans="3" data-tol="0.1" data-label="C to F" inputmode="decimal" aria-label="C to F margin"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Admissible: yes, every \(h(n)\le d(n,K)\) (for example \(h(H)=7=d(H,K)\), \(h(C)=17\le19\)). <b>Consistent: no.</b> H→J: \(7-(4+2)=1\gt0\). C→F with h(F) = 9: \(17-(5+9)=3\gt0\). A consistent h would give non-decreasing popped f; here the popped f sequence 20, 20, 21, 23, 20, 22, 23, 25, 24, 25 falls twice. The student’s claim is wrong. <span class="chk">checked</span></p>
+  <p>Admissible but inconsistent heuristics can still give the optimal path (as here), but with a plain closed set that is no longer guaranteed: on a small graph S–A 1, S–B 4, A–B 2, A–G 12, B–G 5 with h(A) = 7 (true 7) and h = 0 elsewhere, A* without re-opening returns cost 9 while the optimum is 8. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.5 · Practical Q1: maze, BFS, DFS, A*</b><span class="chip derive">derive</span><span class="chip explain">explain</span><span class="chip calc">calculate</span><span class="marks" data-id="w12-p5" data-topic="w12"></span></div>
+  <p>Practical Q1 gives a maze map with start S at the top entrance and goal G inside (no coordinates, no cell size). (a) Represent the map as a graph. (b) Compute the path S to G using BFS and DFS. (c) What do you observe? (d) How would you upgrade the graph to use A*?</p>
+  <p><b>Our reading of the figure.</b> The printed sheet has uneven wall spacing, so we redraw it on a 5-column × 7-row grid (columns c0–c4, rows r1–r7) plus an entrance cell above the box (row 0). Walls follow the printed line segments; the grid is our choice. S is the entrance cell (0, 2); G is cell (4, 2), just below the horizontal wall that closes the corridor under S.</p>
+  <figure class="svg"><svg width="232" viewBox="0 0 232 304" role="img" aria-label="Practical Q1 maze redrawn as a 5 by 7 grid with an entrance cell"><rect x="88" y="14" width="34" height="34" fill="var(--eli-bg)" stroke="none"/><rect x="88" y="150" width="34" height="34" fill="var(--exam-bg)" stroke="none"/><g stroke="var(--line)" stroke-width="0.6" fill="none"><line x1="20" y1="48" x2="190" y2="48"/><line x1="20" y1="82" x2="190" y2="82"/><line x1="20" y1="116" x2="190" y2="116"/><line x1="20" y1="150" x2="190" y2="150"/><line x1="20" y1="184" x2="190" y2="184"/><line x1="20" y1="218" x2="190" y2="218"/><line x1="20" y1="252" x2="190" y2="252"/><line x1="20" y1="286" x2="190" y2="286"/><line x1="20" y1="48" x2="20" y2="286"/><line x1="54" y1="48" x2="54" y2="286"/><line x1="88" y1="48" x2="88" y2="286"/><line x1="122" y1="48" x2="122" y2="286"/><line x1="156" y1="48" x2="156" y2="286"/><line x1="190" y1="48" x2="190" y2="286"/></g><g stroke="var(--ink)" stroke-width="3" stroke-linecap="square" fill="none"><line x1="20" y1="48" x2="20" y2="286"/><line x1="190" y1="48" x2="190" y2="286"/><line x1="20" y1="286" x2="190" y2="286"/><line x1="20" y1="48" x2="88" y2="48"/><line x1="122" y1="48" x2="190" y2="48"/><line x1="88" y1="14" x2="88" y2="48"/><line x1="122" y1="14" x2="122" y2="48"/><line x1="54" y1="48" x2="54" y2="82"/><line x1="156" y1="48" x2="156" y2="82"/><line x1="54" y1="82" x2="54" y2="116"/><line x1="88" y1="82" x2="88" y2="116"/><line x1="122" y1="82" x2="122" y2="116"/><line x1="156" y1="82" x2="156" y2="116"/><line x1="88" y1="116" x2="88" y2="150"/><line x1="122" y1="116" x2="122" y2="150"/><line x1="54" y1="150" x2="54" y2="184"/><line x1="88" y1="150" x2="88" y2="184"/><line x1="54" y1="184" x2="54" y2="218"/><line x1="88" y1="184" x2="88" y2="218"/><line x1="122" y1="184" x2="122" y2="218"/><line x1="88" y1="218" x2="88" y2="252"/><line x1="122" y1="218" x2="122" y2="252"/><line x1="88" y1="150" x2="122" y2="150"/><line x1="122" y1="150" x2="156" y2="150"/><line x1="122" y1="184" x2="156" y2="184"/><line x1="156" y1="218" x2="190" y2="218"/><line x1="20" y1="252" x2="54" y2="252"/><line x1="122" y1="252" x2="156" y2="252"/></g><polyline points="105.0,31.0 105.0,65.0 139.0,65.0 139.0,99.0 139.0,133.0 173.0,133.0 173.0,167.0 173.0,201.0 139.0,201.0 139.0,235.0 173.0,235.0 173.0,269.0 139.0,269.0 105.0,269.0 105.0,235.0 105.0,201.0 105.0,167.0" fill="none" stroke="var(--exam)" stroke-width="2.2" stroke-dasharray="5 3" stroke-linejoin="round"/><polyline points="105.0,31.0 105.0,65.0 139.0,65.0 139.0,99.0 139.0,133.0 173.0,133.0 173.0,167.0 139.0,167.0 105.0,167.0" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/><g font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600" fill="var(--ink)" text-anchor="middle"><text x="105.0" y="36.0">S</text><text x="105.0" y="172.0">G</text></g><g font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--muted)" text-anchor="middle"><text x="37.0" y="299">c0</text><text x="71.0" y="299">c1</text><text x="105.0" y="299">c2</text><text x="139.0" y="299">c3</text><text x="173.0" y="299">c4</text><text x="11" y="68.0">r1</text><text x="11" y="102.0">r2</text><text x="11" y="136.0">r3</text><text x="11" y="170.0">r4</text><text x="11" y="204.0">r5</text><text x="11" y="238.0">r6</text><text x="11" y="272.0">r7</text></g></svg><figcaption>The practical’s maze on our grid (schematic, cells drawn equal). Solid: BFS and A* route, 8 moves. Dashed: DFS route (neighbour order up, right, down, left), 16 moves.</figcaption></figure>
+  <details class="hint"><summary>Hint 1: graph</summary><p>Node = open cell. Edge = two side-adjacent cells with no wall between them. Weight 1 (or the cell size).</p></details>
+  <details class="hint"><summary>Hint 2: why G is hard to reach</summary><p>From S you can go straight down to r3c2, but the wall under it closes the corridor. G is on the other side of that wall.</p></details>
+  <div class="ansrow"><label>BFS moves<input data-ans="8" data-tol="0.1" data-label="BFS moves" inputmode="decimal" aria-label="BFS moves"></label><label>DFS moves<input data-ans="16" data-tol="0.1" data-label="DFS moves" inputmode="decimal" aria-label="DFS moves"></label><label>BFS cells popped<input data-ans="26" data-tol="0.1" data-label="BFS popped" inputmode="decimal" aria-label="BFS cells popped"></label><label>A* cells popped<input data-ans="16" data-tol="0.1" data-label="A* popped" inputmode="decimal" aria-label="A* cells popped"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution (our grid reading, checked by script)</summary>
+  <p><b>(a) Graph.</b> 36 open cells (35 in the box plus the entrance), 38 edges, unit weights. In code with pgraph: one <code>add_vertex</code> per open cell and one <code>add_edge</code> per open side between two cells. (A compact alternative: only junctions and dead ends as nodes, with corridor lengths as weights.)</p>
+  <p><b>(b) BFS</b> (neighbour order up, right, down, left): pops 26 cells including G. Route S, r1c2, r1c3, r2c3, r3c3, r3c4, r4c4, r4c3, G: <b>8 moves</b>, the fewest. <b>DFS</b> in the same order pops 19 cells and finds S, r1c2, r1c3, r2c3, r3c3, r3c4, r4c4, r5c4, r5c3, r6c3, r6c4, r7c4, r7c3, r7c2, r6c2, r5c2, G: <b>16 moves</b>. With the order reversed (left, down, right, up) DFS takes 20 moves. The maze has six simple routes, of 8, 12, 14, 16, 18 and 20 moves.</p>
+  <p><b>(c) Observations.</b> BFS always gives the fewest moves but expands the most cells (a wide front, 26). DFS is lighter here (19 cells) but its route is twice the optimum, and it depends on the neighbour order. G is only 4 cells from S in Manhattan terms, but a wall forces an 8-move detour, so “straight-line closeness” is misleading in a maze. Both succeed because the maze is finite.</p>
+  <p><b>(d) Upgrade to A*.</b> Give edges their real cost (cell size \(\times\) 1; unit here), add a heuristic \(h(n)\) = Manhattan distance to G (admissible and consistent for unit-cost 4-connected moves: \(|h(n)-h(m)|\le1\) across every edge) and keep an open set ordered by \(f=g+h\). On our grid A* returns the same 8-move route after popping 16 cells (BFS: 26). It still wastes effort in the dead-end corridor under S, because h pulls it towards G; that is the price of a heuristic that ignores walls. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.6 · Practical Q2: a PRM on the 10 × 10 map</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w12-p6" data-topic="w12"></span></div>
+  <p>C = [0,10]². S = (1.5,1.5); goal G = disc of radius 1 at (9,9). Obstacles: triangle (2,7), (4,5), (3,4); rectangle (6,6), (6,8), (8,8), (8,6); triangle (5,3), (6,3), (5,1). Answer the pieces of Q2: (a–b) what chance does a uniform sample have of landing in the goal disc? (c) is (3, 5.2) inside the first triangle? (d) which of the vertices S, (4,2.5), (7,4.5), (9,7) is nearest to q = (6,4), and how far? (e) does the segment S to (5.4, 2) hit a polygon? (f–g) the hand roadmap S–(4,2.5)–(7,4.5)–(9,7)–(9,8.5): its length?</p>
+  <details class="hint"><summary>Hint 1: ray casting</summary><p>Shoot a ray to +x from (3, 5.2). Count the triangle edges that straddle y = 5.2 and cross to the right of x = 3.</p></details>
+  <details class="hint"><summary>Hint 2: segment against triangle 3</summary><p>(5.4, 2) lies between edge x = 5 and edge (5,1)–(6,3), whose x at y = 2 is 5.5. So it is inside the triangle.</p></details>
+  <div class="ansrow"><label>P(goal)<input data-ans="0.0314" data-tol="0.0005" data-label="P(goal)" inputmode="decimal" aria-label="probability of sampling the goal disc" data-wrong='[{"v":0.314,"msg":"you divided pi by 10; the area of C is 10 x 10 = 100."}]'></label><label>nearest dist<input data-ans="1.118" data-tol="0.002" data-label="nearest distance" inputmode="decimal" aria-label="nearest vertex distance"></label><label>roadmap length<input data-ans="11" data-tol="0.05" data-label="roadmap length" inputmode="decimal" aria-label="roadmap length"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p><b>(a–b)</b> \(\pi\cdot1^2/10^2=0.0314\); about 32 uniform samples are needed on average. The disc lies wholly in C. <b>(c)</b> Edge (2,7)–(4,5): at y = 5.2 its x is 3.8, right of 3, counts. Edge (3,4)–(2,7): x = 2.6, left of 3, no. Edge (4,5)–(3,4): both ends have y ≤ 5, does not straddle 5.2. One crossing, odd, so <b>inside</b>. <b>(d)</b> Distances from (6,4): S 5.148, (4,2.5) 2.5, (7,4.5) \(\sqrt{1.25}=1.118\), (9,7) 4.243. Nearest: (7,4.5), 1.118. <b>(e)</b> yes: (5.4,2) is inside triangle 3, so the segment enters it. Another trap: (1,5.5) to (5,5.5) has both ends free but crosses triangle 1. <b>(f–g)</b> Legs 2.693, 3.606, 3.202, 1.5, total <b>11.00</b>; P4 = (9,8.5) is 0.5 from G, so the goal is reached. <span class="chk">checked</span></p>
+  <p>The roadmap path is 9.3% longer than the visibility-graph optimum 10.068. A random PRM gives a valid path, rarely the shortest.</p></details>
+  <p class="blank">Write the PRM loop in pseudocode: sample, test point, find near vertices, test segment, add edge, query. Five minutes.</p>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.7 · Practical Q3 (bonus): an RRT step</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="marks" data-id="w12-p7" data-topic="w12"></span></div>
+  <p>Same map. Tree = {S}, S = (1.5,1.5). The sampler returns q<sub>rand</sub> = (6, 2). Step size 1. Find q<sub>new</sub>. Then say what happens if the next sample is (5.2, 2).</p>
+  <details class="hint"><summary>Hint 1</summary><p>Unit vector from S towards q<sub>rand</sub> = (4.5, 0.5)/4.528.</p></details>
+  <div class="ansrow"><label>x<input data-ans="2.494" data-tol="0.002" data-label="x" inputmode="decimal" aria-label="q new x"></label><label>y<input data-ans="1.610" data-tol="0.002" data-label="y" inputmode="decimal" aria-label="q new y" data-wrong='[{"v":2,"msg":"y = 2 is q_rand; q_new moves only one unit along the direction, so it stays close to y = 1.5."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(\|q_{rand}-S\|=4.528\); \(q_{new}=S+1\cdot(4.5,0.5)/4.528=(2.494,1.610)\). The segment is clear, so add \(q_{new}\) with parent S (figure in section 9). <span class="chk">checked</span></p>
+  <p>Next sample (5.2, 2) lies inside triangle 3 (between x = 5 and the edge from (5,1) to (6,3)), so it is not in C<sub>free</sub>. Standard practice: discard it. If the nearest node were a tree node whose segment towards it crosses the triangle, the extension would be rejected the same way. The tree grows only through free space.</p>
+  <p>RRT vs PRM: RRT has no separate query phase (it stops when a node falls in the goal disc) and extends from the <i>nearest</i> node by one step; PRM samples first, connects <i>all near neighbours</i>, then searches.</p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.8 · C-space of a 2-link arm</b><span class="chip derive">derive</span><span class="marks" data-id="w12-p8" data-topic="w12"></span></div>
+  <p>A planar 2-link arm with L<sub>1</sub> = L<sub>2</sub> = 1 m has q<sub>1</sub> from the horizontal and q<sub>2</sub> relative to link 1. A point obstacle sits at (1, 1) m. One blocked configuration is (q<sub>1</sub>, q<sub>2</sub>) = (0°, 90°). Find the other one in (−180°, 180°].</p>
+  <details class="hint"><summary>Hint 1</summary><p>There are two inverse-kinematics branches (elbow up and elbow down) for any reachable point. \(q_2=\pm\arccos\!\big((x^2+y^2-L_1^2-L_2^2)/(2L_1L_2)\big)\).</p></details>
+  <div class="ansrow"><label>q1 (deg)<input data-ans="90" data-tol="0.5" data-label="q1" inputmode="decimal" aria-label="q1 in degrees"></label><label>q2 (deg)<input data-ans="-90" data-tol="0.5" data-label="q2" inputmode="decimal" aria-label="q2 in degrees"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\((x^2+y^2-2)/2=0\), so \(q_2=\pm90^\circ\). For \(q_2=-90^\circ\): the tip is at \((\cos q_1+\cos(q_1-90^\circ),\ \sin q_1+\sin(q_1-90^\circ))=(\cos q_1+\sin q_1,\ \sin q_1-\cos q_1)\); this equals (1,1) when \(q_1=90^\circ\). Check: elbow at (0,1), forearm points along +x, tip (1,1). <span class="chk">checked</span> A real obstacle has area, so C<sub>obs</sub> is a curved region around these points, not two dots. In C-space \(q_2=270^\circ\) is the same configuration as −90° (wraparound).</p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.9 · Inflate an obstacle</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="marks" data-id="w12-p9" data-topic="w12"></span></div>
+  <p>(a) Triangle (5,3), (6,3), (5,1) m, disc robot of radius 0.5 m. Sketch the inflated obstacle and find its area. (b) A corridor is 1.0 m wide and the robot radius is 0.4 m: what is the free width for the point robot?</p>
+  <details class="hint"><summary>Hint 1</summary><p>\(A_{grown}=A+Pr+\pi r^2\) for a convex polygon.</p></details>
+  <div class="ansrow"><label>area (m²)<input data-ans="4.403" data-tol="0.01" data-label="area" inputmode="decimal" aria-label="inflated area"></label><label>free width (m)<input data-ans="0.2" data-tol="0.005" data-label="free width" inputmode="decimal" aria-label="free width" data-wrong='[{"v":0.6,"msg":"you subtracted one radius; the robot needs clearance on both sides: 1.0 - 2(0.4)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(A=1\), \(P=1+\sqrt5+2=5.236\): \(1+5.236(0.5)+\pi(0.25)=4.403\) m². Sketch: copy each edge outward by 0.5 m, join with quarter-circle-like arcs of radius 0.5 m at the three corners (the arcs add up to one full circle, which is the \(\pi r^2\) term). (b) \(1.0-2(0.4)=0.2\) m. <span class="chk">checked</span></p>
+  <p>For a <i>square</i> robot of half-side 0.5 m the margin has square corners instead, so a 2 m square obstacle grows to 3 m × 3 m = 9 m² (a disc robot gives 8.785 m²).</p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.10 · Dimensionality and completeness</b><span class="chip explain">explain</span><span class="chip calc">calculate</span><span class="marks" data-id="w12-p10" data-topic="w12"></span></div>
+  <p>(a) The slide leaves the 6D grid’s neighbour count as a question. Give the number of axis-aligned neighbours and of all adjacent cells. (b) Define complete, resolution complete and probabilistically complete, and say which applies to BFS on a grid, visibility graph, PRM.</p>
+  <div class="ansrow"><label>axis-aligned<input data-ans="12" data-tol="0.1" data-label="axis neighbours" inputmode="decimal" aria-label="axis aligned neighbours"></label><label>all adjacent<input data-ans="728" data-tol="0.1" data-label="all neighbours" inputmode="decimal" aria-label="all adjacent neighbours" data-wrong='[{"v":729,"msg":"3^6 = 729 counts the cell itself; subtract 1."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>(a) \(2d=12\) and \(3^d-1=728\). <span class="chk">checked</span> With \(10^{12}\) nodes the grid cannot even be stored. (b) <b>Complete</b>: finds a collision-free path whenever one exists and reports failure otherwise. <b>Resolution complete</b>: does so only at the chosen grid resolution (BFS on a grid). <b>Probabilistically complete</b>: finds a path with probability tending to 1 as samples grow, and may not terminate if none exists (PRM, RRT). The visibility graph is complete (p.81).</p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.11 · Scenario: which planner?</b><span class="chip explain">explain</span><span class="marks" data-id="w12-p11" data-topic="w12"></span></div>
+  <p>Name the best-fitting method and one property that justifies it: (1) a 7-joint arm moving among shelves; (2) a car-like robot that cannot turn on the spot; (3) a robot that must stay away from walls using a laser, with no need for shortest path; (4) a known map of polygons, shortest path wanted; (5) a 2D warehouse grid with edge costs and a good distance-to-goal estimate; (6) a warehouse whose obstacles move all the time.</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>(1) PRM (or RRT): sampling-based methods scale to high-dimensional C-space where a grid explodes (\(N^7\)). (2) RRT with sampled controls: it respects non-holonomic constraints (p.77–78). (3) Voronoi: maximises clearance and can be followed by maximising range readings (p.38–40). (4) Visibility graph: finds the shortest path among polygons, but hugs corners (p.35). (5) A*: informed search with admissible h expands far fewer nodes than Dijkstra. (6) A roadmap built once (PRM) is a poor fit (p.72); use a replanning or tree method and sense continuously; the slides name D* in the list on p.49 but do not explain it.</p></details>
+</div>
+
+<div class="gp" data-topic="w12">
+  <div class="head"><b>P12.12 · Spot the errors</b><span class="chip spot">spot the error</span><span class="marks" data-id="w12-p12" data-topic="w12"></span></div>
+  <p>Find the error in each statement. (i) “A* is optimal for any heuristic.” (ii) “With diagonal moves of cost √2, Manhattan distance is a safe admissible heuristic.” (iii) “Dijkstra can stop as soon as the goal is added to the open set.” (iv) “RRT is complete: if there is a path it will always find it in finite time.” (v) “BFS returns the cheapest path in a weighted graph.” (vi) “h is admissible if h(n) < d(n, goal) for all n.”</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>(i) Needs <i>admissible</i> h (never overestimates); with a plain closed set also consistent. (ii) False: Manhattan gives 2 for one diagonal step that costs 1.414, so it overestimates; use Euclidean (the widget’s grid 5 shows cost 10.243 vs 9.657). (iii) Stop when the goal is <i>expanded</i>: K is added with 26, but 25 is found later. (iv) Only probabilistically complete; the probability tends to 1 as samples grow, and it may never terminate if there is no path. (v) BFS minimises the number of edges (29 vs the optimum 25 on the slide graph). (vi) The condition is non-strict: \(h(n)\le d(n,\text{goal})\); \(h=d\) is admissible (and h(K) = 0).</p></details>
+</div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w12"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w12-q1" data-topic="w12"></span></div>
+<p>Which heuristic turns A* into Dijkstra’s algorithm, and what does that tell you about A*?</p><details class="sol"><summary>Answer</summary><p>\(h(n)=0\) for all nodes (the “zero” heuristic on p.61). Then \(f=g\), and A* expands in order of past cost exactly like Dijkstra. So A* is Dijkstra plus guidance; a good \(h\) only reorders the search toward the goal.</p></details></div>
+<div class="gp" data-topic="w12"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w12-q2" data-topic="w12"></span></div>
+<p>A 4-connected 100 × 100 grid: how many edges, and what is \(|V|+|E|\) for BFS?</p><details class="sol"><summary>Answer</summary><p>Horizontal edges \(100\cdot99=9900\), vertical \(99\cdot100=9900\): \(|E|=19\,800\). \(|V|=10\,000\), so \(|V|+|E|=29\,800\). <span class="chk">checked</span></p></details></div>
+<div class="gp" data-topic="w12"><div class="head"><b>Q3</b><span class="chip spot">spot the error</span><span class="marks" data-id="w12-q3" data-topic="w12"></span></div>
+<p>“PRM builds a tree from the start and stops when it reaches the goal, so it is good for dynamic environments.” What is wrong?</p><details class="sol"><summary>Answer</summary><p>That describes RRT. PRM builds a <i>roadmap</i> (a graph) first, then answers queries by graph search; because the roadmap is made before it is used, it is <i>not</i> suited to dynamic environments (p.72).</p></details></div>
+
+<div class="box" data-reading="w12"></div>
+
+<script data-after>
+(function () {
+  const EPS = 1e-9, SQ2 = Math.SQRT2;
+  const D4 = [[-1, 0], [0, 1], [1, 0], [0, -1]];                       // up, right, down, left (dr, dc)
+  const D8 = D4.concat([[-1, 1], [1, 1], [1, -1], [-1, -1]]);          // then the four diagonals
+  const PRESETS = {
+    grid1: { t: 'Wall with a gap (grid 1)', rows: ['..........', '..........', '.S..#.....', '....#.....', '....#..G..', '....#.....', '..........', '..........'] },
+    grid2: { t: 'Wall with two gaps (grid 2)', rows: ['............', '.....#......', '.S...#......', '.....#..G...', '.....#......', '.....#......', '............', '............'] },
+    grid3: { t: 'Cup trap, open on the far side (grid 3)', rows: ['..........', '..........', '....#####.', '.S..#...#.', '....#.G...', '....#...#.', '....#####.', '..........'] },
+    grid4: { t: 'Sealed cup, no path (grid 4)', rows: ['..........', '..........', '....#####.', '.S..#...#.', '....#.G.#.', '....#...#.', '....#####.', '..........'] },
+    grid5: { t: 'Manhattan trap (grid 5)', rows: ['S.#.....', '......#.', '...#....', '........', '.##.##..', '.#..#.#G'] },
+    open8: { t: 'Open 8 x 8 field', rows: ['S.......', '........', '........', '........', '........', '........', '........', '.......G'] },
+    blank: { t: 'Blank 14 x 9 (draw your own)', rows: ['S.............', '..............', '..............', '..............', '..............', '..............', '..............', '..............', '.............G'] }
+  };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ================= grid planner ================= */
+  W3D.kinds.gridplan = function (root) {
+    const id = root.id; window.__state = window.__state || {};
+    const stage = root.querySelector('.stage'), side = root.querySelector('.side');
+    const cv = document.createElement('canvas'); cv.setAttribute('role', 'img');
+    cv.setAttribute('aria-label', 'Grid planner: click cells to toggle walls; shows expanded cells, frontier and the path');
+    cv.style.height = '340px'; stage.appendChild(cv);
+    const ctx = cv.getContext('2d');
+    let R = 0, C = 0, wall, S = -1, G = -1, srch = null, timer = null, paint = null;
+    let algo = 'astar', hk = 'manhattan', conn = 4, mode = 'wall', pkey = 'grid1';
+    let cell = 20, ox = 0, oy = 0, dpr = 1;
+
+    side.innerHTML =
+      '<label class="eyebrow" for="' + id + '-a">Algorithm</label><select id="' + id + '-a"><option value="bfs">BFS</option><option value="dijkstra">Dijkstra</option><option value="astar" selected>A*</option></select>' +
+      '<label class="eyebrow" for="' + id + '-h">A* heuristic</label><select id="' + id + '-h"><option value="manhattan">Manhattan</option><option value="euclid">Euclidean</option></select>' +
+      '<label class="eyebrow" for="' + id + '-c">Connectivity</label><select id="' + id + '-c"><option value="4">4-connected (cost 1)</option><option value="8">8-connected (diagonal √2)</option></select>' +
+      '<label class="eyebrow" for="' + id + '-p">Map</label><select id="' + id + '-p">' + Object.keys(PRESETS).map(k => '<option value="' + k + '">' + esc(PRESETS[k].t) + '</option>').join('') + '</select>' +
+      '<label class="eyebrow" for="' + id + '-m">Click sets</label><select id="' + id + '-m"><option value="wall">wall (toggle, drag to paint)</option><option value="start">start S</option><option value="goal">goal G</option></select>' +
+      '<div class="btns" style="display:flex;flex-wrap:wrap;gap:.35rem"><button type="button" class="btn small" data-act="step">Step</button><button type="button" class="btn small" data-act="run">Run</button><button type="button" class="btn small" data-act="play">Play</button><button type="button" class="btn small" data-act="reset">Reset search</button><button type="button" class="btn small" data-act="clear">Clear walls</button></div>' +
+      '<div class="out mono" style="font-size:.82rem;line-height:1.5" role="status" aria-live="polite"></div>' +
+      '<div style="font-size:.75rem;color:var(--muted)">Legend: green S, red G, tinted = expanded (number = order), amber = frontier, thick line = final path. Expanded count includes the goal when it is popped.</div>';
+    const q = s => side.querySelector(s), selA = q('#' + id + '-a'), selH = q('#' + id + '-h'), selC = q('#' + id + '-c'), selP = q('#' + id + '-p'), selM = q('#' + id + '-m'), out = q('.out');
+
+    function parse(rows) {
+      R = rows.length; C = rows[0].length; wall = new Uint8Array(R * C); S = G = -1;
+      rows.forEach((line, r) => { for (let c = 0; c < C; c++) { const ch = line[c]; if (ch === '#') wall[r * C + c] = 1; else if (ch === 'S') S = r * C + c; else if (ch === 'G') G = r * C + c; } });
+    }
+    function nbrs(n, cn) {
+      const r = (n / C) | 0, c = n % C, o = [], D = cn === 8 ? D8 : D4;
+      for (let k = 0; k < D.length; k++) {
+        const rr = r + D[k][0], cc = c + D[k][1];
+        if (rr < 0 || rr >= R || cc < 0 || cc >= C || wall[rr * C + cc]) continue;
+        if (k >= 4) { if (wall[rr * C + c] || wall[r * C + cc]) continue; o.push([rr * C + cc, SQ2]); }   // no corner cutting
+        else o.push([rr * C + cc, 1]);
+      }
+      return o;
+    }
+    function hOf(n) {
+      if (algo !== 'astar') return 0;
+      const dr = Math.abs(((n / C) | 0) - ((G / C) | 0)), dc = Math.abs((n % C) - (G % C));
+      return hk === 'manhattan' ? dr + dc : Math.hypot(dr, dc);
+    }
+    function newSearch() {
+      const N = R * C;
+      const s = { parent: new Int32Array(N).fill(-1), g: new Float64Array(N).fill(Infinity), seen: new Uint8Array(N), closed: new Uint8Array(N), seqno: new Int32Array(N), seq: 1, queue: [], head: 0, open: new Set(), expanded: [], done: false, found: false };
+      s.g[S] = 0; s.seen[S] = 1;
+      if (algo === 'bfs') s.queue.push(S); else { s.open.add(S); s.seqno[S] = 0; }
+      return s;
+    }
+    function lessKey(s, a, b) {                       // true if a is popped before b: f, then h, then insertion order
+      const fa = s.g[a] + hOf(a), fb = s.g[b] + hOf(b);
+      if (Math.abs(fa - fb) > EPS) return fa < fb;
+      const ha = hOf(a), hb = hOf(b);
+      if (Math.abs(ha - hb) > EPS) return ha < hb;
+      return s.seqno[a] < s.seqno[b];
+    }
+    function step() {
+      if (!srch) srch = newSearch();
+      const s = srch; if (s.done) return;
+      if (algo === 'bfs') {
+        if (s.head >= s.queue.length) { s.done = true; return; }
+        const n = s.queue[s.head++]; s.expanded.push(n);
+        if (n === G) { s.done = true; s.found = true; return; }
+        for (const [m, w] of nbrs(n, conn)) if (!s.seen[m]) { s.seen[m] = 1; s.parent[m] = n; s.g[m] = s.g[n] + w; s.queue.push(m); }
+      } else {
+        if (!s.open.size) { s.done = true; return; }
+        const arr = Array.from(s.open).sort((a, b) => s.seqno[a] - s.seqno[b]); let n = -1;
+        for (const x of arr) if (n < 0 || lessKey(s, x, n)) n = x;
+        s.open.delete(n); s.closed[n] = 1; s.expanded.push(n);
+        if (n === G) { s.done = true; s.found = true; return; }
+        for (const [m, w] of nbrs(n, conn)) {
+          if (s.closed[m]) continue;
+          const ng = s.g[n] + w;
+          if (s.g[m] === Infinity || ng < s.g[m] - EPS) { s.g[m] = ng; s.parent[m] = n; s.seqno[m] = s.seq++; s.open.add(m); }
+        }
+      }
+    }
+    function frontierList() { return !srch ? [] : (algo === 'bfs' ? srch.queue.slice(srch.head) : Array.from(srch.open)); }
+    function pathList() { const p = []; for (let n = G; n >= 0; n = srch.parent[n]) { p.push(n); if (n === S) break; } return p.reverse(); }
+
+    function layout() {
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      const W = Math.max(240, stage.clientWidth || 360), H = 340;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      cell = Math.floor(Math.min((W - 8) / C, (H - 8) / R)); ox = Math.floor((W - cell * C) / 2); oy = Math.floor((H - cell * R) / 2);
+    }
+    function draw() {
+      const css = W3D.css, W = cv.width / dpr, H = cv.height / dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = css('--bg'); ctx.fillRect(0, 0, W, H);
+      const order = new Int32Array(R * C).fill(-1); if (srch) srch.expanded.forEach((n, i) => { order[n] = i; });
+      const fr = new Uint8Array(R * C); frontierList().forEach(n => { fr[n] = 1; });
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        const n = r * C + c, x = ox + c * cell, y = oy + r * cell;
+        if (wall[n]) { ctx.fillStyle = css('--ink'); ctx.fillRect(x, y, cell, cell); continue; }
+        if (order[n] >= 0) { ctx.globalAlpha = 0.28; ctx.fillStyle = css('--accent'); ctx.fillRect(x, y, cell, cell); ctx.globalAlpha = 1; }
+        else if (fr[n]) { ctx.globalAlpha = 0.55; ctx.fillStyle = css('--exam'); ctx.fillRect(x, y, cell, cell); ctx.globalAlpha = 1; }
+        if (cell >= 26 && order[n] >= 0) { ctx.fillStyle = css('--muted'); ctx.font = '9px IBM Plex Mono, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(order[n] + 1), x + cell / 2, y + cell / 2); }
+      }
+      ctx.strokeStyle = css('--line'); ctx.lineWidth = 1; ctx.beginPath();
+      for (let r = 0; r <= R; r++) { ctx.moveTo(ox, oy + r * cell + .5); ctx.lineTo(ox + C * cell, oy + r * cell + .5); }
+      for (let c = 0; c <= C; c++) { ctx.moveTo(ox + c * cell + .5, oy); ctx.lineTo(ox + c * cell + .5, oy + R * cell); }
+      ctx.stroke();
+      if (srch && srch.done && srch.found) {
+        const p = pathList(); ctx.strokeStyle = css('--accent'); ctx.lineWidth = Math.max(2.5, cell / 6); ctx.lineJoin = 'round'; ctx.beginPath();
+        p.forEach((n, i) => { const x = ox + (n % C) * cell + cell / 2, y = oy + ((n / C) | 0) * cell + cell / 2; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke();
+      }
+      [[S, '--axy', 'S'], [G, '--axx', 'G']].forEach(([n, col, ch]) => {
+        if (n < 0) return; const x = ox + (n % C) * cell + cell / 2, y = oy + ((n / C) | 0) * cell + cell / 2;
+        ctx.fillStyle = css(col); ctx.beginPath(); ctx.arc(x, y, Math.max(5, cell * 0.38), 0, 7); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = '600 ' + Math.max(9, cell * 0.4) + 'px IBM Plex Mono, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ch, x, y + 1);
+      });
+    }
+    function publish() {
+      const st = { algo, heuristic: algo === 'astar' ? hk : 'none', conn, expanded: srch ? srch.expanded.length : 0, frontier: frontierList().length, done: !!(srch && srch.done), found: false, cost: null, path: [] };
+      if (srch && srch.done && srch.found) {
+        const p = pathList(); let cost = 0; for (let i = 1; i < p.length; i++) cost += Math.hypot(((p[i] / C) | 0) - ((p[i - 1] / C) | 0), (p[i] % C) - (p[i - 1] % C));
+        st.found = true; st.cost = cost; st.path = p.map(n => [(n / C) | 0, n % C]);
+      }
+      window.__state[id] = st;
+      const label = { bfs: 'BFS', dijkstra: 'Dijkstra', astar: 'A* (' + (hk === 'manhattan' ? 'Manhattan' : 'Euclidean') + ')' }[algo];
+      let msg = !srch ? 'Press Step, Run or Play.' : !srch.done ? 'Searching…' : st.found ? 'Goal reached.' : 'No path: the whole reachable region was searched.';
+      out.innerHTML = label + ', ' + conn + '-connected<br>Expanded: <b>' + st.expanded + '</b> · Frontier: <b>' + st.frontier + '</b><br>' +
+        (st.found ? 'Path cost: <b>' + st.cost.toFixed(3) + '</b> (' + (st.path.length - 1) + ' moves)<br>' : '') + msg;
+      return st;
+    }
+    function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+    function resetSearch() { stopTimer(); srch = null; draw(); publish(); }
+    function load(rows) { parse(rows); layout(); resetSearch(); }
+    function syncSelects() { selA.value = algo; selH.value = hk; selC.value = String(conn); selH.disabled = algo !== 'astar'; }
+    function runAll() { stopTimer(); if (!srch) srch = newSearch(); let guard = 0; while (!srch.done && guard++ < 100000) step(); draw(); return publish(); }
+
+    selA.addEventListener('change', () => { algo = selA.value; syncSelects(); resetSearch(); });
+    selH.addEventListener('change', () => { hk = selH.value; resetSearch(); });
+    selC.addEventListener('change', () => { conn = +selC.value; resetSearch(); });
+    selM.addEventListener('change', () => { mode = selM.value; });
+    selP.addEventListener('change', () => { pkey = selP.value; load(PRESETS[pkey].rows); });
+    side.querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', () => {
+      const a = b.dataset.act;
+      if (a === 'step') { stopTimer(); step(); draw(); publish(); }
+      else if (a === 'run') runAll();
+      else if (a === 'play') { stopTimer(); if (srch && srch.done) srch = null; timer = setInterval(() => { step(); draw(); publish(); if (srch.done) stopTimer(); }, 70); }
+      else if (a === 'reset') resetSearch();
+      else if (a === 'clear') { wall.fill(0); resetSearch(); }
+    }));
+    function cellAt(e) {
+      const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * (cv.width / dpr / b.width) - ox, y = (e.clientY - b.top) * (cv.height / dpr / b.height) - oy;
+      const c = Math.floor(x / cell), r = Math.floor(y / cell); return (c < 0 || c >= C || r < 0 || r >= R) ? -1 : r * C + c;
+    }
+    cv.addEventListener('pointerdown', e => {
+      const n = cellAt(e); if (n < 0) return; try { cv.setPointerCapture(e.pointerId); } catch (_) { }
+      if (mode === 'wall') { if (n === S || n === G) return; paint = wall[n] ? 0 : 1; wall[n] = paint; }
+      else if (mode === 'start') { if (wall[n] || n === G) return; S = n; }
+      else { if (wall[n] || n === S) return; G = n; }
+      resetSearch();
+    });
+    cv.addEventListener('pointermove', e => {
+      if (paint === null || mode !== 'wall') return; const n = cellAt(e);
+      if (n < 0 || n === S || n === G || wall[n] === paint) return; wall[n] = paint; resetSearch();
+    });
+    const endPaint = () => { paint = null; }; cv.addEventListener('pointerup', endPaint); cv.addEventListener('pointercancel', endPaint);
+    window.addEventListener('resize', () => { layout(); draw(); });
+    window.addEventListener('enn-theme', () => draw());
+
+    load(PRESETS[pkey].rows); syncSelects();
+    W3D.instances[id] = {
+      load(rows) { load(rows); return window.__state[id]; },
+      solve(o) { o = o || {}; if (o.algo) algo = o.algo; if (o.heuristic && o.heuristic !== 'none') hk = o.heuristic; if (o.conn) conn = +o.conn; syncSelects(); srch = null; return runAll(); },
+      step() { step(); draw(); return publish(); },
+      presets: PRESETS
+    };
+  };
+
+  /* ================= A–K graph replay ================= */
+  W3D.kinds.akgraph = function (root) {
+    const id = root.id; window.__state = window.__state || {};
+    const stage = root.querySelector('.stage'), side = root.querySelector('.side');
+    const EDGES = [['A', 'B', 10], ['B', 'E', 9], ['A', 'C', 6], ['C', 'F', 5], ['F', 'H', 7], ['H', 'J', 4], ['J', 'K', 3], ['A', 'D', 8], ['D', 'G', 9], ['F', 'G', 3], ['G', 'I', 7], ['I', 'K', 5]];
+    const POS = { A: [35, 110], B: [130, 35], E: [220, 25], C: [120, 105], F: [180, 100], H: [265, 100], J: [325, 125], D: [125, 185], G: [205, 175], I: [290, 195], K: [375, 172] };
+    const H0 = { A: 20, B: 10, C: 17, D: 13, E: 8, G: 8, H: 7, I: 2, J: 2, K: 0 };
+    const adj = {}; Object.keys(POS).forEach(n => { adj[n] = {}; }); EDGES.forEach(([u, v, w]) => { adj[u][v] = w; adj[v][u] = w; });
+    let algo = 'astar', hF = 9, k = 0, res = null;
+
+    function compute() {
+      const h = Object.assign({}, H0, { F: hF }); if (algo === 'dijkstra') Object.keys(h).forEach(n => { h[n] = 0; });
+      const g = { A: 0 }, par = { A: null }, open = new Set(['A']), closed = new Set(), rows = [], order = [];
+      const f = n => g[n] + h[n], less = (a, b) => (f(a) - f(b)) || (h[a] - h[b]) || (a < b ? -1 : a > b ? 1 : 0);
+      while (open.size) {
+        let n = null; open.forEach(x => { if (n === null || less(x, n) < 0) n = x; });
+        open.delete(n); closed.add(n); order.push(n);
+        Object.keys(adj[n]).sort().forEach(m => {
+          if (closed.has(m)) return; const ng = g[n] + adj[n][m];
+          if (!(m in g) || ng < g[m]) { g[m] = ng; par[m] = n; open.add(m); }
+        });
+        rows.push({ n, g: g[n], h: h[n], f: f(n), open: Array.from(open).sort(less).map(x => [x, g[x], h[x], f(x), par[x]]), closed: Array.from(closed).sort(), gAll: Object.assign({}, g) });
+        if (n === 'K') break;
+      }
+      const path = []; for (let n = 'K'; n; n = par[n]) path.push(n);
+      return { rows, order, g, par, h, path: path.reverse() };
+    }
+    side.innerHTML =
+      '<label class="eyebrow" for="' + id + '-a">Algorithm</label><select id="' + id + '-a"><option value="astar" selected>A* (f = g + h)</option><option value="dijkstra">Dijkstra (h = 0)</option></select>' +
+      W3D.sliderRow(id + '-hf', 'h(F)', 0, 30, 9, 1, '') +
+      '<div style="display:flex;flex-wrap:wrap;gap:.35rem"><button type="button" class="btn small" data-a="back">Back</button><button type="button" class="btn small" data-a="step">Step</button><button type="button" class="btn small" data-a="end">To end</button><button type="button" class="btn small" data-a="reset">Reset</button></div>' +
+      '<div style="font-size:.75rem;color:var(--muted)">Red number = h(n); grey g = best cost so far; dashed ring = open; filled = expanded; start A, goal K.</div><div class="out" role="status" aria-live="polite" style="font-size:.8rem"></div>';
+    const selA = side.querySelector('#' + id + '-a'), sl = side.querySelector('#' + id + '-hf'), out = side.querySelector('.out');
+    const svgNS = 'http://www.w3.org/2000/svg';
+
+    function draw() {
+      const last = k > 0 ? res.rows[k - 1] : null, done = k === res.rows.length && res.rows.length > 0;
+      const closedSet = new Set(last ? last.closed : []), openSet = new Set(last ? last.open.map(o => o[0]) : []), gAll = last ? last.gAll : {};
+      const onPath = new Set(); if (done) for (let i = 1; i < res.path.length; i++) onPath.add(res.path[i - 1] + res.path[i]), onPath.add(res.path[i] + res.path[i - 1]);
+      let s = '<svg viewBox="0 -10 420 240" role="img" aria-label="Slide graph with node states after step ' + k + '" style="width:100%;height:auto;max-height:340px;display:block"><g font-family="IBM Plex Mono, monospace" text-anchor="middle">';
+      EDGES.forEach(([u, v, w]) => {
+        const a = POS[u], b = POS[v], hot = onPath.has(u + v);
+        s += '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '" stroke="' + (hot ? 'var(--accent)' : 'var(--muted)') + '" stroke-width="' + (hot ? 4 : 1.6) + '"/>';
+      });
+      EDGES.forEach(([u, v, w]) => { const a = POS[u], b = POS[v]; s += '<text x="' + ((a[0] + b[0]) / 2) + '" y="' + ((a[1] + b[1]) / 2 - 3) + '" font-size="11" fill="var(--ink)" stroke="var(--bg)" stroke-width="3" paint-order="stroke">' + w + '</text>'; });
+      Object.keys(POS).forEach(n => {
+        const p = POS[n], cur = last && last.n === n, cl = closedSet.has(n), op = openSet.has(n);
+        const fill = cur ? 'var(--accent)' : cl ? 'var(--sunk)' : 'var(--surface)', stroke = cur || cl ? 'var(--accent)' : op ? 'var(--exam)' : 'var(--ink)';
+        s += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="13" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + (op ? 2.5 : 1.8) + '"' + (op ? ' stroke-dasharray="4 2"' : '') + '/>';
+        s += '<text x="' + p[0] + '" y="' + (p[1] + 4) + '" font-size="12" font-weight="600" fill="' + (cur ? 'var(--accent-ink)' : 'var(--ink)') + '">' + n + '</text>';
+        if (algo === 'astar') s += '<text x="' + p[0] + '" y="' + (p[1] - 18) + '" font-size="11" fill="var(--exam)">' + (n === 'F' ? hF : res.h[n]) + '</text>';
+        if (n in gAll) s += '<text x="' + p[0] + '" y="' + (p[1] + 27) + '" font-size="9" fill="var(--muted)">g=' + gAll[n] + '</text>';
+      });
+      s += '</g></svg>';
+      stage.innerHTML = s;
+      let t = '<div class="tbl"><table style="font-size:.74rem"><tr><th>#</th><th>n</th><th>g</th>' + (algo === 'astar' ? '<th>h</th>' : '') + '<th>f</th><th>open (g+h=f)</th></tr>';
+      res.rows.slice(0, k).forEach((r, i) => { t += '<tr><td>' + (i + 1) + '</td><td><b>' + r.n + '</b></td><td>' + r.g + '</td>' + (algo === 'astar' ? '<td>' + r.h + '</td>' : '') + '<td>' + r.f + '</td><td>' + r.open.map(o => o[0] + ' ' + o[3]).join(', ') + '</td></tr>'; });
+      out.innerHTML = '<div>Step ' + k + ' of ' + res.rows.length + (done ? ' · goal expanded: path ' + res.path.join('–') + ', cost ' + res.g.K : '') + '</div>' + t + '</table></div>';
+      window.__state[id] = { algo, hF, step: k, total: res.rows.length, order: res.order.slice(0, k), cost: done ? res.g.K : null, path: done ? res.path : [], expanded: k };
+    }
+    function recompute(keep) { res = compute(); k = keep ? Math.min(k, res.rows.length) : 0; draw(); }
+    selA.addEventListener('change', () => { algo = selA.value; recompute(false); });
+    sl.addEventListener('input', () => { hF = +sl.value; sl.nextElementSibling.textContent = hF; recompute(true); });
+    side.querySelectorAll('button[data-a]').forEach(b => b.addEventListener('click', () => {
+      const a = b.dataset.a;
+      if (a === 'step') k = Math.min(res.rows.length, k + 1); else if (a === 'back') k = Math.max(0, k - 1); else if (a === 'end') k = res.rows.length; else k = 0;
+      draw();
+    }));
+    window.addEventListener('enn-theme', () => draw());
+    recompute(false);
+    W3D.instances[id] = {
+      set(o) { o = o || {}; if (o.algo) { algo = o.algo; selA.value = algo; } if (o.hF !== undefined) { hF = +o.hF; sl.value = hF; sl.nextElementSibling.textContent = hF; } res = compute(); k = (o.step === undefined || o.step === 'end') ? res.rows.length : +o.step; draw(); return window.__state[id]; }
+    };
+  };
+})();
+</script>

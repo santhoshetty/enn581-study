@@ -1,0 +1,129 @@
+\week{W3}{Inverse kinematics}{3}
+\begin{multicols}{3}
+\hd{The IK problem \pg{7--20}}
+Joint space $\mathcal C$ holds $\mathbf q$ (two R joints: $\mathbb S^1\times\mathbb S^1$). Task space $\mathcal T$ holds the pose $\xi={}^0\T_E$ (or $x,y,z$, roll, pitch, yaw; or position + quaternion) \pg{9}. FK: $\xi=\mathcal K(\mathbf q)$. IK: $\mathbf q=\mathcal K^{-1}(\xi)$ \pg{11}. $\mathcal K$ is many-to-one and nonlinear, so IK has 0, 1, several or infinitely many solutions.\\
+\textbf{Choosing} among solutions \pg{18--19}: closest to the current configuration (smallest joint change; prefer moving small distal joints), or the one that avoids obstacles.\\
+\textbf{Methods} \pg{20}: closed form (algebraic, geometric, polynomial; non-iterative; all solutions) or numerical (iterative; slower; handles long chains; returns a nearby answer when no exact one exists).\\
+A 6-DoF arm has no continuous redundancy for a 6-number pose \pg{33} but has several discrete solutions: PUMA 560 up to \textbf{8} (shoulder L/R $\times$ elbow up/down $\times$ wrist flip) \added.
+
+\hd{Does a solution exist? \pg{12--16}}
+Reachable $W_R$: some orientation. Dexterous $W_D$: all orientations. A full 3D pose needs the \textbf{dexterous} workspace.
+\begin{fbx}[2R reach \pg{15--16}]
+\[|L_1-L_2|\le r\le L_1+L_2\]
+$L=(1.0,0.7)$: annulus $0.3\le r\le1.7$\,m. Joint limits $[0,\pi/2]$ on both: outer edge $q_2=0$ ($1.7$\,m); inner edge $q_2=\pi/2$ ($\sqrt{1+0.49}=1.221$\,m); side edges are $0.7$\,m circles at $q_1=0,\pi/2$.
+\use{“sketch the workspace”: give both radii and why (cosine rule). A 2R arm has no dexterous workspace (orientation is fixed by position).}
+\end{fbx}
+\textit{Ex.:} is $(0,0.2)$ reachable? $\cos q_2=(0.04-1.49)/1.4=-1.036<-1$: no ($0.2<0.3$). \chk
+
+\hd{Planar RP arm \pg{23--24}}
+\[S=\sqrt{x^2+y^2},\qquad q_1=\atantwo(y,x)\]
+Slide writes $\tan^{-1}(y/x)$: use atan2. If $S$ may be negative, $(-S,\,q_1+\pi)$ is a second solution. \textit{Ex.:} $(0.3,0.4)\to S=0.5$, $q_1=53.130^\circ$. \chk
+
+\hd{Planar RR arm, algebraic \pg{25--30}}
+\begin{fbx}[2R inverse kinematics]
+FK: $x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$. Square and add:
+\[\cos q_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2},\quad q_2=\atantwo\!\big(\pm\sqrt{1-\cos^2q_2},\ \cos q_2\big)\]
+\[q_1=\atantwo(y,x)-\atantwo\big(L_2\sin q_2,\ L_1+L_2\cos q_2\big)\]
+\use{two branches (the $\pm$ = elbow) \pg{28}. If $|\cos q_2|>1$ the point is out of reach.}
+\end{fbx}
+Expand compound angles \pg{30}: $x=(L_1{+}L_2c_2)c_1-(L_2s_2)s_1$, $y=(L_2s_2)c_1+(L_1{+}L_2c_2)s_1$: the point is the vector $(L_1{+}L_2c_2,\ L_2s_2)$ rotated by $q_1$. General tool: $A\cos\varphi+B\sin\varphi=C\Rightarrow\varphi=\atantwo(C,\pm\sqrt{A^2{+}B^2{-}C^2})-\atantwo(A,B)$.\\
+\textbf{atan2} \pg{29}: angle of $(x,y)$ in $(-\pi,\pi]$. $\tan^{-1}(y/x)$ gives $45^\circ$ for both $(1,1)$ and $(-1,-1)$; the second is $-135^\circ$. \chk
+\begin{recipe}[IK of any 2-link planar sub-problem (W13 Q3)]
+\label{w3:two}
+\begin{enumerate}
+\item Write FK. Find the shoulder point and the target in the plane (subtract offsets and base height first).
+\item $\cos q_2$ by square-and-add or cosine rule. Check $|\cos q_2|\le1$.
+\item $q_2=\atantwo(\pm\sqrt{1-c_2^2},\,c_2)$: two branches.
+\item $q_1=\atantwo(y,x)-\atantwo(L_2s_2,\,L_1+L_2c_2)$ for each branch.
+\item Check one branch by FK.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[2R, both elbows]
+$L=(1.0,0.7)$, target $(1.2,0.8)$: $\cos q_2=(1.44+0.64-1-0.49)/1.4=0.421429$, $q_2=\pm65.075^\circ$; $\atantwo(0.8,1.2)=33.690^\circ$.\\
+$q_2=+65.075^\circ$: $q_1=33.690-26.114=\mathbf{7.576^\circ}$.\\
+$q_2=-65.075^\circ$: $q_1=33.690+26.114=\mathbf{59.804^\circ}$.\\
+FK check: $\cos7.576^\circ+0.7\cos72.651^\circ=0.9913+0.2087=1.2000$. \chk
+\end{worked}
+
+\columnbreak
+\hd{Planar RR arm, geometric \pg{31}}
+Triangle $OAB$: $O$ base, $A$ elbow, $B$ tip, $|OB|=\sqrt{x^2+y^2}$. Interior angle at $A$ is $\pi-q_2$.
+\[x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos(\pi-q_2)=L_1^2+L_2^2+2L_1L_2\cos q_2\]
+Sine rule for the angle $\mu$ at $O$: $\sin\mu/L_2=\sin q_2/\sqrt{x^2+y^2}$. With $\sigma=\atantwo(y,x)$, $q_1=\sigma-\mu$. $\mu$ takes the sign of $q_2$, so for $q_2<0$, $q_1=\sigma+|\mu|$. Use $\mu=\atantwo(L_2s_2,\,L_1+L_2c_2)$ and both branches are automatic. \chk\\
+Full marks if the triangle is drawn and labelled. Write “interior angle at elbow $=\pi-q_2$”.
+\begin{trap}
+Cosine rule with the joint angle: $x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos q_2$ gives $\pm114.9^\circ=180^\circ-65.075^\circ$ for the target above (supplement). Slide 36 prints this slip. \chk
+\end{trap}
+
+\hd{Planar RRR with tool angle (nb Q10)}
+\begin{recipe}[3R: position and tool angle $\varphi$]
+\label{w3:rrr}
+\begin{enumerate}
+\item Wrist point $=(x-L_3\cos\varphi,\ y-L_3\sin\varphi)$.
+\item Solve the 2R problem for $\theta_1,\theta_2$ to the wrist point.
+\item $\theta_3=\varphi-\theta_1-\theta_2$.
+\end{enumerate}
+\end{recipe}
+\begin{worked}
+$L=(1.0,0.7,0.3)$, $(x,y)=(1.2,0.9)$, $\varphi=60^\circ$: wrist $(1.0500,0.6402)$; $\theta_2=\pm89.085^\circ$; $\theta_1=-3.319^\circ$ or $66.061^\circ$; $\theta_3=-25.766^\circ$ or $83.024^\circ$. Both reproduce $(1.2,0.9,60^\circ)$. \chk
+\end{worked}
+
+\hd{6-DoF arm, spherical wrist \pg{32--38}}
+Last three axes meet at the wrist centre $W$ \pg{34}; joints 4--6 cannot move $W$. Solve $q_1$--$q_3$ from $W$, then $q_4$--$q_6$ from the leftover rotation.
+\begin{recipe}[Decoupled IK (W13 Q3)]
+\label{w3:wrist}
+\begin{enumerate}
+\item Wrist centre \added: $\mathbf p_W=\mathbf p_E-d_6\,{}^0\Rm_E[0\ 0\ 1]^\top$.
+\item \textbf{Top view} \pg{35}: $q_1=\atantwo(y_W,x_W)$; second branch $q_1+\pi$.
+\item \textbf{Side view} \pg{36}: shoulder height $H$, upper arm $G$, forearm $F$, $r_W^2=x_W^2+y_W^2$.
+\[\cos q_3=\frac{r_W^2+(z_W-H)^2-F^2-G^2}{2FG},\ \ q_3=\atantwo(\pm\sqrt{1-c_3^2},c_3)\]
+\item \pg{37}: $\sigma=\atantwo(z_W-H,\,r_W)$, $\mu=\atantwo(F\sin q_3,\,G+F\cos q_3)$, $q_2=\sigma-\mu$ (signed, anticlockwise positive).
+\item \textbf{Wrist} \pg{38}: ${}^3\Rm_6=({}^0\Rm_3)^\top\,{}^0\Rm_6$, read $q_4$--$q_6$ as Euler angles.
+\item Count: 2 ($q_1$) $\times$ 2 ($q_3$) $\times$ 2 (wrist flip) $=8$. Check by FK.
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[Z--Y--Z wrist \added]
+${}^3\Rm_6=R_z(q_4)R_y(q_5)R_z(q_6)$:
+\[q_5=\atantwo\big(\sqrt{r_{13}^2+r_{23}^2},\,r_{33}\big)\]\[q_4=\atantwo(r_{23},r_{13}),\quad q_6=\atantwo(r_{32},-r_{31})\]
+\use{other sign of $q_5$ = wrist flip ($q_4$, $q_6$ each change by $\pi$). $q_5=0$: singular, only $q_4+q_6$ is fixed.}
+\end{fbx}
+\begin{slideerr}[elbow sign, pp.\,36--37]
+Slide 36 writes $\cos(\pi-q_3)$ on the left; by the cosine rule it equals $+\cos q_3$. Slide 37’s $q_2=\sigma+\mu$ is right only if $q_3$ is a clockwise bend (drawn elbow-up) and $\mu>0$. In the exam define your positive direction on the sketch and keep it; signed anticlockwise angles give the formulas above. \chk
+\end{slideerr}
+
+
+\begin{worked}[wrist-arm position part]
+$H=0.5$, $G=0.4$, $F=0.3$; $W=(0.4813,0.4039,0.5974)$: $q_1=40^\circ$, $r_W=0.6283$, $z_W-H=0.0974$, $\cos q_3=(0.3948+0.0095-0.09-0.16)/0.24=0.6428$, $q_3=\pm50^\circ$.\\
+$q_3=-50^\circ$ (elbow up): $\sigma=8.811^\circ$, $\mu=-21.189^\circ$, $q_2=\mathbf{30.0^\circ}$.\\
+$q_3=+50^\circ$ (elbow down): $q_2=-12.378^\circ$. With $q_1+\pi$ (220$^\circ$): 4 position solutions; $\times2$ wrist flips $=8$. \chk
+\end{worked}
+
+\hd{Numerical IK \pg{40--52}}
+\begin{fbx}[Goal potential and Newton--Raphson]
+$\mathbf q^*=\arg\min_{\mathbf q}\lVert\mathcal K(\mathbf q)\ominus\xi^*\rVert$ \pg{41}. Position only \pg{42}: $G=(x^*-x)^2+(y^*-y)^2$. Scalar NR \pg{45--47}: $q^{k+1}=q^k-G'(q^k)^{-1}G(q^k)$; stop when the relative change $<\varepsilon$.
+\end{fbx}
+\begin{fbx}[Jacobian update \pg{48--52}]
+$\mathbf e=\mathbf x^*-\mathcal F(\mathbf q^i)$, $\mathbf J=\partial\mathcal F/\partial\mathbf q\in\R^{m\times n}$:
+\[\mathbf q^{i+1}=\mathbf q^i+\mathbf J^{\dagger}\mathbf e\]
+\[\mathbf J^\dagger=\begin{cases}\mathbf J^{-1}& n=m\\ \mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}& n>m\text{ “fat”: smallest }\Delta\mathbf q\\ (\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top& n<m\text{ “tall”: least squares}\end{cases}\]
+2R: $\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}$, and for a $2\times2$ matrix $\begin{bmatrix}a&b\\c&d\end{bmatrix}^{-1}=\dfrac1{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$.
+\use{each iteration; invert the $2\times2$ by hand.}
+\end{fbx}
+\begin{worked}[one Newton step]
+2R $(1.0,0.7)$, target $(1.2,0.8)$, $\mathbf q^0=(0.5,0.5)$\,rad. FK $=(1.2558,1.0685)$, $\mathbf e=(-0.0558,-0.2685)$.\\
+$\mathbf J=\begin{bmatrix}-1.0685&-0.5890\\1.2558&0.3782\end{bmatrix}$, $\det\mathbf J=0.3355$.\\
+$\mathbf J^{-1}=\frac1{0.3355}\begin{bmatrix}0.3782&0.5890\\-1.2558&-1.0685\end{bmatrix}$, $\Delta\mathbf q=(-0.5341,\ 1.0635)$.\\
+$\mathbf q^1=(-0.0341,\ 1.5635)$\,rad, $\lVert\mathbf e\rVert$: $0.2742\to0.2181$. Converges to $(7.576^\circ,65.075^\circ)$ in 5 iterations. \chk
+\end{worked}
+\begin{trap}
+Using $\mathbf J^\top$ instead of $\mathbf J^{-1}$ is gradient descent: different direction. Tall $\mathbf J$ with $\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}$ is wrong ($\mathbf J\mathbf J^\top$ singular).
+\end{trap}
+\textbf{Why numerical IK can fail} (name three): target outside the workspace ($G=0$ impossible); local minimum, or divergence near a singular $\mathbf J$; the answer depends on the initial guess. A redundant arm has infinitely many solutions.\\
+\textbf{Closed form exists} \pg{55--56}: any 6-DoF R/P serial chain is solvable, but analytically when three neighbouring axes meet at a point (spherical wrist; Pieper) or three consecutive axes are parallel \added. Slide 54 “unique solution to all positions” means a \emph{complete} set (slides 17, 20 show several).
+
+\hd{How many solutions? (nb Q12, Q13)}
+Count branch by branch. Notebook 3-DoF arm ($\theta_1$, horizontal $\theta_2$ offset $L_2$, slider $d_3$): $\theta_1$ faces the point or $+\pi$ (2); in the plane $|d_3|=\sqrt{\rho^2-L_2^2}$ gives two $(\theta_2,d_3)$ pairs. Up to 4 if $d_3$ may be negative, 2 if $d_3\ge0$: state the assumption \added. PUMA 560, full pose: up to 8.
+
+\hd{Practical (optional)}
+\texttt{rrp\_ik.py} is really a planar \textbf{2R} (L$_1$=L$_2$=1): analytic IK (both elbows), $2\times2$ Jacobian, Newton--Raphson. $\cos q_2$ is clipped to $[-1,1]$, so an unreachable target silently returns the nearest boundary pose. W3 folder: PUMA 560 FK (proximal DH and distal ETS).
+\end{multicols}

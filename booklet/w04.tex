@@ -1,0 +1,152 @@
+\week{W4}{Parallel manipulators}{4}
+\begin{multicols}{3}
+\hd{Serial vs parallel \pg{9--19, 74}}
+Parallel: “end effector connected to the base by multiple parallel kinematic chains” \pg{12}. More joints than DoF, so some joints are passive. Examples: Gough tyre tester, Stewart flight simulator (1965), ABB FlexPicker delta, surgical hexapod.
+\begin{tabularx}{\linewidth}{@{}Xll@{}}\toprule
+ & Serial & Parallel\\\midrule
+Chains & open & closed\\
+Joints & all active & active + passive\\
+FK & simple & \textbf{complex}\\
+IK & complex & \textbf{simple}\\
+Joint errors & accumulate & do not\\
+Workspace & large & small\\
+Payload/weight & low & very high\\
+Moving inertia & high & low\\\bottomrule
+\end{tabularx}
+\use{scenario “which architecture?”: fast pick-and-place $\to$ delta; heavy simulator $\to$ Stewart; precise surgical tool $\to$ hexapod; justify by stiffness, low moving mass, non-accumulating errors, and note the small workspace.}
+
+\hd{Workspace of parallel robots \pg{20--23}}
+Four kinds \pg{21}: \textbf{reachable} (some orientation), \textbf{dexterous} (all), \textbf{constant-orientation} (points reachable with one given orientation), \textbf{orientation workspace} (all orientations at one given point). Compute by \emph{discretisation} (step each actuator, take the boundary; slow, accuracy set by step) or \emph{geometry} (intersect the regions each actuator allows) \pg{22--23}.\\
+Two-leg planar, prismatic legs: each leg confines the point to an annulus $r_{min}\le r\le r_{max}$ about its base pivot; \textbf{workspace = overlap of the annuli}. Sketch: draw each annulus, shade the intersection.
+
+\hd{Mobility: G--K \pg{24--34}}
+\begin{fbx}[Plain Grübler--Kutzbach \pg{25}]
+\[M=D\,(N-J-1)+\sum_{i=1}^{J}F_i\]
+$D=3$ planar, $6$ spatial; $N$ includes ground; $F_R=F_P=1$, $F_U=2$, $F_S=3$. Derivation: $D(N{-}1)$ free DoF, each joint removes $D-F_i$.
+\use{first estimate for any mechanism.}
+\end{fbx}
+\begin{recipe}[Mobility of a parallel robot (W13 Q6, Q7)]
+\label{w4:gk}
+\begin{enumerate}
+\item Planar or spatial? Motion out of the page means $D=6$ (“still 3D despite this depiction”, W13 p.14).
+\item Number every rigid body, \textbf{ground = 1}. A prismatic pair is two bodies.
+\item List every joint and its $F_i$. Three bodies at one pin $=$ two joints.
+\item Substitute. If $M$ disagrees with the obvious motion, look for idle spins ($R_M$) or repeated constraints ($R_C$).
+\end{enumerate}
+\end{recipe}
+
+\columnbreak
+\begin{tabularx}{\linewidth}{@{}Xcccrr@{}}\toprule
+Mechanism & $D$ & $N$ & $J$ & $\sum F$ & $M$\\\midrule
+3-RPR \pg{26} & 3 & 8 & 9 & 9 & 3\\
+Delta R--U--U legs \pg{30} & 6 & 8 & 9 & 15 & 3\\
+Delta, parallelogram \pg{33} & 6 & 11 & 15 & 39 & 9 (!)\\
+Four-bar \added & 3 & 4 & 4 & 4 & 1\\
+Gough--Stewart 6-UPS \added & 6 & 14 & 18 & 36 & 6\\\bottomrule
+\end{tabularx}
+Delta R--U--U: $\sum F=(1+2+2)\cdot3=15$, $6(8-9-1)+15=3$. Common delta: $\sum F=(1+4\cdot3)\cdot3=39$, $6(11-15-1)+39=9$. Stewart: $6(14-18-1)+36=6$. 3-RPR: $3(8-9-1)+9=3$. \chk\\
+The simplest delta is not built: stiff, play-free universal joints are hard to make and play lowers the usable frequency \pg{31}.
+\begin{slideerr}[slide 29]
+A handwritten note reads $D(N-J+1)$. The printed formula and every worked count use $D(N-J-1)$. With $+1$ the simple delta would give $6(8-9+1)+15=15$. \chk
+\end{slideerr}
+\begin{trap}
+Slider-crank (ground, crank, rod, slider; 3 R + 1 P) with $D=6$: $6(4-4-1)+4=-2$, “a structure”. It is planar: $3(4-4-1)+4=1$. Spatial example: $N=6$, $J=7$ (5 R, 1 U, 1 S): $\sum F=10$, $M=6(6-7-1)+10=-2$: report it, then look for $R_C$ before saying “structure”. \chk
+\end{trap}
+
+\hd{Extended G--K \pg{35--43}}
+\begin{fbx}[Equation \pg{35}]
+\[M=D(N-J-1)+\sum_{i=1}^{J}F_i+R_C-R_M\]
+\[R_C=\sum_{i=1}^{J}F_i-\sum_{k=1}^{L}u_k\]
+$R_M$ = \textbf{local mobility}: internal motion that does not move the output (a rod with a ball joint at each end spins about its own axis). Plain G--K counts it, so \textbf{subtract}. $R_C$ = \textbf{over-constraints}: joints repeating a constraint, so freedoms are removed twice: \textbf{add back}. $L$ = number of loops; $u_k$ = distinct platform DoF loop $k$ allows (each distinct DoF counted once across loops).
+\use{plain $M$ implausible (delta 9; 4RRR $-6$). Say \emph{which} of $R_C$, $R_M$ applies and why.}
+\end{fbx}
+\begin{worked}[common delta \pg{33--36}]
+Plain 9, but the platform only translates (3 DoF). Each of the 6 rods spins about its own axis: $R_M=6$. No repeated constraints: $R_C=0$. $M=9+0-6=\mathbf 3$. \chk
+\end{worked}
+\begin{worked}[4RRR \pg{37--43}]
+Two square plates, four RR legs: $N=10$, $J=12$, $\sum F=12$. Plain: $6(10-12-1)+12=-6$ (impossible). Loop 1 allows $\{T_y,T_z,R_x\}$, loop 2 $\{T_x,T_z,R_y\}$; union $\{T_x,T_y,T_z,R_x,R_y\}$, $\sum u_k=5$ ($T_z$ once). $R_C=12-5=7$, $R_M=0$: $M=-6+7-0=\mathbf 1$ (platform only moves in $T_z$). \chk
+\end{worked}
+“Explain” marks: plain G--K assumes every constraint is independent ($R_C$ fixes that) and every DoF moves the output ($R_M$ fixes that).
+
+\columnbreak
+\hd{Active, passive joints; loop closure \pg{45--58}}
+Configuration $\mathbf q=(\boldsymbol\theta,\boldsymbol\varphi)$: $n$ active $\boldsymbol\theta$, $m$ passive $\boldsymbol\varphi$ \pg{45}. Gough--Stewart: 6 active, 30 passive variables \pg{58}.
+\begin{recipe}[Loop-closure equations \pg{49}]
+\label{w4:loop}
+\begin{enumerate}
+\item Break the loop into serial chains (choose the break giving the fewest equations).
+\item Write the pose of the break point from each side.
+\item Equate position and orientation. Count unknowns: active $\theta$, passive $\varphi$.
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[Four-bar, break link 2 at $K$ \pg{54}]
+$a,b$ = distances from $K$ to link 2’s ends ($L_2=a+b$); {D} at $(L_0,0)$:
+\[\begin{aligned}L_1c_{\theta_1}+a\cos(\theta_1{+}\varphi_2)&=L_0+L_3c_{\varphi_1}+b\cos(\varphi_1{+}\varphi_3)\\ L_1s_{\theta_1}+a\sin(\theta_1{+}\varphi_2)&=L_3s_{\varphi_1}+b\sin(\varphi_1{+}\varphi_3)\\ \theta_1+\varphi_2&=\varphi_1+\varphi_3+\pi\end{aligned}\]
+Three equations: 1 active ($\theta_1$), 3 passive ($\varphi_1,\varphi_2,\varphi_3$).
+\end{fbx}
+\begin{fbx}[Freudenstein, break at both ends \pg{57}]
+\[\eta_1=(L_1c_{\theta_1}-L_0-L_3c_{\varphi_1})^2+(L_1s_{\theta_1}-L_3s_{\varphi_1})^2-L_2^2=0\]
+\use{only link 2’s length must be preserved: 1 equation in $\theta_1,\varphi_1$. Given $\theta_1$, two $\varphi_1$ (two assembly modes).}
+\end{fbx}
+
+\hd{Forward kinematics (hard) \pg{59--67}}
+Given active joints, solve loop closure for the passive ones, then the pose. No general method \pg{60}; solutions can be multiple or imaginary, so numerics are common \pg{67}.\\
+\textbf{Four-bar by geometry} \added: $A=L_1(\cos\theta_1,\sin\theta_1)$ and $D=(L_0,0)$ fixed; $B$ is on the circle $L_2$ about $A$ and $L_3$ about $D$. Two intersections = two \textbf{assembly modes}; one = limit; none = cannot assemble at that $\theta_1$.
+\begin{fbx}[Slide route \pg{62--66}: from $K=(x,y)$ find $\delta=\theta_1+\varphi_2$]
+$A_1=x-L_0,\ B_1=y,\ C_1=\dfrac{(x-L_0)^2+y^2+b^2-L_3^2}{2b}$\\
+$A_2=x,\ B_2=y,\ C_2=\dfrac{L_1^2-a^2-x^2-y^2}{2a}$\\
+$A_i\cos\delta+B_i\sin\delta+C_i=0$. Cramer:
+\[\cos\delta=\frac{B_1C_2-B_2C_1}{A_1B_2-A_2B_1},\ \ \sin\delta=\frac{A_2C_1-A_1C_2}{A_1B_2-A_2B_1}\]
+$\delta=\atantwo(\sin\delta,\cos\delta)$. Consistency (slide 65): $(A_1B_2-A_2B_1)^2=(A_1C_2-A_2C_1)^2+(B_1C_2-B_2C_1)^2$.
+\end{fbx}
+\begin{slideerr}[slide 65]
+Printed:
+\[\delta=\tan^{-1}\frac{A_1C_2-A_2C_1}{(B_1C_2-B_2C_1)+(A_1B_2-A_2B_1)}\]
+Tangent-half-angle gives
+\[\delta=2\tan^{-1}\frac{A_2C_1-A_1C_2}{(B_1C_2-B_2C_1)+(A_1B_2-A_2B_1)}\]
+opposite sign and a factor 2. Test: slide form $0.300^\circ$, true $-0.600^\circ$. Use the atan2 of the Cramer sine and cosine. \chk
+\end{slideerr}
+
+\columnbreak
+\begin{worked}[four-bar FK, same as Sample Q5]
+$L_0=1.0$, $L_1=0.5$, $L_3=0.6$, $a=0.2$, $b=0.25$ ($L_2=0.45$), $\theta_1=70^\circ$:
+\begin{tabularx}{\linewidth}{@{}Xccc@{}}\toprule
+Mode & $K$ (m) & $\varphi$ & $\varphi_1$\\\midrule
+$B$ above $AD$ & (0.3710, 0.4678) & $-0.600^\circ$ & $129.175^\circ$\\
+$B$ below $AD$ & (0.2756, 0.2993) & $-58.486^\circ$ & $171.739^\circ$\\\bottomrule
+\end{tabularx}
+Below mode by hand: $A=(0.1710,0.4698)$, $|AD|=0.9529$. $x=(L_2^2-L_3^2+|AD|^2)/(2|AD|)=(0.2025-0.36+0.9080)/1.9058=0.3938$, $h=\sqrt{0.45^2-0.3938^2}=0.2178$. $B=(0.4062,0.0862)$, $\varphi=-58.486^\circ$, $K=A+0.2(\cos\varphi,\sin\varphi)=(0.2756,0.2993)$. \chk\\
+Non-Grashof ($0.45+1.0>0.5+0.6$): no link turns fully; assembles only for $|\theta_1|\le81.52^\circ$ ($|AD|\le L_2+L_3$).
+\end{worked}
+
+\hd{Inverse kinematics (easy) \pg{68--73}}
+Given the output pose, each leg is a serial chain with known end pose: solve each leg alone, no loop closure \pg{69}. A redundant leg gives a non-unique answer.
+\begin{recipe}[Four-bar IK, from $K=(x,y)$ and $\varphi$ (W13 Q5) \pg{70--72}]
+\label{w4:fourbar}
+\begin{enumerate}
+\item Link 2 ends: $A=K-a(\cos\varphi,\sin\varphi)$, $B=K+b(\cos\varphi,\sin\varphi)$.
+\item $\theta_1=\atantwo(y-a\sin\varphi,\ x-a\cos\varphi)$.
+\item $\varphi_2=\varphi-\theta_1$.
+\item $\varphi_1=\atantwo(y+b\sin\varphi,\ x+b\cos\varphi-L_0)$.
+\item $\varphi_3=\varphi+\pi-\varphi_1$ (mod $2\pi$).
+\item Check: with the table above $K=(0.3710,0.4678)$, $\varphi=-0.600^\circ$ returns $\theta_1=70^\circ$, $\varphi_1=129.175^\circ$.
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[Gough--Stewart leg (homework \pg{73})]
+Leg $i$: base point $\mathbf b_i$ in {B}, platform point $\mathbf p_i$ in {P}, ${}^B\T_P=[\Rm\,|\,\mathbf t]$:
+\[\mathbf l_i=\mathbf t+\Rm\,\mathbf p_i-\mathbf b_i,\quad d_i=\lVert\mathbf l_i\rVert,\quad\hat{\mathbf n}_i=\mathbf l_i/d_i\]
+$d_i$ = active prismatic length. Base S takes the azimuth and elevation of $\hat{\mathbf n}_i$; platform U takes the angle between $\hat{\mathbf n}_i$ and the platform axes $\Rm$. One answer per leg.
+\end{fbx}
+\begin{worked}[Stewart leg lengths]
+Base points on a 1.0\,m circle at $-10,10,110,130,230,250^\circ$; platform points on a 0.5\,m circle at $-50,50,70,170,190,290^\circ$. Home (level, 1.0\,m up), leg 1:
+\[\mathbf l_1=(-0.6634,-0.2094,1.0),\quad d_1=\sqrt{0.4401+0.0438+1}=1.2182\text{ m}\]
+All six legs $=1.2182$\,m (leg 1 azimuth $-162.48^\circ$, elevation $55.17^\circ$).\\
+Pose $t(0.05,-0.02,1.0)\,R_z(5^\circ)R_y(3^\circ)$: legs (m)
+\[1.1597,\ 1.1974,\ 1.2170,\ 1.2812,\ 1.2152,\ 1.2504\ \chk\]
+\end{worked}
+Delta IK (demo, base radius 0.20, platform 0.05, arm 0.20, rods 0.45\,m): each arm alone, like the four-bar; at $\mathbf p=(0.03,-0.02,-0.38)$ the motor angles are $16.339^\circ,\,30.871^\circ,\,22.996^\circ$ and every rod stays $0.45$\,m (that is the loop closure). Parallelograms keep the platform level: 3 translations, no rotation. \chk
+\begin{trap}
+FK/IK swapped: FK is the hard direction for parallel robots (coupled nonlinear loops), IK the easy one. For serial arms it is the opposite.
+\end{trap}
+\textbf{Practical:} none this week.
+\end{multicols}

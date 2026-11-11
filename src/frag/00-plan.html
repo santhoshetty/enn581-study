@@ -1,0 +1,106 @@
+<p class="eyebrow">Study plan · Sun 8 Nov → Tue 10 Nov · exam Thu 12 Nov 2026</p>
+<h2>Two and a half days, twelve weeks, one written paper</h2>
+<p class="lead">The exam is written, 2 hours, any calculator, printed notes only. The Week 13 revision lecture shows the style: derive, sketch, calculate. Work from the sample questions outward: see the target first, then fill in each week.</p>
+
+<div class="box exam-box">
+  <span class="tag">How to use each topic tab (about 60–90 min per week)</span>
+  <ol>
+    <li><b>Skim the intuition cards</b> and play with the widget (5 min).</li>
+    <li><b>Read each subtopic’s three layers</b>: picture → derivation → recipe. Click a slide link (p. N) to see the lecturer’s page beside it.</li>
+    <li><b>Do the guided problems on paper.</b> Open hints one at a time, type your number into the checker, then read the full solution.</li>
+    <li><b>Blank-page test:</b> close everything and re-derive the week’s key result.</li>
+    <li><b>Mini-quiz</b>, and mark ✓/✗ honestly. Your ✗ counts appear in the table below.</li>
+  </ol>
+</div>
+
+<h3>What the sample paper tests, by week</h3>
+<p>Counts are the ten W13 sample questions (<a class="pg" data-doc="w13-lec" data-page="4">W13 pp. 4–21</a>). Marks are not published. The real paper may draw on any week, so weeks with no sample question are still examinable (assumed).</p>
+<div class="bars" role="table" aria-label="Sample questions per week">
+  <span>W1 Mechanisms</span><span class="bar" style="width:40%"></span><span class="n">Q6, Q7 (shared)</span>
+  <span>W2 Forward kinematics</span><span class="bar" style="width:20%"></span><span class="n">Q1</span>
+  <span>W3 Inverse kinematics</span><span class="bar" style="width:40%"></span><span class="n">Q2, Q3</span>
+  <span>W4 Parallel robots</span><span class="bar" style="width:60%"></span><span class="n">Q5, Q6, Q7</span>
+  <span>W5 Trajectories</span><span class="bar" style="width:40%"></span><span class="n">Q8, Q9</span>
+  <span>W6 Velocity &amp; statics</span><span class="bar" style="width:2%;opacity:.4"></span><span class="n">0, assumed examinable</span>
+  <span>W7 Dynamics</span><span class="bar" style="width:20%"></span><span class="n">Q4</span>
+  <span>W8 Control 1</span><span class="bar" style="width:2%;opacity:.4"></span><span class="n">0, assumed examinable</span>
+  <span>W9 Control 2</span><span class="bar" style="width:2%;opacity:.4"></span><span class="n">0, assumed examinable</span>
+  <span>W10 Wheeled kinematics</span><span class="bar" style="width:20%"></span><span class="n">Q10</span>
+  <span>W11 Wheeled dynamics</span><span class="bar" style="width:2%;opacity:.4"></span><span class="n">0, assumed examinable</span>
+  <span>W12 Planning</span><span class="bar" style="width:2%;opacity:.4"></span><span class="n">0, assumed examinable</span>
+</div>
+
+<h3>Day by day <small class="mono" id="plan-progress" style="font-size:.8rem;color:var(--muted)"></small></h3>
+<p>Ticks are saved in this browser. <span class="prio must">Must</span> = do it whatever happens; <span class="prio should">Should</span> = do if on schedule; <span class="prio could">Could</span> = extra depth.</p>
+
+<div class="plan-day"><h3>Sun 8 Nov · evening <small>see the target, then frames</small></h3><ul>
+<li><input type="checkbox" data-plan="d0-sample" aria-label="done"><span class="prio must">Must</span><span>Read <a href="#sample" data-goto="sample">Sample Qs solved</a> Q1–Q10 once without solving. Just learn what is asked.</span></li>
+<li><input type="checkbox" data-plan="d0-w02" aria-label="done"><span class="prio must">Must</span><span><a href="#w02" data-goto="w02">W2 Forward kinematics</a>: all subtopics, P2.1–P2.4, blank-page test (Furuta ETS).</span></li>
+<li><input type="checkbox" data-plan="d0-q1" aria-label="done"><span class="prio must">Must</span><span>Sample Q1 on paper, then compare.</span></li>
+<li><input type="checkbox" data-plan="d0-w03" aria-label="done"><span class="prio must">Must</span><span><a href="#w03" data-goto="w03">W3 Inverse kinematics</a>: 2R by cosine rule, atan2, number of solutions; Sample Q2 + Q3 on paper.</span></li>
+<li><input type="checkbox" data-plan="d0-w01" aria-label="done"><span class="prio should">Should</span><span><a href="#w01" data-goto="w01">W1 Mechanisms</a>: DoF, joint types, Grübler–Kutzbach; Sample Q6.</span></li>
+</ul></div>
+
+<div class="plan-day"><h3>Mon 9 Nov · the derivation day <small>closed chains, trajectories, dynamics, Jacobians</small></h3><ul>
+<li><input type="checkbox" data-plan="d1-w04" aria-label="done"><span class="prio must">Must</span><span><a href="#w04" data-goto="w04">W4 Parallel robots</a>: closed-chain IK, extended G–K; Sample Q5 + Q7 on paper.</span></li>
+<li><input type="checkbox" data-plan="d1-w05" aria-label="done"><span class="prio must">Must</span><span><a href="#w05" data-goto="w05">W5 Trajectories</a>: cubic, via points, parabolic blends; Sample Q8 + Q9 on paper.</span></li>
+<li><input type="checkbox" data-plan="d1-w07" aria-label="done"><span class="prio must">Must</span><span><a href="#w07" data-goto="w07">W7 Dynamics</a>: Lagrange step by step on a 2R arm, then Sample Q4. Time yourself: aim for 20 min.</span></li>
+<li><input type="checkbox" data-plan="d1-w06" aria-label="done"><span class="prio must">Must</span><span><a href="#w06" data-goto="w06">W6 Velocity &amp; statics</a>: Jacobian by differentiating FK, singularities, τ = Jᵀ F.</span></li>
+<li><input type="checkbox" data-plan="d1-drill" aria-label="done"><span class="prio should">Should</span><span>Timed drill: three blank-page tests (DH matrix, 2R IK, 2R Lagrange) in 30 minutes.</span></li>
+<li><input type="checkbox" data-plan="d1-qa" aria-label="done"><span class="prio could">Could</span><span><a href="#qa" data-goto="qa">Practice Q&amp;A</a> for W1–W7, especially your ✗ topics.</span></li>
+</ul></div>
+
+<div class="plan-day"><h3>Tue 10 Nov · mobile robots, control, planning, mock <small>finish by end of day</small></h3><ul>
+<li><input type="checkbox" data-plan="d2-print" aria-label="done"><span class="prio must">Must</span><span>Download and <b>print the <a href="#booklet" data-goto="booklet">Booklet</a></b> in the morning (A4, 100 % scale, double-sided). Allow time for the print shop.</span></li>
+<li><input type="checkbox" data-plan="d2-w10" aria-label="done"><span class="prio must">Must</span><span><a href="#w10" data-goto="w10">W10 Wheeled kinematics</a>: generalised wheel model, omni, diff-drive ICR, bicycle; Sample Q10 on paper.</span></li>
+<li><input type="checkbox" data-plan="d2-w08" aria-label="done"><span class="prio must">Must</span><span><a href="#w08" data-goto="w08">W8 Control 1</a>: second-order error dynamics, choosing k<sub>p</sub>, k<sub>v</sub>, steady-state error.</span></li>
+<li><input type="checkbox" data-plan="d2-w09" aria-label="done"><span class="prio must">Must</span><span><a href="#w09" data-goto="w09">W9 Control 2</a>: computed torque, Cartesian and hybrid force control.</span></li>
+<li><input type="checkbox" data-plan="d2-w11" aria-label="done"><span class="prio should">Should</span><span><a href="#w11" data-goto="w11">W11 Wheeled dynamics</a>.</span></li>
+<li><input type="checkbox" data-plan="d2-w12" aria-label="done"><span class="prio should">Should</span><span><a href="#w12" data-goto="w12">W12 Planning</a>: Dijkstra and A* by hand, PRM vs RRT.</span></li>
+<li><input type="checkbox" data-plan="d2-mock" aria-label="done"><span class="prio must">Must</span><span><a href="#mock" data-goto="mock">Mock exam 1</a> on paper, 2 hours, timed. Mark it with the scheme, then fix the gaps.</span></li>
+<li><input type="checkbox" data-plan="d2-mock2" aria-label="done"><span class="prio could">Could</span><span>Mock exam 2, or its worst two questions.</span></li>
+</ul></div>
+
+<div class="plan-day"><h3>Wed 11 Nov · conference <small>no new material</small></h3><ul>
+<li><input type="checkbox" data-plan="d3-skim" aria-label="done"><span class="prio could">Could</span><span>20 minutes flicking through the printed booklet’s index and decision pages.</span></li></ul></div>
+<div class="plan-day"><h3>Thu 12 Nov · exam morning</h3><ul>
+<li><input type="checkbox" data-plan="d4-tech" aria-label="done"><span class="prio must">Must</span><span>Re-read the exam technique box below. Pack the booklet, a calculator set to radians, pens, a ruler.</span></li></ul></div>
+
+<h3>Your ✗ count per topic</h3>
+<div class="tbl"><table><tr><th>Topic</th><th>Self-marks</th><th>Topic</th><th>Self-marks</th></tr>
+<tr><td>W1</td><td data-xcount="w01"></td><td>W7</td><td data-xcount="w07"></td></tr>
+<tr><td>W2</td><td data-xcount="w02"></td><td>W8</td><td data-xcount="w08"></td></tr>
+<tr><td>W3</td><td data-xcount="w03"></td><td>W9</td><td data-xcount="w09"></td></tr>
+<tr><td>W4</td><td data-xcount="w04"></td><td>W10</td><td data-xcount="w10"></td></tr>
+<tr><td>W5</td><td data-xcount="w05"></td><td>W11</td><td data-xcount="w11"></td></tr>
+<tr><td>W6</td><td data-xcount="w06"></td><td>W12</td><td data-xcount="w12"></td></tr>
+<tr><td>Sample Qs</td><td data-xcount="sample"></td><td>Practice Q&amp;A</td><td data-xcount="qa"></td></tr></table></div>
+
+<h3>Notation used everywhere on this site</h3>
+<div class="tbl"><table><tr><th>Symbol</th><th>Meaning</th></tr>
+<tr><td>\({}^A\mathbf T_B\)</td><td>pose of frame {B} expressed in frame {A} (4×4). Maps points from B to A: \({}^A\mathbf P={}^A\mathbf T_B\,{}^B\mathbf P\).</td></tr>
+<tr><td>\({}^A\mathbf R_B\), \({}^A\mathbf t_B\)</td><td>its rotation (columns = B’s axes in A) and translation (B’s origin in A)</td></tr>
+<tr><td>\(R_x, R_y, R_z,\; t_x, t_y, t_z\)</td><td>elementary rotations and translations (right-hand rule); a product of them is an ETS</td></tr>
+<tr><td>\(a_{i-1}, \alpha_{i-1}, d_i, \theta_i\)</td><td>proximal (Craig) DH parameters; link transform \(R_x(\alpha_{i-1})t_x(a_{i-1})R_z(\theta_i)t_z(d_i)\)</td></tr>
+<tr><td>\(c_i, s_i, c_{ij}\)</td><td>\(\cos\theta_i\), \(\sin\theta_i\), \(\cos(\theta_i+\theta_j)\)</td></tr>
+<tr><td>\(\mathbf q,\dot{\mathbf q},\ddot{\mathbf q}\)</td><td>joint positions (rad or m), velocities, accelerations</td></tr>
+<tr><td>\(\mathbf J(\mathbf q)\)</td><td>Jacobian: tool velocity = \(\mathbf J\dot{\mathbf q}\); joint torques for a tool force: \(\boldsymbol\tau=\mathbf J^\top\mathbf F\)</td></tr>
+<tr><td>\(\mathbf M,\mathbf V,\mathbf G\)</td><td>mass matrix, Coriolis/centrifugal vector, gravity vector: \(\boldsymbol\tau=\mathbf M\ddot{\mathbf q}+\mathbf V+\mathbf G\)</td></tr>
+<tr><td>\(M, D, N, J, F_i, R_C, R_M\)</td><td>mobility; 6 (3D) or 3 (2D); links incl. ground; joints; joint DoF; over-constraints; local mobilities</td></tr>
+<tr><td>\(u, v, \dot\theta\)</td><td>chassis velocity in the robot frame {C}; \(\dot\varphi_i\) wheel spin rates</td></tr></table></div>
+
+<div class="box warn-box" id="technique">
+  <span class="tag">Exam technique (written, 2 hours, printed notes)</span>
+  <ul>
+    <li><b>Calculator in radians</b> unless a question is in degrees. Write the unit of every angle.</li>
+    <li><b>Draw frames first.</b> Most FK, IK, Jacobian and dynamics errors are sign errors that a labelled sketch prevents.</li>
+    <li><b>State the general equation, then substitute</b> (ETS, cosine rule, Euler–Lagrange, G–K, cubic boundary conditions). This is where method marks are.</li>
+    <li><b>Use atan2</b> and give <b>every IK branch</b>. Say how many solutions exist and when there are none.</li>
+    <li><b>Order matters:</b> right-multiply for moves about the current frame. Check the product at θ = 0 against the drawing.</li>
+    <li><b>Units:</b> mm vs m in link lengths; rad/s vs rpm in wheels; °/s in trajectories.</li>
+    <li><b>Say what you assume</b> (“no joint limits”, “point masses”, “rest-to-rest”, “rollers ⊥ drive so γ = 0”).</li>
+    <li><b>Explain answers are 2–4 sentences:</b> claim, reason, consequence (e.g. “det J = 0, so the arm loses a direction of motion; joint speeds blow up nearby”).</li>
+    <li><b>Stuck?</b> Write the set-up and the equation you would solve. Partial credit is real. Move on, come back.</li>
+    <li><b>Booklet:</b> start at its index (“if the question says … go to page …”). Don’t read; look up.</li>
+  </ul>
+</div>

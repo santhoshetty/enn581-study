@@ -1,0 +1,644 @@
+<p class="eyebrow">Week 5 · Trajectories</p>
+<h2>How does the arm get there, and when?</h2>
+<p class="lead">A path says where the robot goes. A trajectory also says <i>when</i>: position, velocity and acceleration of every joint against time. This week builds trajectories from simple pieces: cubics, quintics, and straight lines with parabolic ends. Then it asks whether to build them in joint space or in task space, and what goes wrong in each.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Trajectories<small>69 slides · Dr KM Digumarti · notebook “5 Trajectories”</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w05-lec">📖 View here</button>
+    <button type="button" class="btn" data-dl="notes/w05-lec.pdf" data-name="ENN581 W5 Trajectories.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w05-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>Sample questions 8 and 9</b> (<a class="pg" data-doc="w13-lec" data-page="18">W13 p.18</a>, <a class="pg" data-doc="w13-lec" data-page="19">p.19</a>; full solutions in <a href="#sample" data-goto="sample" data-anchor="sq8">Q8</a> and <a href="#sample" data-goto="sample" data-anchor="sq9">Q9</a>): two cubics joined at a via point with continuous acceleration, and a rest-to-rest cubic for a prismatic joint (0.02 m to 0.15 m in 0.8 s). Expect a variation of one of these with new numbers, or a parabolic-blend calculation like the p.37 example.</p>
+  <p><b>Where the marks are (indicative; marks not published):</b> the conditions written as a list (four for a cubic, eight for two cubics); the general coefficients or the matrix equation; correct substitution of numbers with units; a check that \(q(t_F)=q_F\) and \(\dot q(t_F)\) is right; for blends, the existence test \(a\ge 4\Delta q/t_F^2\) and the choice of root.</p>
+  <p><b>Where marks are lost:</b> dividing by \(t_F^2\) where \(t_F^3\) belongs; forgetting that each segment of a via-point trajectory has its own clock; using a strict inequality (the slide says \(\ge\)); taking the wrong root of the blend quadratic; quoting a Cartesian straight line as if joint-linear motion gave it.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (optional, no coding in the exam)</span>
+  <p>The practical file <code>ik_2r_plain_python.py</code> is plain numpy for a planar 2R arm (l<sub>1</sub> = 1.0, l<sub>2</sub> = 0.8): analytical IK with both elbow branches, and a Newton–Raphson IK from a starting guess. It is the “IK at each sample” step of the Cartesian recipe below. The lecture notebook calls <code>rtb.quintic</code>, <code>rtb.trapezoidal</code>, <code>rtb.mstraj</code> and <code>rtb.ctraj</code>; none of those cells has a saved output, so no toolbox numbers are quoted here as results.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>Path = route, trajectory = timetable</h4>A route on a map says “Brisbane, Gympie, Rockhampton”. A timetable says “Gympie at 10:40, moving at 90 km/h”. The robot needs the timetable, because motors are driven by what to do <i>now</i>.</div>
+    <div class="card"><h4>A cubic is a smooth lift ride</h4>A lift starts and stops gently. Four facts fix the ride: where and when it starts and ends, and how fast it moves at each end. Four facts, four coefficients. Rest-to-rest means both end speeds are zero.<span class="inprac">In the notebook: the cubic is found by solving a 4×4 matrix with <code>np.linalg.solve</code>.</span></div>
+    <div class="card"><h4>Via points: ride over the hills</h4>A cyclist going up then down stops pedalling at the crest: slope zero. On a steady climb she keeps the average of the slopes either side. That is the lecturer’s simple rule. A smoother ride matches acceleration too, but then the speeds are forced by the whole route.</div>
+    <div class="card"><h4>Parabolic blends: a car on a motorway</h4>Floor the pedal at a constant rate, cruise, brake at the same rate. Speed against time is a trapezoid. If the trip is too short for the chosen acceleration, no cruise fits; there is a minimum acceleration for a given distance and time.</div>
+    <div class="card"><h4>Straight in the joints is not straight in space</h4>Two joints turning at steady rates draw an arc, not a line. To go straight in space you must solve IK at many points along the line, and the arm may not be able to follow (hole, singularity, wrong elbow).</div>
+  </div>
+  <div class="vids" data-vids="w05"></div>
+</div>
+
+<div class="widget" data-w3d="traj" id="w5-traj">
+  <div class="wh"><b>Trajectory lab</b><span class="eyebrow">position, velocity and acceleration, drawn to scale from the same function that gives the coefficients</span></div>
+  <div class="wbody"><div class="stage"></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> start with the cubic at its defaults (10° to 50° in 2 s, the slide example): the coefficients are 10, 0, 30, −10 and the peak speed is 30 °/s at 1 s. Raise \(\dot\theta_F\) to 10 °/s and watch the velocity curve skew. Switch to the quintic: the acceleration now starts and ends at zero. Choose “via point, heuristic” with θ<sub>0</sub> = 10, θ<sub>v</sub> = 50, θ<sub>F</sub> = 20 and T<sub>1</sub> = T<sub>2</sub> = 5 s: the slopes change sign, so the via velocity is 0. Choose “continuous acceleration” with θ<sub>v</sub> = 40, θ<sub>F</sub> = 20, T<sub>1</sub> = T<sub>2</sub> = 1 s: the via velocity is 7.5 °/s and the acceleration jump reads 0. In the LSPB mode drag a below 120 °/s² (for 120° in 2 s) and see the warning.</div>
+</div>
+
+<!-- ================= 1 ================= -->
+<div class="sub" id="w5-intro">
+<h3>1 · Path, trajectory, and where to build it <span class="pgs"><a class="pg" data-doc="w05-lec" data-page="6">pp. 6–14</a>, <a class="pg" data-doc="w05-lec" data-page="42">pp. 42–45</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A <b>trajectory</b> is a time sequence of position (and velocity and acceleration) for every degree of freedom (<a class="pg" data-doc="w05-lec" data-page="7">p.7</a>). A <b>path</b> is the same set of poses with no timing. The task: given an initial and a final pose of the tool, work out the motion in between (<a class="pg" data-doc="w05-lec" data-page="10">p.10</a>).</p>
+<p><b>Teach mode</b> (<a class="pg" data-doc="w05-lec" data-page="9">p.9</a>): an operator jogs the robot (teach pendant, or by hand) and the joint positions are stored and replayed. No kinematics are needed. It suits a repeated task with few uncertainties, such as pick and place on an assembly line.</p>
+<p><b>Two ways to generate a trajectory.</b> <i>Joint space</i> (<a class="pg" data-doc="w05-lec" data-page="12">p.12</a>): turn the start and end poses into joint angles with IK, then interpolate each joint. There are infinitely many curves between the same two points (<a class="pg" data-doc="w05-lec" data-page="13">p.13</a>). <i>Task space</i> (<a class="pg" data-doc="w05-lec" data-page="43">p.43</a>): describe the tool motion directly, then use IK along it.</p>
+</div>
+<div class="layer derive"><span class="tag">Comparison</span>
+<div class="tbl"><table><tr><th></th><th>Joint space</th><th>Task (Cartesian) space</th></tr>
+<tr><td>You specify</td><td>\(\mathbf q(t)\), one curve per joint</td><td>pose of {T} relative to {S} against time</td></tr>
+<tr><td>Cost</td><td>cheap: no IK along the way</td><td>more computation: IK at every sample (<a class="pg" data-doc="w05-lec" data-page="43">p.43</a>)</td></tr>
+<tr><td>Tool path</td><td>whatever the joint curves produce (not a line)</td><td>exactly what you asked for (line, circle, ellipse)</td></tr>
+<tr><td>Good for</td><td>free motion between points</td><td>a specified path; avoiding an obstacle (<a class="pg" data-doc="w05-lec" data-page="43">p.43</a>)</td></tr>
+<tr><td>What goes to the motors</td><td colspan="2">always joint positions, velocities and accelerations (<a class="pg" data-doc="w05-lec" data-page="68">p.68</a>)</td></tr></table></div>
+<p>Describing the tool {T} relative to the station {S} (<a class="pg" data-doc="w05-lec" data-page="45">p.45</a>) has two benefits: the description is <b>decoupled from the manipulator</b> (the same description works for different robots), and it adapts to a <b>moving {S}</b>, such as a conveyor belt.</p>
+</div>
+<div class="angle">A short “explain” item: compare joint and task space on cost, path shape, and obstacle control, and finish with “either way the motors receive joint commands”. A common wrong claim is that Cartesian commands go straight to the motors; they do not.</div>
+</div>
+
+<!-- ================= 2 ================= -->
+<div class="sub" id="w5-cubic">
+<h3>2 · Cubic polynomial trajectories <span class="pgs"><a class="pg" data-doc="w05-lec" data-page="15">pp. 15–20</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A polynomial of order \(N\) has \(N+1\) coefficients, so it needs \(N+1\) conditions: \(q(t)=\sum_{k=0}^{N}a_kt^k\) (<a class="pg" data-doc="w05-lec" data-page="15">p.15</a>). Starting at rest, moving, and stopping at rest at the goal gives four conditions (start and end position, start and end velocity). The simplest polynomial with four coefficients is a cubic. In the widget above, the default curve is exactly the slide example.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Let \(t_0=0\) (shift the clock otherwise, see below). With \(T=t_F\) and \(\Delta q=q_F-q_0\):</p>
+\[ q=a_0+a_1t+a_2t^2+a_3t^3,\qquad \dot q=a_1+2a_2t+3a_3t^2,\qquad \ddot q=2a_2+6a_3t \]
+<p>Four conditions: \(q(0)=q_0\), \(q(T)=q_F\), \(\dot q(0)=\dot q_0\), \(\dot q(T)=\dot q_F\) (zero for rest-to-rest). In matrix form (notebook cell 16 does this for the example):</p>
+\[ \begin{bmatrix}1&0&0&0\\1&T&T^2&T^3\\0&1&0&0\\0&1&2T&3T^2\end{bmatrix}\begin{bmatrix}a_0\\a_1\\a_2\\a_3\end{bmatrix}=\begin{bmatrix}q_0\\q_F\\\dot q_0\\\dot q_F\end{bmatrix} \]
+<p><b>Solve by hand.</b> The first and third rows give \(a_0=q_0\) and \(a_1=\dot q_0\). Let \(r=\Delta q-\dot q_0T\) and \(s=\dot q_F-\dot q_0\). The other two rows are \(a_2T^2+a_3T^3=r\) and \(2a_2T+3a_3T^2=s\). Multiply the first by \(2/T\) and subtract it from the second: \(a_3T^2=s-2r/T\). Back-substitute:</p>
+\[ a_2=\frac{3\Delta q-(2\dot q_0+\dot q_F)T}{T^2},\qquad a_3=\frac{-2\Delta q+(\dot q_0+\dot q_F)T}{T^3} \]
+<p><span class="chk">checked symbolically and numerically</span> For <b>rest to rest</b> (\(\dot q_0=\dot q_F=0\)): \(a_2=3\Delta q/T^2\), \(a_3=-2\Delta q/T^3\). Consequences: the velocity is a parabola with peak \(1.5\,\Delta q/T\) at \(t=T/2\); the acceleration is a straight line, \(+6\Delta q/T^2\) at the start and \(-6\Delta q/T^2\) at the end, zero at \(T/2\) (<a class="pg" data-doc="w05-lec" data-page="19">p.19</a>). Note that the acceleration is <b>not zero at the ends</b>, so it jumps there (that is what a quintic fixes, section 4).</p>
+<p><b>If \(t_0\ne0\):</b> use \(\tau=t-t_0\) and \(T=t_F-t_0\) in the formulas above. Each segment of a multi-point trajectory gets its own clock \(\tau\in[0,T_k]\), which is how the sample solutions (<a href="#sample" data-goto="sample" data-anchor="sq8">Q8</a>) write it.</p>
+<p><b>More than one joint</b> (<a class="pg" data-doc="w05-lec" data-page="20">p.20</a>, notebook Q1): each joint gets its own cubic, solved independently with its own \(q_0,q_F\). Give all joints the same \(T\) so they start and stop together. A program then evaluates every joint at the controller’s path-update rate.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>State the assumptions: \(t_0=0\), start and end at rest unless told otherwise.</li>
+<li>Write \(q,\dot q\) and the four conditions as a list.</li>
+<li>\(a_0=q_0\), \(a_1=\dot q_0\) straight away.</li>
+<li>Rest to rest: \(a_2=3\Delta q/T^2\), \(a_3=-2\Delta q/T^3\). Otherwise use the general pair above.</li>
+<li>Write \(q(t)\) with units: \(a_k\) is in °/s\(^k\) or m/s\(^k\).</li>
+<li>Check \(q(T)=q_F\) and \(\dot q(T)=\dot q_F\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example (slides pp. 17–19, notebook cell 15)</span>
+<p>One revolute joint, rest at 10°, to 50° in 2 s, stop. \(\Delta q=40^\circ\), \(T=2\) s. \(a_0=10^\circ\), \(a_1=0\), \(a_2=3(40)/4=30^\circ/\mathrm{s}^2\), \(a_3=-2(40)/8=-10^\circ/\mathrm{s}^3\). So \(q(t)=10+30t^2-10t^3\). Peak speed \(1.5(40)/2=30\) °/s at \(t=1\) s; acceleration \(\ddot q=60-60t\), from +60 to −60 °/s² (the three plots on <a class="pg" data-doc="w05-lec" data-page="19">p.19</a>). <span class="chk">checked</span></p>
+<p><b>Non-zero end velocity.</b> 20° to 80° in 3 s, \(\dot q_0=0\), \(\dot q_F=10\) °/s: \(a_2=[3(60)-(0+10)(3)]/9=16.667\), \(a_3=[-2(60)+(0+10)(3)]/27=-3.333\). Check: \(q(3)=20+16.667(9)-3.333(27)=80\) and \(\dot q(3)=2(16.667)(3)-3(3.333)(9)=10\). <span class="chk">checked</span></p></div>
+<div class="angle">Calculation, usually with new numbers (sample Q9 is a rest-to-rest cubic for a prismatic joint). The trap is the denominators: \(t_F^2\) for \(a_2\) and \(t_F^3\) for \(a_3\). Units follow: m/s² and m/s³ for a prismatic joint.</div>
+</div>
+
+<!-- ================= 3 ================= -->
+<div class="sub" id="w5-via">
+<h3>3 · Via points: velocities, the simple rule, continuous acceleration <span class="pgs"><a class="pg" data-doc="w05-lec" data-page="21">pp. 21–28</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>To pass through intermediate (via) points, use a cubic between each adjacent pair (<a class="pg" data-doc="w05-lec" data-page="21">p.21</a>). If every cubic starts and ends at rest, the robot stops at every via point (<a class="pg" data-doc="w05-lec" data-page="25">p.25</a>: “Is this desirable?” Usually not). Each cubic needs a velocity at each end, so the real question is what velocity to give at the via points. There are three options (<a class="pg" data-doc="w05-lec" data-page="26">p.26</a>):</p>
+<ol><li>the user specifies them;</li><li>the system computes them with a simple formula;</li><li>the system computes them so that the <b>acceleration is continuous</b>.</li></ol>
+<figure class="svg"><svg viewBox="0 0 420 235" style="max-width:520px" role="img" aria-label="Via-point trajectory through five points with heuristic velocities">
+<g stroke="var(--line)" stroke-width="1"><line x1="44" y1="205" x2="400" y2="205"/><line x1="44" y1="205" x2="44" y2="20"/></g>
+<polyline fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3" points="44.0,175.0 129.0,55.0 214.0,145.0 299.0,85.0 384.0,70.0"/>
+<polyline fill="none" stroke="var(--accent)" stroke-width="2.4" points="44.0,175.0 48.2,174.1 52.5,171.6 56.8,167.7 61.0,162.5 65.2,156.2 69.5,149.1 73.8,141.2 78.0,132.8 82.2,124.0 86.5,115.0 90.8,106.0 95.0,97.2 99.2,88.8 103.5,80.9 107.8,73.8 112.0,67.5 116.2,62.3 120.5,58.4 124.8,55.9 129.0,55.0 129.0,55.0 133.2,55.7 137.5,57.5 141.8,60.5 146.0,64.4 150.2,69.1 154.5,74.4 158.8,80.4 163.0,86.7 167.2,93.3 171.5,100.0 175.8,106.7 180.0,113.3 184.2,119.6 188.5,125.6 192.8,130.9 197.0,135.6 201.2,139.5 205.5,142.5 209.8,144.3 214.0,145.0 214.0,145.0 218.2,144.7 222.5,143.7 226.8,142.1 231.0,140.0 235.2,137.4 239.5,134.4 243.8,131.1 248.0,127.5 252.2,123.7 256.5,119.7 260.8,115.6 265.0,111.5 269.2,107.5 273.5,103.5 277.8,99.6 282.0,96.0 286.2,92.7 290.5,89.7 294.8,87.1 299.0,85.0 299.0,85.0 303.2,83.2 307.5,81.5 311.8,80.0 316.0,78.6 320.2,77.4 324.5,76.2 328.8,75.2 333.0,74.3 337.2,73.5 341.5,72.8 345.8,72.2 350.0,71.7 354.2,71.2 358.5,70.9 362.8,70.6 367.0,70.4 371.2,70.2 375.5,70.1 379.8,70.0 384.0,70.0"/>
+<line x1="16.8" y1="175.0" x2="71.2" y2="175.0" stroke="var(--exam)" stroke-width="2"/>
+<circle cx="44.0" cy="175.0" r="3.5" fill="var(--ink)"/>
+<line x1="101.8" y1="55.0" x2="156.2" y2="55.0" stroke="var(--exam)" stroke-width="2"/>
+<circle cx="129.0" cy="55.0" r="3.5" fill="var(--ink)"/>
+<line x1="186.8" y1="145.0" x2="241.2" y2="145.0" stroke="var(--exam)" stroke-width="2"/>
+<circle cx="214.0" cy="145.0" r="3.5" fill="var(--ink)"/>
+<line x1="271.8" y1="97.0" x2="326.2" y2="73.0" stroke="var(--exam)" stroke-width="2"/>
+<circle cx="299.0" cy="85.0" r="3.5" fill="var(--ink)"/>
+<line x1="356.8" y1="70.0" x2="411.2" y2="70.0" stroke="var(--exam)" stroke-width="2"/>
+<circle cx="384.0" cy="70.0" r="3.5" fill="var(--ink)"/>
+<text x="44.0" y="191.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >q<tspan dy="3" font-size="9">0</tspan></text>
+<text x="129.0" y="46.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >q<tspan dy="3" font-size="9">A</tspan></text>
+<text x="214.0" y="161.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >q<tspan dy="3" font-size="9">B</tspan></text>
+<text x="299.0" y="76.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >q<tspan dy="3" font-size="9">C</tspan></text>
+<text x="384.0" y="61.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >q<tspan dy="3" font-size="9">F</tspan></text>
+<text x="44.0" y="221.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >0</text>
+<text x="129.0" y="221.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >5</text>
+<text x="214.0" y="221.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >10</text>
+<text x="299.0" y="221.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >15</text>
+<text x="384.0" y="221.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >20</text>
+<text x="400.0" y="233.0" fill="var(--muted)" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >t (s)</text>
+<text x="48.0" y="22.0" fill="var(--muted)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >θ (°)</text>
+<text x="40.0" y="149.0" fill="var(--muted)" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >20</text>
+<text x="40.0" y="89.0" fill="var(--muted)" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >40</text>
+</svg><figcaption>The notebook Q2 data (10, 50, 20, 40, 45° at 0, 5, 10, 15, 20 s) with the simple rule, drawn to scale (17 px per second, 3 px per degree). Red tick marks are the via velocities: flat at q0, qA, qB, qF and a rising slope of 2.5 °/s at qC. The dashed line joins the points.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Option 2: the simple rule (p.27)</span>
+<p>Slope of each straight chord: \(s_k=\Delta q_k/\Delta t_k\). At a via point, if the slopes either side <b>change sign</b>, the velocity is <b>zero</b> (the curve peaks or dips there). Otherwise it is the <b>average</b> of the two slopes. The first and last velocities are zero (the figure on p.27 shows flat tangents at \(q_0\) and \(q_F\); the slide does not say so in words, so state it as an assumption). Each segment is then the closed-form cubic of section 2 with those end velocities.</p>
+</div>
+<div class="worked"><span class="tag">Worked example (notebook Q2, “Question 2” data)</span>
+<p>Points 10, 50, 20, 40, 45° at 0, 5, 10, 15, 20 s. Slopes: \(+8,\ -6,\ +4,\ +1\) °/s. At qA: +8 then −6, sign change, so 0. At qB: −6 then +4, sign change, 0. At qC: +4 and +1, same sign, average \(2.5\) °/s. At q0, qF: 0. <span class="chk">checked</span></p>
+<div class="tbl"><table><tr><th>segment (own clock, T = 5 s)</th><th>\(a_0\)</th><th>\(a_1\)</th><th>\(a_2\)</th><th>\(a_3\)</th></tr>
+<tr><td>q0 → qA</td><td>10</td><td>0</td><td>4.8</td><td>−0.64</td></tr>
+<tr><td>qA → qB</td><td>50</td><td>0</td><td>−3.6</td><td>0.48</td></tr>
+<tr><td>qB → qC</td><td>20</td><td>0</td><td>1.9</td><td>−0.22</td></tr>
+<tr><td>qC → qF</td><td>40</td><td>2.5</td><td>−0.4</td><td>0.02</td></tr></table></div>
+<p>(units °, °/s, °/s², °/s³). Example, last segment: \(\Delta q=5\), \(a_2=[15-(2\cdot2.5+0)5]/25=-0.4\), \(a_3=[-10+(2.5)5]/125=0.02\); \(q(5)=40+12.5-10+2.5=45\) ✓. Position and velocity are continuous at every via point, but the <b>acceleration jumps</b>: end of one segment minus start of the next is −2.4, +3.4 and −2.0 °/s² at qA, qB, qC. <span class="chk">checked</span></p></div>
+<div class="layer derive"><span class="tag">Option 3: continuous acceleration (p.26, homework p.28, notebook Q3)</span>
+<p>The homework asks for two cubics through \(q_0,q_{via},q_F\) with \(\dot q_0=\dot q_F=0\) and “constant acceleration at the via point”. The unknown is the via velocity \(w\). Read “constant” as <b>continuous</b>: the acceleration at the end of segment 1 equals that at the start of segment 2. (If \(a_{via}\) were also prescribed, with \(w\) free, you would have too many conditions; this is the reading the lecturer’s sample answer uses, <a href="#sample" data-goto="sample" data-anchor="sq8">Q8</a>.)</p>
+<p><b>Count:</b> two cubics have 8 unknowns. Conditions: 4 positions (start, via twice, end), 2 end velocities, velocity continuity, acceleration continuity: 8. Solvable.</p>
+<p><b>Short route.</b> Let \(d_1=q_{via}-q_0\), \(d_2=q_F-q_{via}\), durations \(T_1,T_2\). Use the closed-form cubic with end velocities \((0,w)\) for segment 1 and \((w,0)\) for segment 2. Then \(\ddot q_1(T_1)=2a_2+6a_3T_1=\dfrac{-6d_1+4wT_1}{T_1^2}\) and \(\ddot q_2(0)=2a_2'=\dfrac{6d_2-4wT_2}{T_2^2}\). Setting them equal and solving for \(w\):</p>
+\[ \dot q_{via}=\frac{3\,\big[T_1^2\,(q_F-q_{via})+T_2^2\,(q_{via}-q_0)\big]}{2\,T_1T_2\,(T_1+T_2)},\qquad T_1=T_2=T:\ \ \dot q_{via}=\frac{3(q_F-q_0)}{4T} \]
+<p><span class="chk">checked symbolically and with the 8×8 system</span> The equal-time result agrees with the lecturer’s coefficient \(a_{21}=3(\theta_g-\theta_0)/(4t_f)\) in <a href="#sample" data-goto="sample" data-anchor="sq8">Q8</a>. The via velocity does not depend on \(q_{via}\) when the times are equal. The shared acceleration at the via point is \(3(q_0+q_F-2q_{via})/T^2\) (equal times).</p>
+<p><b>Many via points.</b> Continuity of acceleration at each interior point gives one linear equation per interior velocity (a tridiagonal system), where \(h\) are the segment durations and \(s\) the chord slopes:</p>
+\[ \frac{w_{i-1}}{h_{i-1}}+2\Big(\frac1{h_{i-1}}+\frac1{h_i}\Big)w_i+\frac{w_{i+1}}{h_i}=3\Big(\frac{s_{i-1}}{h_{i-1}}+\frac{s_i}{h_i}\Big) \]
+<p> This is a spline. The slides do not give it; it is for understanding only.</p>
+<p>For the Q2 data with zero end velocities it gives via velocities \(0,\ 2.304,\ -3.214,\ 4.554,\ 0\) °/s, a very different answer from the simple rule. <span class="chk">checked</span></p>
+</div>
+<div class="worked"><span class="tag">Worked example (sample Q8 numbers, and an unequal-time variant)</span>
+<p>\(q_0=10^\circ,\ q_{via}=40^\circ,\ q_F=20^\circ\), \(T_1=T_2=1\) s: \(\dot q_{via}=3(10)/4=7.5\) °/s; segment 1: \(10+0t+82.5t^2-52.5t^3\); segment 2: \(40+7.5t-75t^2+47.5t^3\). Shared acceleration \(3(10+20-80)/1=-150\) °/s². <span class="chk">checked</span></p>
+<p>Now \(T_1=1\) s, \(T_2=2\) s (same angles): \(\dot q_{via}=3[1(-20)+4(30)]/(2\cdot1\cdot2\cdot3)=300/12=25\) °/s. Segment 1: \(10+65t^2-35t^3\); segment 2: \(40+25t-40t^2+11.25t^3\); shared acceleration −80 °/s². <span class="chk">checked</span></p></div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write unknowns and conditions (8 for two cubics; velocity and acceleration continuity at the via point).</li>
+<li>Give each segment its own clock \(\tau\) and duration.</li>
+<li>Use the closed-form cubic with end velocities \((0,w)\) and \((w,0)\) so only \(w\) is unknown.</li>
+<li>Equate end-of-1 and start-of-2 accelerations; solve for \(w\).</li>
+<li>Substitute back, then check \(q_1(T_1)=q_{via}\), \(q_2(T_2)=q_F\) and the accelerations match.</li></ol></div>
+<div class="angle">Two question types. (a) “Apply the simple rule to these points”: compute the slopes, decide sign change, write the velocities (the Q2 numbers above). (b) “Two cubics with continuous acceleration”: sample Q8. State the 8 conditions first; most marks are there. A trap is calling a trajectory that stops at every via point “smooth”; it is smooth in position but wasteful.</div>
+</div>
+
+<!-- ================= 4 ================= -->
+<div class="sub" id="w5-quintic">
+<h3>4 · Quintic polynomials, and why polynomials are inefficient <span class="pgs"><a class="pg" data-doc="w05-lec" data-page="29">pp. 29–30</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A quintic has six coefficients, so it takes six conditions: position, velocity <b>and acceleration</b> at both ends (<a class="pg" data-doc="w05-lec" data-page="29">p.29</a>). The extra two conditions let you set the end accelerations (usually zero), so the acceleration no longer jumps at the start and stop.</p>
+<p>p.30 (hand sketch): the velocity of any polynomial trajectory is a hump that touches its peak briefly, while a trapezoid holds the peak speed for most of the motion. With a generous blend acceleration a trapezoid covers the same distance in the same time at a peak speed much closer to the mean, so it asks less of the motor. The notebook (cell 28) makes the same point and leads into linear trajectories.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+\[ q=a_0+a_1t+\dots+a_5t^5,\quad \dot q=a_1+2a_2t+3a_3t^2+4a_4t^3+5a_5t^4,\quad \ddot q=2a_2+6a_3t+12a_4t^2+20a_5t^3 \]
+<p>Conditions: \(q,\dot q,\ddot q\) at \(t=0\) and \(t=T\). With zero end accelerations: \(a_0=q_0\), \(a_1=\dot q_0\), \(a_2=0\), and</p>
+\[ a_3=\frac{20\Delta q-(8\dot q_F+12\dot q_0)T}{2T^3},\quad a_4=\frac{-30\Delta q+(14\dot q_F+16\dot q_0)T}{2T^4},\quad a_5=\frac{12\Delta q-6(\dot q_F+\dot q_0)T}{2T^5} \]
+<p><span class="chk">checked symbolically</span> Rest to rest: \(a_3=10\Delta q/T^3\), \(a_4=-15\Delta q/T^4\), \(a_5=6\Delta q/T^5\). These closed forms are mine (the slides only list the conditions); use the 6×6 matrix in an exam. Peak speed is \(1.875\,\Delta q/T\) at \(T/2\), and peak acceleration magnitude \(10\Delta q/(\sqrt3\,T^2)\approx5.77\,\Delta q/T^2\).</p>
+</div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>0° to 15° in 1 s, rest to rest. Quintic: \(a_3=150\), \(a_4=-225\), \(a_5=90\) (units °/s³, °/s⁴, °/s⁵). Peak speed \(1.875(15)=28.125\) °/s; end accelerations 0. Cubic for the same move: peak speed \(1.5(15)=22.5\) °/s, end accelerations \(\pm6(15)=\pm90\) °/s². The mean speed is 15 °/s, so mean/peak is 66.7 % for the cubic and 53.3 % for the quintic. A trapezoid’s peak speed lies between \(\Delta q/T\) (ratio near 100 %, large \(a\)) and \(2\Delta q/T\) (the triangle, smallest \(a\)). <span class="chk">checked</span></p>
+<p>Notebook cell 29 prints <code>qd.mean()/qd.max()*100</code> for <code>traj_B</code> (quintic 0→15 in 1 s, \(\dot q_0=10\), \(\dot q_F=5\), 50 samples). The notebook has no saved output. From the closed form above I compute 68.5 % (and 52.3 % for the zero-end-velocity case <code>traj_A</code>, which differs from 53.3 % because the 50-sample mean is not the exact mean). <span class="chk">computed here</span></p></div>
+<div class="angle">Counting questions: linear 2 coefficients, cubic 4, quintic 6; each extra order buys one more boundary condition per end. “Why use a quintic?” Acceleration continuity at the ends (smaller jerk, less vibration). “Why not use a polynomial everywhere?” Peak speed is high for the time taken, so a trapezoid is more efficient.</div>
+</div>
+
+<!-- ================= 5 ================= -->
+<div class="sub" id="w5-lspb">
+<h3>5 · Linear segments with parabolic blends (LSPB) <span class="pgs"><a class="pg" data-doc="w05-lec" data-page="31">pp. 31–37</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>A straight line \(q=a_0+a_1t\) has constant velocity, which a real joint cannot reach instantly from rest (<a class="pg" data-doc="w05-lec" data-page="31">p.31</a>). So add a <b>blend</b> at each end: constant acceleration \(+a\) for a time \(t_B\), a coast at constant speed \(v\), then \(-a\) for \(t_B\) (<a class="pg" data-doc="w05-lec" data-page="32">pp.32–34</a>). Velocity against time is a trapezoid. Position is parabola, line, parabola.</p>
+<figure class="svg"><svg viewBox="0 0 400 245" style="max-width:520px" role="img" aria-label="Velocity profile of the p.37 example, to scale">
+<g stroke="var(--line)"><line x1="40" y1="200" x2="380" y2="200"/><line x1="40" y1="200" x2="40" y2="30"/></g>
+<polyline fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="5 4" points="40,200.0 190,56.0 340,200.0"/>
+<polyline fill="none" stroke="var(--accent)" stroke-width="2.6" points="40,200.0 73.8,118.9 306.2,118.9 340,200.0"/>
+<g stroke="var(--muted)" stroke-dasharray="2 3"><line x1="73.8" y1="118.9" x2="73.8" y2="200"/><line x1="306.2" y1="118.9" x2="306.2" y2="200"/><line x1="40" y1="118.9" x2="73.8" y2="118.9"/></g>
+<text x="36.0" y="122.9" fill="var(--accent)" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >67.62</text>
+<text x="36.0" y="60.0" fill="var(--muted)" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >120</text>
+<text x="190.0" y="50.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >triangle at a = a_min = 120 °/s²</text>
+<text x="77.8" y="232.0" fill="var(--accent)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >tB = 0.2254</text>
+<text x="302.2" y="232.0" fill="var(--accent)" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >tF − tB = 1.7746</text>
+<text x="40.0" y="216.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >0</text>
+<text x="340.0" y="216.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >2 s</text>
+<text x="46.0" y="24.0" fill="var(--muted)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >θ̇ (°/s)</text>
+<text x="190.0" y="136.9" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >coast at v = a·tB, lasting tF − 2tB = 1.549 s</text>
+</svg><figcaption>The p.37 example drawn to scale: 120° in 2 s with a = 300 °/s². The dashed triangle is the limiting case a = 120 °/s², where the blends meet and there is no coast.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation (slides pp. 33–36)</span>
+<p>Take \(t_0=0\). With \(a\) the blend acceleration magnitude, \(v\) the coast speed, \(t_B\) the blend duration:</p>
+\[ q_{B1}=q_0+\tfrac12at_B^2,\qquad q_{B2}=q_{B1}+v\,(t_F-2t_B),\qquad q_F=q_{B2}+v\,t_B-\tfrac12at_B^2,\qquad v=a\,t_B \]
+<p>\(q_{B1}\) is the position at the end of blend 1, \(q_{B2}\) the position at the start of blend 2 (time \(t_F-t_B\)). The slide labels equations 1 and 3 “second order polynomial in time” and equation 2 “linear in time”. Eliminate \(q_{B1},q_{B2},v\):</p>
+\[ a\,t_B^2-a\,t_F\,t_B+(q_F-q_0)=0\ \Rightarrow\ t_B=\frac{t_F}{2}\pm\frac{\sqrt{a^2t_F^2-4a(q_F-q_0)}}{2a} \]
+<p>Take the root that is positive and smaller than \(t_F\) (in fact smaller than \(t_F/2\), the minus sign, because two blends must fit in the time). A real root exists only if the discriminant is non-negative:</p>
+\[ a^2t_F^2-4a\,\Delta q\ \ge 0\iff a\ \ge\ \frac{4\,\Delta q}{t_F^2} \]
+<p>The slide uses “≥” (non-strict). At equality \(t_B=t_F/2\), the coast phase has length zero and the profile is a triangle with peak \(2\Delta q/t_F\). Below the minimum there is no real root: that motion cannot be done in time \(t_F\). A motor sets a maximum \(a\). The coast speed is \(v=at_B=\tfrac12\big[a t_F-\sqrt{a^2t_F^2-4a\Delta q}\big]\), always in \((\Delta q/t_F,\,2\Delta q/t_F]\). Bigger \(a\) gives a shorter blend and a lower coast speed. <span class="chk">checked</span></p>
+<p><b>If you choose \(v\) instead of \(a\)</b> (the toolbox does this, <code>V=</code>, notebook cell 40): \(\Delta q=v(t_F-t_B)\) gives \(t_B=t_F-\Delta q/v\) and \(a=v/t_B=v^2/(vt_F-\Delta q)\). This needs \(\Delta q/t_F\lt v\le2\Delta q/t_F\). For 120° in 2 s and \(V=70\): \(t_B=2-120/70=0.2857\) s, \(a=245\) °/s². <span class="chk">checked</span></p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs notebook (the t₀ caveat)</span><p>The slides (<a class="pg" data-doc="w05-lec" data-page="33">pp.33–34</a>) and notebook (cell 35) write a general-\(t_0\) form: \(q_{B1}=q_0+a(t_B-t_0)^2/2\) and \(a t_B^2-a(t_F-t_0)t_B+(q_F-q_0-at_0^2/2)=0\), then say “if \(t_0=0\)”. The general form is <b>inconsistent</b>: \(q_{B2}\) still uses \(t_F-2t_B\) and \(v=at_B\), which only hold for \(t_0=0\). Test: the p.37 motion shifted to start at \(t_0=1\) s and end at \(t_F=3\) s is the same motion and must give the same \(t_B=0.2254\) s. The slide’s quadratic gives roots 2.049 and −0.049 instead. <b>Correct general form:</b> replace \(t_F\) by the duration \(T=t_F-t_0\) everywhere: \(a t_B^2-aTt_B+\Delta q=0\), with \(t_B\) a <i>duration</i>. Every example on the slides has \(t_0=0\), so no slide answer changes. <span class="chk">checked</span></p></div>
+<div class="layer recipe"><span class="tag">Exam recipe (p.37)</span><ol>
+<li>List \(\Delta q\), \(t_0=0\), \(t_F\), \(a\).</li>
+<li><b>Existence:</b> compute \(4\Delta q/t_F^2\) and test \(a\ge\) it. If not, say “no solution; needs a larger \(a\) or a longer \(t_F\)”.</li>
+<li>\(t_B=\tfrac{t_F}{2}-\tfrac{\sqrt{a^2t_F^2-4a\Delta q}}{2a}\) (the smaller root).</li>
+<li>\(v=at_B\).</li>
+<li>Check: \(2\cdot\tfrac12at_B^2+v(t_F-2t_B)=\Delta q\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example (slide p.37; the slide gives no final answer)</span>
+<p>120° in 2 s, \(a=300\) °/s². Step 1: \(4(120)/2^2=120\), and \(300\ge120\) ✓. Step 2: \(a^2t_F^2-4a\Delta q=360000-144000=216000\), \(\sqrt{\cdot}=464.76\), \(t_B=1-464.76/600=0.2254\) s (the + root, 1.7746 s, exceeds \(t_F/2\): rejected). Step 3: \(v=300(0.2254)=67.62\) °/s. Check: blends cover \(2\times7.62=15.24^\circ\), coast covers \(67.62\times1.5492=104.76^\circ\), total 120.00° ✓. <span class="chk">checked</span></p>
+<p>Edge cases: \(a=120\): \(t_B=1\) s, \(v=120\) °/s, no coast. \(a=100\): discriminant \(4\,(10^4)-4(100)(120)=-8000\lt 0\), no real root. <span class="chk">checked</span></p></div>
+<div class="angle">The standard calculation, and a classic spot-the-error item (strict “&gt;” versus “≥”, wrong root, \(t_F^2\) forgotten in the minimum). Also explain in words why a minimum exists: the joint must accelerate up to \(v\) and brake again within \(t_F\). The gentlest way to cover \(\Delta q\) in \(t_F\) is the triangle: accelerate for half the time, brake for half, which needs exactly \(a=4\Delta q/t_F^2\).</div>
+</div>
+
+<!-- ================= 6 ================= -->
+<div class="sub" id="w5-multi">
+<h3>6 · Several segments with blends <span class="pgs"><a class="pg" data-doc="w05-lec" data-page="38">pp. 38–41</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>With via points \(q_i,q_j,q_k,\dots\) the joint moves in straight segments and blends through each corner (<a class="pg" data-doc="w05-lec" data-page="38">p.38</a>). Starting and ending at rest <i>and</i> passing exactly through every via point without stopping is <b>over-constrained</b> (notebook cell 42), so the path passes <b>near</b> the via points, not through them. The blend rounds each corner.</p>
+<p>Symbols (<a class="pg" data-doc="w05-lec" data-page="39">p.39</a>): \(t_{djk}\) total duration between \(q_j\) and \(q_k\); \(t_{jk}\) duration of the linear part; \(t_j\) duration of the blend at \(q_j\); \(v_{jk}\) slope of the linear part; \(a_j\) blend acceleration at \(q_j\). <b>Given</b> (<a class="pg" data-doc="w05-lec" data-page="40">p.40</a>): the via points, the segment durations \(t_{djk}\), the acceleration magnitudes \(a_j\). <b>Find</b>: the blend times. The slides refer to Craig §7.3 for the solution (and to Corke §3.3.3 and <code>mstraj</code> for quintic blends, <a class="pg" data-doc="w05-lec" data-page="41">p.41</a>).</p>
+</div>
+<div class="layer derive"><span class="tag">Craig’s solution (not on the slides; for understanding)</span>
+<p>Each via time is the <b>centre</b> of its blend. For \(n\) points, with \(\mathrm{sgn}\) giving the sign of the acceleration:</p>
+<p><i>First segment:</i> \(\ddot\theta_1=\mathrm{sgn}(\theta_2-\theta_1)|\ddot\theta_1|\), \(t_1=t_{d12}-\sqrt{t_{d12}^2-2(\theta_2-\theta_1)/\ddot\theta_1}\), \(v_{12}=\dfrac{\theta_2-\theta_1}{t_{d12}-\tfrac12t_1}\).</p>
+<p><i>Interior segments:</i> \(v_{jk}=\dfrac{\theta_k-\theta_j}{t_{djk}}\); at a via point \(j\): \(\ddot\theta_j=\mathrm{sgn}(v_{jk}-v_{ij})|\ddot\theta_j|\), \(t_j=\dfrac{v_{jk}-v_{ij}}{\ddot\theta_j}\).</p>
+<p><i>Last segment:</i> \(\ddot\theta_n=\mathrm{sgn}(\theta_{n-1}-\theta_n)|\ddot\theta_n|\), \(t_n=t_{d(n-1)n}-\sqrt{t_{d(n-1)n}^2+2(\theta_n-\theta_{n-1})/\ddot\theta_n}\), \(v_{(n-1)n}=\dfrac{\theta_n-\theta_{n-1}}{t_{d(n-1)n}-\tfrac12t_n}\).</p>
+<p>Then the linear duration is \(t_{jk}=t_{djk}-\tfrac12t_j-\tfrac12t_k\) (full \(t_1\) or \(t_n\) at the ends). The first-segment formula comes from the slide’s single-segment algebra, with the end of segment 1 placed at the middle of the next blend: \(\theta_2-\theta_1=a t_1t_{d12}-\tfrac12at_1^2\). Because the path is a rounded corner, it misses the via point by \(|\Delta v|\,t_j/8=a_jt_j^2/8\).</p>
+</div>
+<div class="worked"><span class="tag">Worked example (mine, built from the formulas above)</span>
+<p>Points 0°, 40°, 10°; \(t_{d12}=t_{d23}=2\) s; every blend acceleration magnitude 50 °/s². Blend 1: \(t_1=2-\sqrt{4-2(40)/50}=0.4508\) s; \(v_{12}=40/(2-0.2254)=22.54\) °/s. Last blend: \(\ddot\theta_3=+50\), \(t_3=2-\sqrt{4+2(-30)/50}=0.3267\) s; \(v_{23}=-30/(2-0.1633)=-16.33\) °/s. Via blend: \(\ddot\theta_2=-50\), \(t_2=(-16.33-22.54)/(-50)=0.7775\) s. Linear durations 1.160 s and 1.285 s. The joint misses \(\theta_2=40^\circ\) by \(50(0.7775)^2/8=3.78^\circ\) (it reaches 36.22° at the via time). Checked by integrating the whole profile: it ends at 10° with zero velocity. <span class="chk">checked</span></p></div>
+<div class="angle">This is an explain-level topic in the slides (symbols and set-up only). Be ready to say: what is given and what is found; why via points are only approached; that each blend’s acceleration limit sets its duration. Do not expect the full Craig derivation unless the paper supplies it.</div>
+</div>
+
+<!-- ================= 7 ================= -->
+<div class="sub" id="w5-task">
+<h3>7 · Task-space straight lines and their three problems <span class="pgs"><a class="pg" data-doc="w05-lec" data-page="44">pp. 44–47</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Frames (<a class="pg" data-doc="w05-lec" data-page="44">p.44</a>): base {B}, wrist {W}, tool {T}, station {S}, goal {G}, camera {C}. The trajectory is {T} relative to {S}. Linear interpolation in joint space does <b>not</b> give a straight tool path; a straight tool path needs IK at every sample (<a class="pg" data-doc="w05-lec" data-page="46">p.46</a>).</p>
+<figure class="svg"><svg viewBox="0 0 390 350" style="max-width:390px" role="img" aria-label="Planar RR arm: straight tool path and the joint-linear arc">
+<circle cx="26" cy="236" r="224" fill="none" stroke="var(--line)" stroke-width="1.2"/>
+<circle cx="26" cy="236" r="32" fill="none" stroke="var(--line)" stroke-width="1.2"/>
+<g stroke="var(--line)"><line x1="26" y1="236" x2="290" y2="236"/><line x1="26" y1="276" x2="26" y2="12"/></g>
+<polyline fill="none" stroke="var(--exam)" stroke-width="2" stroke-dasharray="6 4" points="178.0,236.0 177.9,232.0 177.8,227.9 177.5,223.9 177.1,219.8 176.7,215.8 176.1,211.8 175.4,207.8 174.6,203.9 173.7,199.9 172.6,196.0 171.5,192.1 170.3,188.3 169.0,184.4 167.6,180.6 166.0,176.9 164.4,173.2 162.7,169.5 160.9,165.9 159.0,162.3 157.0,158.8 154.9,155.4 152.7,152.0 150.4,148.6 148.0,145.4 145.6,142.1 143.0,139.0 140.4,135.9 137.7,132.9 134.9,130.0 132.0,127.1 129.1,124.3 126.1,121.6 123.0,119.0 119.9,116.4 116.6,114.0 113.4,111.6 110.0,109.3 106.6,107.1 103.2,105.0 99.7,103.0 96.1,101.1 92.5,99.3 88.8,97.6 85.1,96.0 81.4,94.4 77.6,93.0 73.7,91.7 69.9,90.5 66.0,89.4 62.1,88.3 58.1,87.4 54.2,86.6 50.2,85.9 46.2,85.3 42.2,84.9 38.1,84.5 34.1,84.2 30.0,84.1 26.0,84.0"/>
+<line x1="26" y1="84.0" x2="178.0" y2="236" stroke="var(--accent)" stroke-width="2.6"/>
+<polyline fill="none" stroke="var(--muted)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="26,236 106.4,136.4 26.0,84.0"/>
+<circle cx="106.4" cy="136.4" r="3.5" fill="var(--surface)" stroke="var(--ink)"/>
+<polyline fill="none" stroke="var(--muted)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="26,236 125.6,316.4 178.0,236.0"/>
+<circle cx="125.6" cy="316.4" r="3.5" fill="var(--surface)" stroke="var(--ink)"/>
+<polyline fill="none" stroke="var(--exam)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="26,236 153.3,222.5 133.5,128.5"/>
+<circle cx="26" cy="236" r="4.5" fill="var(--ink)"/>
+<circle cx="133.5" cy="128.5" r="4" fill="var(--exam)"/>
+<circle cx="102.0" cy="160.0" r="4" fill="var(--accent)"/>
+<text x="32.0" y="74.0" fill="var(--ink)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >start (0, 4.75)</text>
+<text x="186.0" y="228.0" fill="var(--ink)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >end (4.75, 0)</text>
+<text x="182.0" y="270.0" fill="var(--accent)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="10" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >● line mid (2.375, 2.375)</text>
+<text x="182.0" y="286.0" fill="var(--exam)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="10" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >● joint-linear mid (3.359, 3.359)</text>
+<text x="32.0" y="252.0" fill="var(--ink)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >base</text>
+<text x="375.0" y="250.0" fill="var(--muted)" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >x</text>
+</svg><figcaption>The RR arm of section 8 (L<sub>1</sub> = 4 m, L<sub>2</sub> = 3 m), scale 32 px per metre. Solid: the straight task-space path from (0, 4.75) to (4.75, 0). Dashed: what linear interpolation in joint space gives between the same two arm configurations: an arc of radius 4.75 m about the base, because q<sub>2</sub> is the same at both ends and does not change. Grey arms: the start and end configurations. The red arm is the joint-linear midpoint.</figcaption></figure>
+<p>Numbers for that arc: the start joint angles are \((51.07^\circ,\,95.83^\circ)\), the end \((-38.93^\circ,\,95.83^\circ)\). Halfway in joint space the tool is at \((3.359,\,3.359)\) m, not at the line’s midpoint \((2.375,\,2.375)\) m: <b>1.39 m</b> off the line. <span class="chk">checked</span></p>
+</div>
+<div class="layer derive"><span class="tag">Three problems with Cartesian straight lines (p.47)</span>
+<figure class="svg"><svg viewBox="0 0 480 185" style="max-width:600px" role="img" aria-label="Three problems with Cartesian straight lines, schematic">
+<circle cx="80" cy="80" r="58" fill="none" stroke="var(--muted)"/><circle cx="80" cy="80" r="20" fill="var(--sunk)" stroke="var(--muted)"/>
+<line x1="34" y1="58" x2="128" y2="104" stroke="var(--exam)" stroke-width="2" stroke-dasharray="5 3"/><circle cx="34" cy="58" r="3.5" fill="var(--ink)"/><circle cx="128" cy="104" r="3.5" fill="var(--ink)"/>
+<text x="30.0" y="52.0" fill="var(--ink)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >A</text>
+<text x="131.0" y="119.0" fill="var(--ink)" text-anchor="start" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >B</text>
+<text x="80.0" y="84.0" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >hole</text>
+<text x="80.0" y="176.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >1 · hole in the reach</text>
+<circle cx="240" cy="80" r="58" fill="none" stroke="var(--muted)"/>
+<line x1="195" y1="30" x2="285" y2="130" stroke="var(--exam)" stroke-width="2" stroke-dasharray="5 3"/>
+<polyline fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" points="240,80 252,68 240,80"/>
+<circle cx="240" cy="80" r="4" fill="var(--ink)"/>
+<text x="240.0" y="153.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >folded arm at the base</text>
+<text x="240.0" y="176.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >2 · singularity</text>
+<circle cx="400" cy="95" r="58" fill="none" stroke="var(--muted)"/><line x1="342" y1="95" x2="458" y2="95" stroke="var(--exam)" stroke-dasharray="5 3" stroke-width="2"/>
+<polyline fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="400,95 375,64 350,95"/>
+<polyline fill="none" stroke="var(--muted)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="400,95 425,126 450,95"/>
+<circle cx="350" cy="95" r="3.5" fill="var(--ink)"/><circle cx="450" cy="95" r="3.5" fill="var(--ink)"/>
+<text x="350.0" y="88.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >A</text>
+<text x="450.0" y="88.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >B</text>
+<text x="400.0" y="176.0" fill="var(--ink)" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" stroke="var(--bg)" stroke-width="3" paint-order="stroke" >3 · other elbow needed</text>
+</svg><figcaption>Schematic, not to scale. Dashed line = the requested straight path. 1: reach has a hole near the base. 2: an arm folded at the base is singular. 3: A and B need opposite elbows.</figcaption></figure>
+<ol>
+<li><b>Intermediate points may lie outside the workspace.</b> Both ends can be reachable while the line crosses the hole near the base. Example: \(L_1=1\), \(L_2=0.7\) m (inner radius \(|L_1-L_2|=0.3\) m). The line \(y=0.2\) from \((-1,0.2)\) to \((1,0.2)\) has reachable ends (distance 1.02 m) but its middle \((0,0.2)\) is only 0.2 m from the base: unreachable. <span class="chk">checked</span></li>
+<li><b>The path may pass through a singularity.</b> The Jacobian determinant of a planar 2R is \(L_1L_2\sin q_2\), zero when the arm is fully stretched or folded. To keep a given tool speed the joint rates grow like \(1/\sin q_2\). Example with \(L_1=L_2=1\) m and the tool moving along x at 1 m/s through \((x,0)\): at \(x=1.0\) the largest joint rate is 1.16 rad/s, at 1.9 it is 3.20, at 1.99 it is 10.0 and at 1.999 it is 31.6 rad/s. A real joint cannot do that. <span class="chk">checked</span></li>
+<li><b>Start and goal are reachable only in different configurations.</b> If A needs the elbow on one side and B on the other, a straight line between them would need the arm to switch branch part-way (a joint jump, or a pass through a singularity). See Q4 of the notebook (section 8).</li></ol>
+</div>
+<div class="angle">A scenario question: “a robot must weld a straight seam from A to B, list what can go wrong”. Answer all three with one sentence of cause each: hole or limit, singularity (joint rates blow up), different IK branch. Add the fix: replan in joint space around the problem, or change the base position or the path.</div>
+</div>
+
+<!-- ================= 8 ================= -->
+<div class="sub" id="w5-rr">
+<h3>8 · The Cartesian recipe and the planar RR example <span class="pgs"><a class="pg" data-doc="w05-lec" data-page="48">pp. 48–65</a>, <a class="pg" data-doc="w05-lec" data-page="68">p.68</a></span></h3>
+<div class="layer recipe"><span class="tag">Recipe (p.48)</span><ol>
+<li>Given a tool trajectory in Cartesian coordinates, <b>sample</b> it at a few points.</li>
+<li>Use <b>IK</b> at each sample to get joint positions.</li>
+<li><b>Fit a curve</b> to each joint’s samples (a cubic in the example; quintic if needed, <a class="pg" data-doc="w05-lec" data-page="60">p.60</a>).</li>
+<li><b>Resample</b> the fitted curves at the controller rate; optionally use FK to draw the resulting tool path (<a class="pg" data-doc="w05-lec" data-page="62">pp.62–64</a>).</li></ol>
+<p>Why not run IK at every fine sample? Numerical IK output is not smooth (notebook cells 67–69, Puma 560 with <code>ikine_GN</code>), so fit first, then resample.</p></div>
+<div class="worked"><span class="tag">Worked example (pp. 49–64, notebook cells 51–59)</span>
+<p>Planar RR, \(L_1=4\) m, \(L_2=3\) m. Start \((0,\ L_1+0.25L_2)=(0,4.75)\), end \((4.75,0)\), constant 3 m/s along the straight line.</p>
+<ol><li><b>Path.</b> \(y=-x+4.75\). Length \(\sqrt{4.75^2+4.75^2}=6.7175\) m, time \(6.7175/3=2.2392\) s (the slide rounds to 2.24 s).</li>
+<li><b>Sample</b> 11 points (10 sections), \(t_i=i\,t_F/10\) (the slide writes \(0.224\,i\)): \(x(t)=3t/\sqrt2\), \(y(t)=4.75-3t/\sqrt2\) (<a class="pg" data-doc="w05-lec" data-page="53">p.53</a>).</li>
+<li><b>IK</b> (<a class="pg" data-doc="w05-lec" data-page="56">p.56</a>): \(\cos q_2=\dfrac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2}\), \(q_2=\operatorname{atan2}(+\sqrt{1-\cos^2q_2},\cos q_2)\), \(q_1=\operatorname{atan2}(y,x)-\operatorname{atan2}(L_2\sin q_2,\ L_1+L_2\cos q_2)\). At the start: \(q_1=0.8914\) rad (51.07°), \(q_2=1.6725\) rad (95.83°); at the end \(q_1=-0.6794\) rad (−38.93°), same \(q_2\). The line stays between radius 3.36 m and 4.75 m, inside the annulus \(1\le r\le7\) m, so there is no workspace problem. <span class="chk">checked</span></li>
+<li><b>Cubic fit</b> (<a class="pg" data-doc="w05-lec" data-page="59">p.59</a>): \(q_1(t)\approx0.1346t^3-0.3375t^2-0.6182t+0.8858\), \(q_2(t)\approx0.0000t^3-0.4032t^2+0.9029t+1.6674\) rad. The fit misses the samples by up to 0.008 rad (0.46°). <span class="chk">checked</span></li>
+<li><b>Resample</b> to 50 points and apply FK: the fitted-curve tool path wanders up to 37 mm from the true line (6.7 m long). A quintic fit is more than 5 times closer; the slide’s remark (<a class="pg" data-doc="w05-lec" data-page="60">p.60</a>) that one cubic may not suffice is right. <span class="chk">checked</span></li></ol>
+<p>Four observations (cell 60): Cartesian generation costs more but is more intuitive; motors always get joint commands; accuracy depends on the fit and the number of samples; any shape (circle, square, 3D) works the same way.</p></div>
+<div class="box warn-box"><span class="tag">Slides vs recomputation (p.59)</span><p>The slide gives \(q_1=0.1347t^3-0.3376t^2-0.6181t+0.8858\) and \(q_2=0.0004t^3-0.4043t^2+0.9036t+1.6674\). Recomputing with the notebook’s own code (11 equal samples over 2.2392 s) gives the \(q_1\) above (agrees to 0.0001) but \(q_2\) with a cubic term of 0.0000, \(-0.4032\), \(0.9029\). That is expected: \(q_2\) is symmetric (equal at both ends, 1.6725 rad), so a cubic fit must have a zero cubic term. The slide’s \(q_2\) is reproduced only if the samples span about 2.247 s, so it was probably made with a slightly different sampling. Treat the slide’s \(q_2\) digits beyond 0.01 as not exact; the shape and the method are what matter. <span class="chk">checked</span></p></div>
+<div class="layer derive"><span class="tag">Two more points from the slides</span>
+<p><b>Poses cannot be interpolated like numbers</b> (<a class="pg" data-doc="w05-lec" data-page="65">p.65</a>): positions and angles can be, but not translation matrices or rotation matrices directly. The toolbox’s <code>ctraj</code> interpolates a pose properly (notebook cells 63–66, from \(\mathrm{Trans}(0.4,-0.2,0)R_x(3)\) to \(\mathrm{Trans}(0.4,0.2,0)R_x(1)\), 2 s, step 0.02 s).</p>
+<p><b>Summary</b> (<a class="pg" data-doc="w05-lec" data-page="68">p.68</a>): start and goal are usually given in Cartesian space as the pose of {T} with respect to {S}; the path between can be made in joint or task space; either way, the motors receive joint positions, velocities and accelerations.</p></div>
+<div class="angle">Typical questions: write the line equation, its length and the travel time; give \(x(t_i),y(t_i)\) for one sample; do the IK for one sample (both branches); explain why we fit and resample; say what “higher-order fit” buys.</div>
+</div>
+
+<!-- ================= guided problems ================= -->
+<h3 id="w5-problems">Guided problems: solve on paper first</h3>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.1 · Rest-to-rest cubic</b><span class="chip calc">calculate</span><span class="chip derive">derive</span><span class="marks" data-id="w05-p1" data-topic="w05"></span></div>
+  <p>A revolute joint starts at rest at 20° and must stop at 80° after exactly 3 s. Find \(a_2\) and \(a_3\) of the cubic (take \(t_0=0\)) and the peak speed.</p>
+  <details class="hint"><summary>Hint 1: conditions</summary><p>Four: \(q(0)=20\), \(q(3)=80\), \(\dot q(0)=0\), \(\dot q(3)=0\). So \(a_0=20\) and \(a_1=0\).</p></details>
+  <details class="hint"><summary>Hint 2: the two unknowns</summary><p>Rest to rest: \(a_2=3\Delta q/T^2\) and \(a_3=-2\Delta q/T^3\) with \(\Delta q=60^\circ\), \(T=3\) s.</p></details>
+  <details class="hint"><summary>Hint 3: peak speed</summary><p>The velocity \(2a_2t+3a_3t^2\) peaks where \(\ddot q=0\), at \(t=T/2\).</p></details>
+  <div class="ansrow"><label>a<sub>2</sub> (°/s²)<input data-ans="20" data-tol="0.01" data-label="a2" inputmode="decimal"></label><label>a<sub>3</sub> (°/s³)<input data-ans="-4.4444" data-tol="0.005" data-label="a3" inputmode="decimal" data-wrong='[{"v":-13.3333,"msg":"you divided by tF² instead of tF³ for a3."}]'></label><label>peak speed (°/s)<input data-ans="30" data-tol="0.05" data-label="peak" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(a_2=3(60)/9=20\) °/s². \(a_3=-2(60)/27=-4.4444\) °/s³. So \(q(t)=20+20t^2-4.4444t^3\).</p>
+  <p>Peak speed at \(t=1.5\) s: \(\dot q=2(20)(1.5)+3(-4.4444)(2.25)=60-30=30\) °/s, which equals \(1.5\Delta q/T=1.5(60)/3\). End accelerations \(\pm6\Delta q/T^2=\pm40\) °/s². Check \(q(3)=20+180-120=80\) ✓. <span class="chk">checked</span></p>
+  <p>Common wrong answer: \(a_3=-13.33\) from dividing by \(T^2\).</p></details>
+  <p class="blank">Close everything and derive \(a_2,a_3\) for rest to rest from the four conditions, in 4 minutes.</p>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.2 · More than one joint (notebook Question 1)</b><span class="chip explain">explain</span><span class="chip calc">calculate</span><span class="marks" data-id="w05-p2" data-topic="w05"></span></div>
+  <p>“What if the robot has more than one joint?” A three-joint arm must move from rest to rest in 2 s, with joint changes of +40°, +90° and −20°. How do you generate the trajectory, and what are \(a_2\), \(a_3\) and the peak speed of joint 2?</p>
+  <details class="hint"><summary>Hint 1</summary><p>One cubic per joint (<a class="pg" data-doc="w05-lec" data-page="20">p.20</a>), solved independently, all with the same \(T=2\) s.</p></details>
+  <div class="ansrow"><label>a<sub>2</sub> of joint 2 (°/s²)<input data-ans="67.5" data-tol="0.05" data-label="a2" inputmode="decimal"></label><label>a<sub>3</sub> (°/s³)<input data-ans="-22.5" data-tol="0.05" data-label="a3" inputmode="decimal" data-wrong='[{"v":-45,"msg":"you divided by tF² for a3; it is tF³."}]'></label><label>peak speed (°/s)<input data-ans="67.5" data-tol="0.05" data-label="peak" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Each joint \(i\) has \(q_i(t)=q_{i0}+a_{2,i}t^2+a_{3,i}t^3\) with \(a_{2,i}=3\Delta q_i/T^2\), \(a_{3,i}=-2\Delta q_i/T^3\). With \(T=2\): joint 1 \((30,-10)\), joint 2 \((67.5,-22.5)\), joint 3 \((-15,5)\). Peak speeds \(1.5\Delta q_i/T=30,\ 67.5,\ -15\) °/s (joint 3 moves backwards). <span class="chk">checked</span></p>
+  <p>Why the same \(T\): all joints start and stop together, so the arm moves as one. A controller evaluates every cubic at its path-update rate and sends the joint set to the servos. The joints do not coordinate their <i>geometry</i>: the tool path between the two poses is whatever the joint curves produce, not a straight line.</p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.3 · Via-point rule on real numbers (notebook Question 2)</b><span class="chip calc">calculate</span><span class="chip spot">spot the error</span><span class="marks" data-id="w05-p3" data-topic="w05"></span></div>
+  <p>Points on the trajectory are 10, 50, 20, 40, 45° at times 0, 5, 10, 15, 20 s. Use the “change of sign gives zero, otherwise the average” rule, with zero velocity at both ends. Find the velocity at qC (t = 15 s) and the cubic for the last segment in its own clock \(\tau=t-15\). Then say whether the acceleration is continuous at qB.</p>
+  <details class="hint"><summary>Hint 1: slopes</summary><p>Slopes of the four chords: \(+8,\ -6,\ +4,\ +1\) °/s.</p></details>
+  <details class="hint"><summary>Hint 2: last segment</summary><p>From 40° at 2.5 °/s to 45° at 0 °/s in \(T=5\) s: use the general cubic with \(\Delta q=5\).</p></details>
+  <div class="ansrow"><label>v<sub>C</sub> (°/s)<input data-ans="2.5" data-tol="0.01" data-label="vC" inputmode="decimal" data-wrong='[{"v":0,"msg":"slopes +4 and +1 have the same sign, so use the average, not zero."}]'></label><label>a<sub>2</sub><input data-ans="-0.4" data-tol="0.005" data-label="a2" inputmode="decimal"></label><label>a<sub>3</sub><input data-ans="0.02" data-tol="0.0005" data-label="a3" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution (with a script)</summary>
+  <p>Velocities: q0 0; qA: +8, −6 change sign → 0; qB: −6, +4 change sign → 0; qC: +4, +1 → 2.5; qF 0. Last segment: \(a_0=40\), \(a_1=2.5\), \(a_2=[3(5)-(2\cdot2.5+0)5]/25=-0.4\), \(a_3=[-2(5)+(2.5+0)5]/125=0.02\). Check \(q(5)=40+12.5-10+2.5=45\) ✓, \(\dot q(5)=2.5-4+1.5=0\) ✓. <span class="chk">checked</span></p>
+  <p>Other segments (local clock): \((10,0,4.8,-0.64)\), \((50,0,-3.6,0.48)\), \((20,0,1.9,-0.22)\).</p>
+<pre class="mono" style="font-size:.8rem;overflow:auto">import numpy as np
+t = np.array([0, 5, 10, 15, 20.]); q = np.array([10, 50, 20, 40, 45.])
+s = np.diff(q) / np.diff(t)                       # chord slopes
+v = np.zeros(len(q))
+for i in range(1, len(q) - 1):                    # interior via points only
+    v[i] = 0 if s[i-1] * s[i] &lt; 0 else (s[i-1] + s[i]) / 2
+for k in range(len(q) - 1):                       # one cubic per segment, own clock tau
+    T, d = t[k+1] - t[k], q[k+1] - q[k]
+    a = [q[k], v[k], (3*d - (2*v[k] + v[k+1])*T) / T**2, (-2*d + (v[k] + v[k+1])*T) / T**3]
+    tau = np.linspace(0, T, 50)
+    pos = a[0] + a[1]*tau + a[2]*tau**2 + a[3]*tau**3
+    vel = a[1] + 2*a[2]*tau + 3*a[3]*tau**2
+    acc = 2*a[2] + 6*a[3]*tau                     # plot (t[k] + tau, pos / vel / acc)</pre>
+  <p><b>Acceleration at qB:</b> end of segment 2 is \(2(-3.6)+6(0.48)(5)=7.2\) °/s²; start of segment 3 is \(2(1.9)=3.8\). Not equal: the acceleration jumps by 3.4 °/s². The simple rule gives continuous position and velocity only. <span class="chk">checked</span></p>
+  <p>Common wrong answer: velocity at qC taken as zero “because the path flattens at the end”. Zero is only for a sign change.</p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.4 · Continuous acceleration at the via point (notebook Question 3, slide p.28)</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w05-p4" data-topic="w05"></span></div>
+  <p>Two cubics join \(q_0\), \(q_{via}\), \(q_F\) with zero end velocities and the same acceleration on both sides of the via point. (a) Count unknowns and conditions. (b) Find the via velocity for \(q_0=10^\circ\), \(q_{via}=40^\circ\), \(q_F=20^\circ\) with \(T_1=T_2=1\) s. (c) Repeat with \(T_1=1\) s, \(T_2=2\) s.</p>
+  <details class="hint"><summary>Hint 1</summary><p>Unknowns 8; conditions: 4 positions, 2 end velocities, 1 velocity continuity, 1 acceleration continuity.</p></details>
+  <details class="hint"><summary>Hint 2: the shortcut</summary><p>Use the closed-form cubic with end velocities \((0,w)\) and \((w,0)\). Then \(\ddot q_1(T_1)=(-6d_1+4wT_1)/T_1^2\) and \(\ddot q_2(0)=(6d_2-4wT_2)/T_2^2\).</p></details>
+  <details class="hint"><summary>Hint 3</summary><p>Equal times: \(w=3(q_F-q_0)/(4T)\).</p></details>
+  <div class="ansrow"><label>(b) w (°/s)<input data-ans="7.5" data-tol="0.01" data-label="w equal T" inputmode="decimal"></label><label>(c) w (°/s)<input data-ans="25" data-tol="0.01" data-label="w unequal T" inputmode="decimal" data-wrong='[{"v":7.5,"msg":"that is the equal-time answer; T2 = 2 s changes the weights."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>(a) 8 unknowns (\(a_{10}\dots a_{13}\), \(a_{20}\dots a_{23}\)); 8 conditions as in hint 1.</p>
+  <p>Derivation: with \(d_1=q_{via}-q_0\), \(d_2=q_F-q_{via}\), equate \((-6d_1+4wT_1)/T_1^2=(6d_2-4wT_2)/T_2^2\). Then \(4w(1/T_1+1/T_2)=6(d_1/T_1^2+d_2/T_2^2)\), so \(w=\dfrac{3(T_1^2d_2+T_2^2d_1)}{2T_1T_2(T_1+T_2)}\).</p>
+  <p>(b) \(w=3(10)/4=7.5\) °/s; segments \(10+82.5t^2-52.5t^3\) and \(40+7.5t-75t^2+47.5t^3\) (the lecturer’s sample Q8 answer with these numbers, <a href="#sample" data-goto="sample" data-anchor="sq8">Q8</a>).</p>
+  <p>(c) \(d_1=30\), \(d_2=-20\): \(w=3[1(-20)+4(30)]/[2(1)(2)(3)]=300/12=25\) °/s. Segments \(10+65t^2-35t^3\) and \(40+25t-40t^2+11.25t^3\). The acceleration on both sides is −80 °/s² (check: \(2(65)+6(-35)(1)=-80\) and \(2(-40)=-80\)). <span class="chk">checked</span></p>
+  <p><b>Reading of “constant acceleration”:</b> I take it as continuous. If \(a_{via}\) were prescribed as an extra given, the system would be over-determined; I flagged this in the derivation above.</p></details>
+  <p class="blank">Write the eight conditions for two cubics from memory, then solve for \(w\) with equal times.</p>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.5 · Blend example (slide p.37)</b><span class="chip calc">calculate</span><span class="marks" data-id="w05-p5" data-topic="w05"></span></div>
+  <p>A joint moves a total of 120° in 2 s. Acceleration and deceleration are 300 °/s². Find the blend time and the constant (coast) velocity.</p>
+  <details class="hint"><summary>Hint 1: existence</summary><p>Is \(300\ge4(120)/2^2\)?</p></details>
+  <details class="hint"><summary>Hint 2: root</summary><p>\(t_B=1-\sqrt{300^2(4)-4(300)(120)}/600\). Which root is smaller than \(t_F/2\)?</p></details>
+  <div class="ansrow"><label>t<sub>B</sub> (s)<input data-ans="0.2254" data-tol="0.0005" data-label="tB" inputmode="decimal" data-wrong='[{"v":1.7746,"msg":"that is the + root; two blends of 1.77 s do not fit in 2 s. Take the minus sign."}]'></label><label>v (°/s)<input data-ans="67.62" data-tol="0.05" data-label="v" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Step 1: \(4(120)/4=120\); \(300\ge120\) ✓. Step 2: \(\sqrt{360000-144000}=\sqrt{216000}=464.76\); \(t_B=1-464.76/600=0.2254\) s. Step 3: \(v=300(0.2254)=67.62\) °/s. Check: \(2\cdot\tfrac12(300)(0.2254)^2+67.62(2-0.4508)=15.24+104.76=120\) ✓. The slide gives no final number, so this is my computation. <span class="chk">checked</span></p>
+  <p>Common wrong answer: \(t_B=1.7746\) s (+ root), which also makes \(v=532\) °/s, far above the average of 60 °/s.</p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.6 · Is that blend possible?</b><span class="chip spot">spot the error</span><span class="chip explain">explain</span><span class="marks" data-id="w05-p6" data-topic="w05"></span></div>
+  <p>Three student claims about a 120° move in 2 s. Which are wrong, and why? (a) “With \(a=120\) °/s² the profile has a coast phase.” (b) “With \(a=100\) °/s², \(t_B=1-\sqrt{-8000}/200\), so take the real part, \(t_B=1\) s.” (c) “A larger \(a\) makes the coast velocity larger.”</p>
+  <details class="hint"><summary>Hint</summary><p>Minimum \(a=4\Delta q/t_F^2=120\). What is \(t_B\) at equality?</p></details>
+  <details class="sol"><summary>Model answer</summary>
+  <p>(a) Wrong. At \(a=120\) the discriminant is 0, \(t_B=t_F/2=1\) s, the coast lasts \(t_F-2t_B=0\); the profile is a triangle with peak \(2\Delta q/t_F=120\) °/s. (b) Wrong. \(a=100\lt 120\) has a negative discriminant (\(-8000\)): no real \(t_B\), so no such motion exists; you cannot take the real part. Fix: raise \(a\) to at least 120 or lengthen \(t_F\). (c) Wrong. \(v=\tfrac12[at_F-\sqrt{a^2t_F^2-4a\Delta q}]\) falls from 120 toward the mean speed 60 °/s as \(a\) grows: 120 at \(a=120\), then 82.9 at 150 and 67.6 at 300. Both a strict “&gt;” in the existence test and “larger \(a\) gives faster” are classic traps. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.7 · The t₀ caveat</b><span class="chip spot">spot the error</span><span class="chip calc">calculate</span><span class="marks" data-id="w05-p7" data-topic="w05"></span></div>
+  <p>The p.37 motion (120°, \(a=300\) °/s²) now starts at \(t_0=1\) s and ends at \(t_F=3\) s. A student plugs \(t_0=1\), \(t_F=3\) into the slide’s general quadratic \(at_B^2-a(t_F-t_0)t_B+(q_F-q_0-at_0^2/2)=0\). What do they get, and what is the correct \(t_B\)?</p>
+  <details class="hint"><summary>Hint</summary><p>It is the same motion, only shifted in time. Should \(t_B\) change?</p></details>
+  <div class="ansrow"><label>correct t<sub>B</sub> (s)<input data-ans="0.2254" data-tol="0.0005" data-label="tB" inputmode="decimal" data-wrong='[{"v":2.0488,"msg":"that is a root of the slide’s general-t0 quadratic, which is not valid for t0 ≠ 0."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Slide quadratic: \(300t_B^2-600t_B+(120-150)=0\), i.e. \(300t_B^2-600t_B-30=0\), roots 2.049 and −0.049. Neither is 0.2254 s, and 2.049 s is not even smaller than \(t_F-t_0=2\) s. Correct: use the duration \(T=t_F-t_0=2\) s: \(300t_B^2-600t_B+120=0\), \(t_B=0.2254\) s, \(v=67.62\) °/s, unchanged by a time shift. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.8 · Sketch the three profiles</b><span class="chip sketch">sketch</span><span class="marks" data-id="w05-p8" data-topic="w05"></span></div>
+  <p>For a 10° to 50° move in 2 s, sketch \(q,\dot q,\ddot q\) against time for (i) the cubic, (ii) the quintic, (iii) an LSPB for the same move with \(a=100\) °/s². Mark the key values.</p>
+  <details class="hint"><summary>Hint</summary><p>Draw the three rows on a shared time axis. Mark values at \(t=0\), \(1\) and \(2\) s.</p></details>
+  <details class="sol"><summary>What the sketches show</summary>
+  <p><b>(i) Cubic:</b> \(q\) an S-curve from 10 to 50; \(\dot q\) a parabola, 0 → 30 °/s at 1 s → 0; \(\ddot q\) a straight line from +60 to −60 °/s², zero at 1 s. <b>(ii) Quintic:</b> same S-curve but steeper in the middle; \(\dot q\) a narrower, taller bell peaking at \(1.875(40)/2=37.5\) °/s; \(\ddot q\) starts and ends at <b>0</b>, with extremes \(\pm57.7\) °/s². <span class="chk">checked</span> <b>(iii) LSPB</b> with \(a=100\) (minimum \(4(40)/4=40\) ✓): \(t_B=1-\sqrt{10^4(4)-4(100)(40)}/200=1-\sqrt{24000}/200=0.2254\) s, \(v=22.54\) °/s; \(q\) parabola–line–parabola; \(\dot q\) a trapezoid; \(\ddot q\) three flat levels \(+100,0,-100\) with jumps at \(t_B\) and \(t_F-t_B\).</p>
+  <p>Key distinctions the sketch must show: acceleration zero at the ends only for the quintic; the trapezoid has a flat top; the cubic acceleration is linear.</p></details>
+  <p class="blank">Draw all nine small plots in 4 minutes with values on the axes.</p>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.9 · The other IK solution (notebook Question 4)</b><span class="chip explain">explain</span><span class="chip calc">calculate</span><span class="marks" data-id="w05-p9" data-topic="w05"></span></div>
+  <p>In the RR example the notebook uses the \(+\sqrt{\cdot}\) IK solution (\(q_2\gt 0\)). What happens if we use the other one? Give the start joint angles for the other solution (\(L_1=4\), \(L_2=3\), start tool point (0, 4.75)).</p>
+  <details class="hint"><summary>Hint 1</summary><p>The other branch has \(\sin q_2\to-\sin q_2\), so \(q_2\to-q_2\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>\(q_1=\operatorname{atan2}(y,x)-\operatorname{atan2}(L_2\sin q_2,L_1+L_2\cos q_2)\). The second term changes sign with \(q_2\).</p></details>
+  <div class="ansrow"><label>q<sub>1</sub> (°)<input data-ans="128.93" data-tol="0.05" data-label="q1" inputmode="decimal" data-wrong='[{"v":51.07,"msg":"that is the + branch (the notebook’s)."}]'></label><label>q<sub>2</sub> (°)<input data-ans="-95.83" data-tol="0.05" data-label="q2" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>At (0, 4.75): \(\cos q_2=(22.5625-25)/24=-0.1016\), so \(q_2=\pm95.83^\circ\). For \(q_2=-95.83^\circ\): \(\mu=\operatorname{atan2}(3\sin q_2,4+3\cos q_2)=\operatorname{atan2}(-2.984,3.695)=-38.93^\circ\), so \(q_1=90^\circ-(-38.93^\circ)=128.93^\circ\). (The + branch has \(q_1=90-38.93=51.07^\circ\).) At the end point (4.75, 0): \(q_1=38.93^\circ\), \(q_2=-95.83^\circ\). <span class="chk">checked</span></p>
+  <p><b>What happens.</b> The tool path is identical (both branches reproduce every sampled point, checked by FK) but the arm is mirrored about the line from the base to the tool: the elbow is on the other side. Joint curves differ: \(q_2\to-q_2\) at every sample and \(q_1=2\operatorname{atan2}(y,x)-q_1^{+}\). The fit, resample and FK steps work the same way, with different coefficients. What you must not do is <b>switch branches part-way</b>: in the example, jumping at sample 5 would change \(q_1\) from 0.165 rad to 1.608 rad and \(q_2\) from 2.157 to −2.179 in one step, which no joint can do. Choose the branch from the start configuration, joint limits, or obstacles, and keep it for the whole path. If start and goal can only be reached in different branches, the straight Cartesian line is impossible (problem 3 of p.47).</p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.10 · Joint-linear is not Cartesian-linear (slide p.46)</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="marks" data-id="w05-p10" data-topic="w05"></span></div>
+  <p>The RR arm (\(L_1=4\), \(L_2=3\)) moves from joint angles \((51.07^\circ,95.83^\circ)\) to \((-38.93^\circ,95.83^\circ)\) with each joint changing linearly in time. Where is the tool at the halfway time? How far is that from the straight-line midpoint (2.375, 2.375)?</p>
+  <details class="hint"><summary>Hint 1</summary><p>Halfway joint angles are the averages: \(q_1=6.07^\circ\), \(q_2=95.83^\circ\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>FK: \(x=L_1\cos q_1+L_2\cos(q_1+q_2)\), \(y=L_1\sin q_1+L_2\sin(q_1+q_2)\).</p></details>
+  <div class="ansrow"><label>x (m)<input data-ans="3.3588" data-tol="0.002" data-label="x" inputmode="decimal" data-wrong='[{"v":2.375,"msg":"that is the straight-line midpoint; joint-linear motion does not pass through it."}]'></label><label>y (m)<input data-ans="3.3588" data-tol="0.002" data-label="y" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(x=4\cos6.07^\circ+3\cos101.9^\circ=3.9775-0.6188=3.3588\); \(y=4\sin6.07^\circ+3\sin101.9^\circ=0.4233+2.9355=3.3588\). Distance from the line \(x+y=4.75\): \((3.3588+3.3588-4.75)/\sqrt2=1.391\) m. Because \(q_2\) is the same at both ends it never changes, so the tool stays at distance \(\sqrt{L_1^2+L_2^2+2L_1L_2\cos q_2}=4.75\) m from the base: it moves on an arc, not a chord. <span class="chk">checked</span></p>
+  <p>Sketch: arc from (0, 4.75) to (4.75, 0) bulging away from the origin, the straight line inside it (figure in section 7).</p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.11 · Quintic by hand (slide p.29)</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w05-p11" data-topic="w05"></span></div>
+  <p>Move 0° to 15° in 1 s, rest to rest, zero end accelerations, with a quintic. Find \(a_3,a_4,a_5\) and the peak speed, and compare with the cubic for the same move.</p>
+  <details class="hint"><summary>Hint 1</summary><p>Zero start conditions give \(a_0=a_1=a_2=0\). The three end conditions give a 3×3 system for \(a_3,a_4,a_5\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>At \(T=1\): \(a_3+a_4+a_5=15\); \(3a_3+4a_4+5a_5=0\); \(6a_3+12a_4+20a_5=0\).</p></details>
+  <div class="ansrow"><label>a<sub>3</sub><input data-ans="150" data-tol="0.01" data-label="a3" inputmode="decimal"></label><label>a<sub>4</sub><input data-ans="-225" data-tol="0.01" data-label="a4" inputmode="decimal"></label><label>a<sub>5</sub><input data-ans="90" data-tol="0.01" data-label="a5" inputmode="decimal"></label><label>peak speed (°/s)<input data-ans="28.125" data-tol="0.01" data-label="peak" inputmode="decimal" data-wrong='[{"v":22.5,"msg":"that is the cubic’s peak speed (1.5 Δq/T)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Eliminate: from the third equation \(a_5=-(6a_3+12a_4)/20\); substituting gives \(a_4=-1.5a_3\) and \(a_5=0.6a_3\); the first equation gives \(a_3(1-1.5+0.6)=15\), \(a_3=150\), \(a_4=-225\), \(a_5=90\). Velocity \(450t^2-900t^3+450t^4\) peaks at \(t=0.5\): \(450(0.25)-900(0.125)+450(0.0625)=28.125\) °/s. Cubic: peak \(22.5\) °/s and end accelerations \(\pm90\) °/s²; quintic ends at 0 but has the higher peak speed (and peak acceleration 86.6 °/s²). <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.12 · Choosing the coast velocity (toolbox <code>trapezoidal</code>, notebook cells 37–40)</b><span class="chip calc">calculate</span><span class="marks" data-id="w05-p12" data-topic="w05"></span></div>
+  <p>The toolbox lets you set the coast velocity \(V\) instead of \(a\). For 0° to 120° in 2 s with \(V=70\) °/s, find \(t_B\) and the blend acceleration.</p>
+  <details class="hint"><summary>Hint</summary><p>The coast covers \(v(t_F-2t_B)\) and each blend \(\tfrac12vt_B\), so \(\Delta q=v(t_F-t_B)\).</p></details>
+  <div class="ansrow"><label>t<sub>B</sub> (s)<input data-ans="0.2857" data-tol="0.0005" data-label="tB" inputmode="decimal"></label><label>a (°/s²)<input data-ans="245" data-tol="0.5" data-label="a" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(t_B=t_F-\Delta q/V=2-120/70=0.2857\) s; \(a=V/t_B=245\) °/s². Valid because \(60\lt 70\le120\). Check: \(70(2-0.2857)=120\) ✓. The notebook saved no output for this cell, so this is my calculation. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.13 · Six-DoF trajectory: jtraj versus ctraj (notebook Question 5)</b><span class="chip explain">explain</span><span class="marks" data-id="w05-p13" data-topic="w05"></span></div>
+  <p>A Puma 560 moves from \(\mathrm{Trans}(0.4,-0.2,0)\,R_x(3)\) to \(\mathrm{Trans}(0.4,0.2,0)\,R_x(1)\) in 2 s at 0.5 s steps. Generate a trajectory in joint space with <code>jtraj</code>, plot joint positions, velocities and accelerations, and compare with the <code>ctraj</code> solution. What do you observe?</p>
+  <details class="sol"><summary>Model answer (not run; expected behaviour)</summary>
+  <p><b>Method.</b> Convert both poses to joint vectors with IK, then <code>jtraj(q0, qF, t)</code> interpolates each joint with a smooth polynomial that starts and ends at rest (Corke §7.3: a quintic). Plot \(q,\dot q,\ddot q\) for the six joints. With 0.5 s steps over 2 s there are only 5 samples (4 if the end is excluded), so smoothness is hard to see; use a finer step for the plots.</p>
+  <p><b>Comparison.</b> <code>jtraj</code>: smooth bell-shaped joint velocities, zero speed at both ends; the tool path between the poses is curved. <code>ctraj</code>: the tool path is a straight line in x, y, z with orientation interpolated; after IK the joint curves are <i>not</i> simple and may be less smooth (notebook cells 67–69: the numerical IK output was not very smooth, so fit and resample). Rule: joint space is cheap and smooth; task space gives the tool path you asked for at higher cost. I did not run the notebook; no outputs are saved.</p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.14 · Write the letter R, and a legged robot (notebook Questions 6 and 7)</b><span class="chip explain">explain</span><span class="chip derive">derive</span><span class="marks" data-id="w05-p14" data-topic="w05"></span></div>
+  <p>(a) Generate a trajectory for the letter “R” from the toolbox font and compute the joint angles for a six-DoF arm. (b) A legged robot (ANYmal) leg is a 3-DoF manipulator. Generate a circular foot trajectory in Cartesian space and find the joint angles. Give the procedure and the pitfalls.</p>
+  <details class="sol"><summary>Model answer (procedure, not run)</summary>
+  <p><b>Procedure (the p.48 recipe).</b> (1) Get or write the Cartesian points: for the letter, the font gives 2D stroke coordinates; scale and place them on a plane in front of the arm, with the pen orientation fixed. For the leg, sample the circle \(x=x_c+r\cos\phi\), \(y=y_c+r\sin\phi\) in the plane of motion with \(\phi=2\pi t/T\) (constant speed, or a speed profile). (2) Do IK at each sample: a 6-DoF arm with spherical wrist has the closed-form split into position (3 joints) and orientation (3 joints); a 3-DoF leg is an RRR chain (hip, thigh, shank). (3) Fit a curve to each joint, or just use the dense samples. (4) Resample at the controller rate; FK to check the drawn shape.</p>
+  <p><b>Pitfalls.</b> Keep the same IK branch (e.g. knee bent forwards or backwards) all the way. Keep every sample inside the workspace (circle radius small enough for the leg’s reach). A pen lift between strokes of the letter is a separate, via-point move. Avoid singular poses (a fully stretched leg or folded wrist). Corners of the letter (R has sharp turns) need blends or via-point velocities, or the arm will overshoot or stop at each one.</p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.15 · Scenario: a welding seam</b><span class="chip explain">explain</span><span class="chip calc">calculate</span><span class="marks" data-id="w05-p15" data-topic="w05"></span></div>
+  <p>A robot with \(L_1=1\) m and \(L_2=0.7\) m must move its tool in a straight line along \(y=0.2\) m from \((-1,\,0.2)\) to \((1,\,0.2)\). Is the task feasible as stated? Which of the three problems on slide 47 does it hit? Give two fixes. Then, for a 2R at the stretched pose, what happens to the joint rates?</p>
+  <details class="hint"><summary>Hint</summary><p>Reach is the annulus \(|L_1-L_2|\le r\le L_1+L_2\), i.e. 0.3 m to 1.7 m from the base.</p></details>
+  <details class="sol"><summary>Model answer</summary>
+  <p>Ends: \(r=\sqrt{1+0.04}=1.02\) m, inside the annulus, so each is reachable. Middle \((0,0.2)\): \(r=0.2\lt 0.3\), inside the hole. So the line leaves the workspace in the middle: <b>problem 1</b> (intermediate points outside the workspace). Fixes: move the seam or the base so the nearest distance is at least 0.3 m (for example shift to \(y=0.4\)); or split the motion into two via points and go round the hole in joint space; or use a robot with a smaller inner radius. <span class="chk">checked</span></p>
+  <p>Stretched or folded arm: \(\det J=L_1L_2\sin q_2\to0\), so for a given tool speed the joint rates grow like \(1/\sin q_2\) (problem 2): with \(L_1=L_2=1\) m and 1 m/s along x, the largest rate is 1.16 rad/s at \(x=1\) and 31.6 rad/s at \(x=1.999\). The Cartesian speed must be reduced near the boundary. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w05">
+  <div class="head"><b>P5.16 · Slide questions</b><span class="chip explain">explain</span><span class="marks" data-id="w05-p16" data-topic="w05"></span></div>
+  <p>Answer the lecturer’s own questions: (a) p.15: “How many conditions on motion does a start-at-rest, stop-at-rest statement specify, and what is the simplest function?” (b) p.25: “If every cubic stops at each via point, is this desirable?” (c) p.45: “What are the benefits of describing the trajectory as {T} relative to {S}?” (d) p.50: “What is the equation of the path?”</p>
+  <details class="sol"><summary>Model answers</summary>
+  <p>(a) Four (start and end position, start and end velocity); a cubic. (b) Usually not: the robot slows to zero at every via point, which wastes time and energy; use via velocities (the simple rule or continuous acceleration). (c) The description is decoupled from the manipulator (the same one works for different robots) and follows a moving {S} such as a conveyor. (d) \(y=-x+4.75\) (slope \(-1\), through (0, 4.75) and (4.75, 0)). <span class="chk">checked</span></p></details>
+</div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w05"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w05-q1" data-topic="w05"></span></div>
+<p>How many boundary conditions does a quintic need, and which ones? How many does a cubic need?</p><details class="sol"><summary>Answer</summary><p>Quintic: six, position, velocity and acceleration at both ends. Cubic: four, position and velocity at both ends.</p></details></div>
+<div class="gp" data-topic="w05"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w05-q2" data-topic="w05"></span></div>
+<p>A joint must move 90° in 1.5 s with a trapezoidal velocity profile. What is the smallest blend acceleration that works, and what is the coast phase then?</p><details class="sol"><summary>Answer</summary><p>\(a_{min}=4(90)/1.5^2=160\) °/s². At that value \(t_B=0.75\) s, so there is no coast phase (a triangle with peak \(2\Delta q/t_F=120\) °/s).</p></details></div>
+<div class="gp" data-topic="w05"><div class="head"><b>Q3</b><span class="chip spot">spot the error</span><span class="marks" data-id="w05-q3" data-topic="w05"></span></div>
+<p>“If each joint changes linearly with time, the tool moves in a straight line.” True?</p><details class="sol"><summary>Answer</summary><p>False. Joint-linear motion gives a curved tool path in general (p.46). In the RR example the tool moves on an arc of radius 4.75 m, 1.39 m off the straight line at its midpoint.</p></details></div>
+
+<div class="box" data-reading="w05"></div>
+
+<script data-after>
+/*BEGIN-TRAJ-CORE*/
+function trajCore(P) {
+  const cub = (qa, qb, va, vb, T) => { const d = qb - qa; return [qa, va, (3 * d - (2 * va + vb) * T) / (T * T), (-2 * d + (va + vb) * T) / (T * T * T)]; };
+  const qui = (qa, qb, va, vb, T) => { const h = qb - qa; return [qa, va, 0, (20 * h - (8 * vb + 12 * va) * T) / (2 * T * T * T), (-30 * h + (14 * vb + 16 * va) * T) / (2 * T * T * T * T), (12 * h - 6 * (vb + va) * T) / (2 * Math.pow(T, 5))]; };
+  const evc = (c, t) => { let q = 0, v = 0, a = 0; for (let k = 0; k < c.length; k++) { q += c[k] * Math.pow(t, k); if (k >= 1) v += k * c[k] * Math.pow(t, k - 1); if (k >= 2) a += k * (k - 1) * c[k] * Math.pow(t, k - 2); } return [q, v, a]; };
+  const R = { mode: P.mode, ok: true, segs: [] };
+  const push = (c, T) => { const l = R.segs[R.segs.length - 1]; R.segs.push({ ts: l ? l.ts + l.T : 0, T, c }); };
+  if (P.mode === 'cubic') push(cub(P.q0, P.qf, P.v0, P.vf, P.T1), P.T1);
+  else if (P.mode === 'quintic') push(qui(P.q0, P.qf, P.v0, P.vf, P.T1), P.T1);
+  else if (P.mode === 'via') {
+    const d1 = P.qv - P.q0, d2 = P.qf - P.qv, s1 = d1 / P.T1, s2 = d2 / P.T2; let vv;
+    if (P.vmode === 'heur') vv = s1 * s2 < 0 ? 0 : 0.5 * (s1 + s2);
+    else if (P.vmode === 'cont') vv = 3 * (P.T1 * P.T1 * d2 + P.T2 * P.T2 * d1) / (2 * P.T1 * P.T2 * (P.T1 + P.T2));
+    else vv = P.vv;
+    R.vv = vv; R.s1 = s1; R.s2 = s2;
+    push(cub(P.q0, P.qv, 0, vv, P.T1), P.T1); push(cub(P.qv, P.qf, vv, 0, P.T2), P.T2);
+    R.accJump = evc(R.segs[0].c, P.T1)[2] - evc(R.segs[1].c, 0)[2];
+  } else if (P.mode === 'lspb') {
+    const T = P.T1, D = Math.abs(P.qf - P.q0), s = P.qf >= P.q0 ? 1 : -1;
+    R.amin = 4 * D / (T * T); R.ok = P.a >= R.amin * (1 - 1e-12);
+    const aa = R.ok ? P.a : R.amin;
+    R.tB = D < 1e-12 ? 0 : T / 2 - Math.sqrt(Math.max(aa * aa * T * T - 4 * aa * D, 0)) / (2 * aa);
+    R.v = aa * R.tB; R.coast = T - 2 * R.tB; R.aUsed = aa;
+    const q1 = P.q0 + s * aa * R.tB * R.tB / 2, q2 = q1 + s * R.v * R.coast;
+    push([P.q0, 0, s * aa / 2], R.tB);
+    if (R.coast > 1e-12) push([q1, s * R.v], R.coast);
+    push([q2, s * R.v, -s * aa / 2], R.tB);
+  }
+  const last = R.segs[R.segs.length - 1]; R.total = last.ts + last.T;
+  R.ev = t => { t = Math.max(0, Math.min(R.total, t)); let sg = last; for (const g of R.segs) { if (t < g.ts + g.T) { sg = g; break; } } return evc(sg.c, Math.min(t - sg.ts, sg.T)); };
+  return R;
+}
+/*END-TRAJ-CORE*/
+W3D.trajCore = trajCore;
+W3D.kinds.traj = function (root) {
+  const stage = root.querySelector('.stage'), side = root.querySelector('.side'), id = root.id;
+  const PRE = {
+    cubic: { q0: 10, qf: 50, T1: 2, v0: 0, vf: 0 },
+    quintic: { q0: 0, qf: 15, T1: 1, v0: 0, vf: 0 },
+    via: { q0: 10, qv: 40, qf: 20, T1: 1, T2: 1, vmode: 'cont', vv: 12 },
+    lspb: { q0: 0, qf: 120, T1: 2, a: 300 }
+  };
+  const P = Object.assign({ mode: 'cubic', q0: 10, qv: 40, qf: 50, T1: 2, T2: 1, v0: 0, vf: 0, vmode: 'heur', vv: 10, a: 300 }, PRE.cubic);
+  const ROWS = [
+    ['q0', 'θ0', -150, 150, 1, '°', ['cubic', 'quintic', 'via', 'lspb']], ['qv', 'θv', -150, 150, 1, '°', ['via']], ['qf', 'θF', -150, 150, 1, '°', ['cubic', 'quintic', 'via', 'lspb']],
+    ['T1', 'T / T1', 0.5, 6, 0.1, ' s', ['cubic', 'quintic', 'via', 'lspb']], ['T2', 'T2', 0.5, 6, 0.1, ' s', ['via']],
+    ['v0', 'θ̇0', -100, 100, 1, ' °/s', ['cubic', 'quintic']], ['vf', 'θ̇F', -100, 100, 1, ' °/s', ['cubic', 'quintic']],
+    ['vv', 'θ̇ via', -150, 150, 1, ' °/s', ['via*user']], ['a', 'a', 10, 1500, 5, ' °/s²', ['lspb']]];
+  side.innerHTML = '<select aria-label="trajectory type" class="mode"><option value="cubic">Cubic (rest-to-rest or end velocities)</option><option value="quintic">Quintic (zero end accelerations)</option><option value="via">Cubic through one via point</option><option value="lspb">Linear with parabolic blends (LSPB)</option></select>' +
+    '<select aria-label="via velocity rule" class="vm"><option value="heur">via velocity: simple rule (p.27)</option><option value="cont">via velocity: continuous acceleration</option><option value="user">via velocity: user-specified</option></select>' +
+    ROWS.map(r => W3D.sliderRow(id + '-' + r[0], r[1], r[2], r[3], P[r[0]], r[4], r[5])).join('') + '<div class="out mono" style="font-size:.8rem;line-height:1.55"></div>';
+  const cv = document.createElement('canvas'); cv.style.height = '450px'; stage.appendChild(cv);
+  const out = side.querySelector('.out'), modeSel = side.querySelector('.mode'), vmSel = side.querySelector('.vm');
+  const fx = (v, n = 3) => (Math.abs(v) < 5e-4 ? 0 : v).toFixed(n);
+  function niceTicks(lo, hi, n) { const span = hi - lo || 1, raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p, st = (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; const t = []; for (let v = Math.ceil(lo / st - 1e-9) * st; v <= hi + 1e-9; v += st) t.push(Math.abs(v) < 1e-9 ? 0 : v); return t; }
+  let R = null;
+  function syncUI() {
+    modeSel.value = P.mode; vmSel.value = P.vmode; vmSel.hidden = P.mode !== 'via';
+    ROWS.forEach(r => { const row = side.querySelector('#' + id + '-' + r[0]).parentElement; const on = r[6].some(m => m === P.mode || (m === 'via*user' && P.mode === 'via' && P.vmode === 'user')); row.hidden = !on;
+      const el = row.querySelector('input'); el.value = P[r[0]]; row.querySelector('output').textContent = P[r[0]] + r[5]; });
+    side.querySelector('label[for="' + id + '-T1"]').textContent = P.mode === 'via' ? 'T1' : 'T';
+  }
+  function draw() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.max(280, stage.clientWidth || 480), h = 450;
+    cv.width = w * dpr; cv.height = h * dpr; cv.style.width = '100%';
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const ink = W3D.css('--ink'), muted = W3D.css('--muted'), acc = W3D.css('--accent'), exam = W3D.css('--exam'), line = W3D.css('--line');
+    const L = 64, Rr = 14, Tp = 12, Bt = 36, gap = 20, ph = (h - Tp - Bt - 2 * gap) / 3, pw = w - L - Rr, TT = R.total;
+    const N = 160, ser = [[], [], []];
+    function evSeg(sg, tau) { let q = 0, v = 0, a = 0; const c = sg.c; for (let k = 0; k < c.length; k++) { q += c[k] * Math.pow(tau, k); if (k >= 1) v += k * c[k] * Math.pow(tau, k - 1); if (k >= 2) a += k * (k - 1) * c[k] * Math.pow(tau, k - 2); } return [q, v, a]; }
+    R.segs.forEach(sg => { const arrs = [[], [], []]; for (let i = 0; i <= N; i++) { const e = evSeg(sg, sg.T * i / N); for (let k = 0; k < 3; k++) arrs[k].push([sg.ts + sg.T * i / N, e[k]]); } for (let k = 0; k < 3; k++) ser[k].push(arrs[k]); });
+    const labels = ['θ (°)', 'dθ/dt (°/s)', 'd²θ/dt² (°/s²)'];
+    const col = R.ok ? acc : muted;
+    g.font = '11px IBM Plex Mono, monospace'; g.textBaseline = 'middle';
+    for (let k = 0; k < 3; k++) {
+      let lo = Infinity, hi = -Infinity; ser[k].forEach(a => a.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }));
+      if (k > 0) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); } if (hi - lo < 1e-9) { hi += 1; lo -= 1; } const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+      const y0 = Tp + k * (ph + gap), X = t => L + pw * t / TT, Y = v => y0 + ph * (hi - v) / (hi - lo);
+      g.strokeStyle = line; g.fillStyle = muted; g.lineWidth = 1; g.textAlign = 'right';
+      niceTicks(lo, hi, 4).forEach(v => { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(L + pw, Y(v)); g.stroke(); g.fillText(Math.abs(v) >= 100 ? v.toFixed(0) : (+v.toFixed(2)) + '', L - 6, Y(v)); });
+      g.strokeStyle = ink; g.lineWidth = 1.2; g.strokeRect(L, y0, pw, ph);
+      if (lo < 0 && hi > 0) { g.strokeStyle = muted; g.beginPath(); g.moveTo(L, Y(0)); g.lineTo(L + pw, Y(0)); g.stroke(); }
+      g.textAlign = 'center'; niceTicks(0, TT, 6).forEach(t => { g.strokeStyle = line; g.beginPath(); g.moveTo(X(t), y0); g.lineTo(X(t), y0 + ph); g.stroke(); if (k === 2) { g.fillStyle = muted; g.fillText((+t.toFixed(2)) + '', X(t), y0 + ph + 12); } });
+      g.setLineDash([4, 4]); g.strokeStyle = exam; g.lineWidth = 1;
+      const kn = R.segs.slice(1).map(s => s.ts); kn.forEach(t => { g.beginPath(); g.moveTo(X(t), y0); g.lineTo(X(t), y0 + ph); g.stroke(); }); g.setLineDash([]);
+      g.strokeStyle = col; g.lineWidth = 2.2; g.lineJoin = 'round';
+      ser[k].forEach(a => { g.beginPath(); a.forEach((p, i) => { const x = X(p[0]), y = Y(p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); });
+      g.save(); g.translate(11, y0 + ph / 2); g.rotate(-Math.PI / 2); g.fillStyle = muted; g.textAlign = 'center'; g.fillText(labels[k], 0, 0); g.restore();
+      if (k === 0 && (R.mode === 'via')) { [[0, P.q0], [P.T1, P.qv], [P.T1 + P.T2, P.qf]].forEach(p => { g.fillStyle = ink; g.beginPath(); g.arc(X(p[0]), Y(p[1]), 3.5, 0, 7); g.fill(); }); }
+      if (k === 0 && R.mode === 'lspb') { [[0, P.q0], [R.tB, R.segs[1] ? R.segs[1].c[0] : P.q0], [TT - R.tB, R.segs[R.segs.length - 1].c[0]], [TT, P.qf]].forEach(p => { g.fillStyle = ink; g.beginPath(); g.arc(X(p[0]), Y(p[1]), 3, 0, 7); g.fill(); }); }
+    }
+    g.fillStyle = muted; g.textAlign = 'center'; g.fillText('time t (s)', L + pw / 2, h - 8);
+    if (R.mode === 'lspb') {
+      g.fillStyle = exam; g.textAlign = 'center'; const X = t => L + pw * t / TT; g.fillText('tB', X(R.tB), Tp + 2 * (ph + gap) + ph - 8); if (X(TT - R.tB) - X(R.tB) > 60) g.fillText('tF−tB', X(TT - R.tB), Tp + 2 * (ph + gap) + ph - 8);
+      if (!R.ok) { g.textAlign = 'left'; g.fillText('a < a_min: no solution. Grey = the a_min profile', L + 8, Tp + 12); }
+    }
+  }
+  function update() {
+    R = trajCore(P); syncUI(); draw();
+    const cs = R.segs.map((s, i) => 'seg ' + (i + 1) + ' (t ' + fx(s.ts, 2) + '…' + fx(s.ts + s.T, 2) + ' s, own clock τ): ' + s.c.map((v, k) => 'a' + k + '=' + fx(v)).join(', '));
+    const units = P.mode === 'lspb' ? '' : '<div style="color:var(--muted)">units: a<sub>k</sub> in °/s<sup>k</sup></div>';
+    let ex = '', peakV = 0, peakA = 0;
+    for (let i = 0; i <= 2000; i++) { const e = R.ev(R.total * i / 2000); peakV = Math.max(peakV, Math.abs(e[1])); peakA = Math.max(peakA, Math.abs(e[2])); }
+    if (P.mode === 'via') ex = '<div>chord slopes ' + fx(R.s1) + ', ' + fx(R.s2) + ' °/s → via velocity <b>' + fx(R.vv) + ' °/s</b></div><div>acceleration jump at the via point: <b>' + fx(R.accJump) + ' °/s²</b>' + (Math.abs(R.accJump) < 5e-4 ? ' (continuous)' : '') + '</div>';
+    if (P.mode === 'lspb') ex = '<div>a<sub>min</sub> = 4Δq/tF² = <b>' + fx(R.amin) + ' °/s²</b>' + (R.ok ? '' : ' <span class="fb bad">a is below it: no real t<sub>B</sub></span>') + '</div><div>t<sub>B</sub> = ' + fx(R.tB, 4) + ' s · v = a·t<sub>B</sub> = ' + fx(R.v, 3) + ' °/s · coast ' + fx(R.coast, 4) + ' s</div>';
+    out.innerHTML = '<div>' + cs.join('</div><div>') + '</div>' + units + ex + '<div>peak |θ̇| = ' + fx(peakV) + ' °/s · peak |θ̈| = ' + fx(peakA) + ' °/s²</div>';
+    window.__state[id] = { mode: P.mode, vmode: P.vmode, P: Object.assign({}, P), coeffs: R.segs.map(s => s.c.slice()), durations: R.segs.map(s => s.T), vv: R.vv, accJump: R.accJump, tB: R.tB, v: R.v, amin: R.amin, ok: R.ok, coast: R.coast, peakV, peakA, total: R.total };
+  }
+  modeSel.addEventListener('change', e => { const m = e.target.value; P.mode = m; Object.assign(P, PRE[m]); update(); });
+  vmSel.addEventListener('change', e => { P.vmode = e.target.value; update(); });
+  ROWS.forEach(r => side.querySelector('#' + id + '-' + r[0]).addEventListener('input', e => { P[r[0]] = parseFloat(e.target.value); e.target.nextElementSibling.textContent = P[r[0]] + r[5]; update(); }));
+  window.addEventListener('enn-theme', () => R && draw()); window.addEventListener('resize', () => R && draw());
+  W3D.instances[id] = { set(o) { Object.assign(P, o); update(); return window.__state[id]; } };
+  update();
+};
+</script>

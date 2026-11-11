@@ -1,0 +1,212 @@
+<p class="eyebrow">Week 10 · Wheeled robots: kinematics</p>
+<h2>How fast must each wheel spin to move the robot like this?</h2>
+<p class="lead">A wheeled robot’s chassis moves with velocity (u, v, θ̇) in its own frame. Each wheel only cares about the velocity of its contact point along its driving direction. One formula, the generalised wheel model, turns that sentence into a row of a matrix. Stack one row per wheel and you have the robot’s kinematics.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Wheeled Robots<small>71 slides · practical sheet “Mobile robot kinematics”</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w10-lec">📖 View here</button>
+    <button type="button" class="btn" data-view="w10-prac">📖 Practical sheet</button>
+    <button type="button" class="btn" data-dl="notes/w10-lec.pdf" data-name="ENN581 W10 Wheeled Robots.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w10-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>Sample question 10</b> (<a class="pg" data-doc="w13-lec" data-page="20">W13 pp. 20–21</a>) is practical Q1 word for word: the three-wheel omnidirectional robot. It is solved in full on the <a href="#sample" data-goto="sample" data-anchor="sq10">Sample Qs tab</a>, with the generalised model the lecturer put on the next slide.</p>
+  <p><b>Where the marks are (indicative):</b> each wheel’s position (<sup>C</sup>x, <sup>C</sup>y), drive angle β and roller angle γ written down; the generalised model quoted; one row per wheel; the stacked matrix; the inverse (or rank argument) and what it means (holonomic or not).</p>
+  <p><b>Where marks are lost:</b> the sign of the <sup>C</sup>y term (it is −θ̇ <sup>C</sup>y in the x-row); using R(θ) where R⁻¹(θ) is needed; γ for a standard wheel (it is 0, and that wheel also cannot slide sideways); forgetting the no-slide equation, which is where non-holonomy comes from.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (solved below)</span>
+  <p>Four questions: the omni triangle matrix (P10.1, = Sample Q10), simulating it in the inertial frame with d = 10 cm (P10.2, done by hand and in the widget), the differential drive’s instantaneous centre of rotation (P10.3), and the bicycle’s kinematics and holonomy (P10.4).</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>A wheel is a one-way street</h4>A normal wheel rolls forwards and backwards but refuses to slide sideways. That refusal is a constraint on the chassis: it is why a car cannot parallel-park by moving sideways.</div>
+    <div class="card"><h4>An omni wheel is a wheel made of wheels</h4>Small rollers round the rim let it slide freely along one direction while it drives along another. So it constrains nothing: three of them can push the chassis in any direction.</div>
+    <div class="card"><h4>Every point on a turning body circles one point</h4>At each instant a planar rigid body rotates about its instantaneous centre of rotation (ICR). Every wheel axle that cannot slip must point at it, like spokes at a hub.</div>
+    <div class="card"><h4>Holonomic = you can get anywhere, any way</h4>A car can reach any parking spot, but not along any path: its velocity is restricted, not its position. That is a non-holonomic constraint. An omni robot has no such restriction.</div>
+  </div>
+  <div class="vids" data-vids="w10"></div>
+</div>
+
+<div class="widget" data-w3d="wheels" id="w10-wheels">
+  <div class="wh"><b>Wheeled robots from above</b><span class="eyebrow">drawn to scale · grid 0.5 m · exact constant-twist path for the next 6 s</span></div>
+  <div class="wbody"><div class="stage"></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> differential drive with φ̇ = (4, 6) rad/s gives the ICR 0.75 m to the left, the same as P10.3. Set the two wheels equal: the ICR runs off to infinity (straight line). Set them opposite: the robot spins about its centre. Omni with φ̇ = (4, −1, −1): a circle of radius 0.5 m. Note that v ≠ 0 is possible only for the omni robot.</div>
+</div>
+
+<!-- 1 -->
+<div class="sub" id="w10-frames">
+<h3>1 · Frames and the chassis velocity <span class="pgs"><a class="pg" data-doc="w10-lec" data-page="13">pp. 11–17</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Inertial frame {O}; chassis frame {C} at angle θ (anticlockwise from x<sub>O</sub>). The chassis velocity in its own axes is ζ = (u, v, θ̇): u forwards along x<sub>C</sub>, v sideways along y<sub>C</sub> (<a class="pg" data-doc="w10-lec" data-page="13">p.13</a>). In {O} it is ν = (ẋ, ẏ, θ̇):</p>
+\[ \boldsymbol\nu=\begin{bmatrix}\dot x\\\dot y\\\dot\theta\end{bmatrix}=\mathbf J(\theta)\,\boldsymbol\zeta=\begin{bmatrix}\cos\theta&-\sin\theta&0\\\sin\theta&\cos\theta&0\\0&0&1\end{bmatrix}\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix},\qquad \boldsymbol\zeta=\mathbf J^{-1}(\theta)\boldsymbol\nu=\mathbf J^\top(\theta)\boldsymbol\nu \]
+<p>We command wheel speeds, not (u, v, θ̇), so the real relation is \(\boldsymbol\zeta=\mathbf W\dot{\boldsymbol\varphi}\) with W set by the wheel layout (<a class="pg" data-doc="w10-lec" data-page="17">p.17</a>). <b>Forward</b> kinematics (wheels → motion) is for simulation; <b>inverse</b> (motion → wheels) is for control.</p></div>
+</div>
+
+<!-- 2 -->
+<div class="sub" id="w10-types">
+<h3>2 · Wheel types and pure rolling <span class="pgs"><a class="pg" data-doc="w10-lec" data-page="18">pp. 18–25</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Five types (<a class="pg" data-doc="w10-lec" data-page="18">p.18</a>): <b>fixed standard</b> (axle fixed to the chassis), <b>steerable standard</b> (axle turns about a vertical axis), <b>castor</b> (offset steering, passive), <b>Swedish/omni</b> (rollers on the rim), <b>spherical</b> (a ball). Only the two <i>standard</i> wheels impose a constraint on the chassis, because they cannot slide sideways. Castor, Swedish and spherical wheels impose none. Assumption throughout: <b>pure rolling, no slip at the contact point</b> (<a class="pg" data-doc="w10-lec" data-page="20">p.20</a>).</p>
+<p><b>Omni wheel in its own frame</b> {W}: x<sub>W</sub> is the driving direction, y<sub>W</sub> the wheel-plane normal; the rollers let the contact slide freely along a direction at angle γ from y<sub>W</sub> (<a class="pg" data-doc="w10-lec" data-page="22">pp. 22–25</a>). The contact velocity splits into a driven part and a free part:</p>
+\[ \begin{bmatrix}v_x\\v_y\end{bmatrix}=v_{drive}\begin{bmatrix}1\\0\end{bmatrix}+v_{free}\begin{bmatrix}-\sin\gamma\\\cos\gamma\end{bmatrix}\;\Rightarrow\;v_{drive}=v_x+v_y\tan\gamma,\qquad \dot\varphi=\frac{v_{drive}}{r}=\begin{bmatrix}\tfrac1r&\tfrac{\tan\gamma}{r}\end{bmatrix}\begin{bmatrix}v_x\\v_y\end{bmatrix} \]
+<p>With rollers perpendicular to the drive direction, γ = 0 and \(\dot\varphi=v_x/r\): the wheel ignores the sideways component.</p></div>
+</div>
+
+<!-- 3 -->
+<div class="sub" id="w10-gen">
+<h3>3 · The generalised wheel model <span class="pgs"><a class="pg" data-doc="w10-lec" data-page="26">pp. 26–36</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation (three steps)</span>
+<p><b>Step 1</b> (<a class="pg" data-doc="w10-lec" data-page="28">p.28</a>): the wheel frame is turned by β<sub>i</sub> from the chassis (β = angle from x<sub>C</sub> to the drive direction), so \({}^C\mathbf v_{W_i}=R(\beta_i)\,{}^{W_i}\mathbf v\).</p>
+<p><b>Step 2</b> (<a class="pg" data-doc="w10-lec" data-page="30">p.30</a>): the wheel sits at \(({}^Cx_{W_i},{}^Cy_{W_i})\) on a rigid chassis turning at θ̇, so its velocity is the chassis velocity plus \(\dot\theta\hat z\times\mathbf p\):</p>
+\[ {}^C\mathbf v_{W_i}=\begin{bmatrix}u-\dot\theta\,{}^Cy_{W_i}\\ v+\dot\theta\,{}^Cx_{W_i}\end{bmatrix}=\begin{bmatrix}1&0&-{}^Cy_{W_i}\\0&1&{}^Cx_{W_i}\end{bmatrix}\boldsymbol\zeta \]
+<p><b>Combine</b> and pick out the drive component (<a class="pg" data-doc="w10-lec" data-page="36">p.36</a>), adding R⁻¹(θ) to start from inertial velocities:</p>
+\[ \dot\varphi_i=\begin{bmatrix}\tfrac1{r_i}&\tfrac{\tan\gamma_i}{r_i}\end{bmatrix}\begin{bmatrix}\cos\beta_i&\sin\beta_i\\-\sin\beta_i&\cos\beta_i\end{bmatrix}\begin{bmatrix}1&0&-{}^Cy_{W_i}\\0&1&{}^Cx_{W_i}\end{bmatrix}\begin{bmatrix}\cos\theta&\sin\theta&0\\-\sin\theta&\cos\theta&0\\0&0&1\end{bmatrix}\begin{bmatrix}\dot x\\\dot y\\\dot\theta\end{bmatrix} \]
+<p>Read right to left: inertial → chassis; chassis twist → contact-point velocity; chassis axes → wheel axes; keep the driven component, divide by r. <span class="chk">equals the contact velocity projected on the drive direction, checked</span></p></div>
+<div class="layer derive"><span class="tag">Standard wheels: two equations (slides 37–42, 68)</span>
+<p>Fixed standard wheel: γ = 0, β constant. Steerable standard: γ = 0, β = β(t). Each gives a <b>rolling</b> equation (the model above) and a <b>no-sliding</b> equation (the axle component must vanish):</p>
+\[ r_i\dot\varphi_i=\big[\cos\beta_i\;\;\sin\beta_i\;\;-{}^Cy\cos\beta_i+{}^Cx\sin\beta_i\big]R^{-1}(\theta)\boldsymbol\nu,\qquad 0=\big[-\sin\beta_i\;\;\cos\beta_i\;\;{}^Cy\sin\beta_i+{}^Cx\cos\beta_i\big]R^{-1}(\theta)\boldsymbol\nu \]
+<p><span class="chk">both rows checked against the model and the rigid-body contact velocity</span> The no-sliding rows are the non-holonomic constraints (<a class="pg" data-doc="w10-lec" data-page="68">p.68</a>).</p></div>
+<div class="layer recipe"><span class="tag">Exam recipe (any wheeled robot)</span><ol>
+<li>Draw {C}. For each wheel write <sup>C</sup>x, <sup>C</sup>y, β (angle of the drive direction from x<sub>C</sub>), γ, r. Say which way positive φ̇ drives.</li>
+<li>Write one row per wheel: \(r\dot\varphi_i=\cos\beta_i(u-\dot\theta\,{}^Cy)+\sin\beta_i(v+\dot\theta\,{}^Cx)\) (γ = 0).</li>
+<li>For standard wheels add the no-slide row. It usually forces v = 0.</li>
+<li>Stack the rows: \(\dot{\boldsymbol\varphi}=\mathbf W^{-1}\boldsymbol\zeta\). Invert (or pseudo-invert) for \(\boldsymbol\zeta=\mathbf W\dot{\boldsymbol\varphi}\).</li>
+<li>Multiply by J(θ) for inertial velocities. Check a simple motion (straight ahead; spin on the spot).</li></ol></div>
+</div>
+
+<!-- 4 -->
+<div class="sub" id="w10-dd">
+<h3>4 · Differential drive and skid-steer <span class="pgs"><a class="pg" data-doc="w10-lec" data-page="43">pp. 43–52</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Two fixed standard wheels at (0, ±a), radius r, β = 0, γ = 0 (<a class="pg" data-doc="w10-lec" data-page="44">p.44</a>). Rolling rows: \(\dot\varphi_1=(u-a\dot\theta)/r\) (left, +a) and \(\dot\varphi_2=(u+a\dot\theta)/r\) (right, −a). No-slide: v = 0. Inverting (<a class="pg" data-doc="w10-lec" data-page="47">p.47</a>):</p>
+\[ \begin{bmatrix}u\\v\\\dot\theta\end{bmatrix}=\begin{bmatrix}\tfrac r2&\tfrac r2\\0&0\\-\tfrac{r}{2a}&\tfrac{r}{2a}\end{bmatrix}\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\end{bmatrix} \]
+<p><b>Skid-steer</b>, 4 standard wheels at (±b, ±a) (<a class="pg" data-doc="w10-lec" data-page="49">pp. 49–52</a>): the rows are (1/r)[1, 0, −a] for the left pair and (1/r)[1, 0, +a] for the right pair. b drops out. The slide’s 3×4 inverse \(u=\tfrac r4\sum\dot\varphi_i\), \(\dot\theta=\tfrac{r}{4a}(-\dot\varphi_1-\dot\varphi_2+\dot\varphi_3+\dot\varphi_4)\) is the least-squares (pseudo-) inverse <span class="chk">checked</span>. Note that a real skid-steer must slip to turn at all, which the pure-rolling model ignores.</p></div>
+<div class="worked"><span class="tag">Worked example</span><p>r = 0.05 m, a = 0.15 m, \(\dot\varphi\) = (4, 6) rad/s: u = 0.05(10)/2 = 0.25 m/s, θ̇ = 0.05(2)/0.3 = 0.3333 rad/s. ICR at y = u/θ̇ = 0.75 m to the left. <span class="chk">checked</span></p></div>
+</div>
+
+<!-- 5 -->
+<div class="sub" id="w10-omni">
+<h3>5 · Omnidirectional robots <span class="pgs"><a class="pg" data-doc="w10-lec" data-page="54">pp. 53–55</a></span></h3>
+<p>Three Swedish wheels at the corners of an equilateral triangle (centre-to-wheel d), drive directions tangential, rollers perpendicular (γ = 0). With the drive directions taken clockwise (β = 0°, −120°, +120°) the rows give</p>
+\[ \dot{\boldsymbol\varphi}=\frac1r\begin{bmatrix}1&0&-d\\-\tfrac12&-\tfrac{\sqrt3}2&-d\\-\tfrac12&\tfrac{\sqrt3}2&-d\end{bmatrix}\boldsymbol\zeta,\qquad \boldsymbol\zeta=\frac r3\begin{bmatrix}2&-1&-1\\0&-\sqrt3&\sqrt3\\-\tfrac1d&-\tfrac1d&-\tfrac1d\end{bmatrix}\dot{\boldsymbol\varphi} \]
+<p>The matrix is invertible (det = 3√3d/2), so any (u, v, θ̇) is possible: holonomic. Full derivation: <a href="#sample" data-goto="sample" data-anchor="sq10">Sample Q10</a>. The four-wheel Swedish layout (<a class="pg" data-doc="w10-lec" data-page="55">p.55</a>) works the same way with 45° rollers (tan γ ≠ 0). <span class="chk">checked</span></p>
+</div>
+
+<!-- 6 -->
+<div class="sub" id="w10-car">
+<h3>6 · Tricycle, car, Ackermann, bicycle <span class="pgs"><a class="pg" data-doc="w10-lec" data-page="56">pp. 56–61, 69</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Tricycle</b> (<a class="pg" data-doc="w10-lec" data-page="57">pp. 56–58</a>): front wheel W<sub>1</sub> at (b, 0), driven and steered (β<sub>1</sub>(t)); rear wheels fixed and passive. If the rear axle passes through C (the slide assumes this without saying it), the rear no-slide rows force v = 0. Step 2 gives the front contact velocity (u, bθ̇), and step 1 says it equals \(r\dot\varphi_1(\cos\beta_1,\sin\beta_1)\):</p>
+\[ \dot\varphi_1=\frac1r\sqrt{u^2+b^2\dot\theta^2},\qquad \beta_1=\operatorname{atan2}(b\dot\theta,\;u) \]
+<p><b>Ackermann steering</b> (<a class="pg" data-doc="w10-lec" data-page="61">p.61</a>): the two front wheels are steered by different amounts so that every axle line passes through one ICR on the rear axle’s line, so no wheel scrubs. Geometry <span class="added">added</span>: \(\cot\beta_{out}-\cot\beta_{in}=\text{track}/\text{wheelbase}\). Example: wheelbase 2.5 m, track 1.5 m, turn radius 6 m about the rear-axle midpoint: inner 25.463°, outer 20.323°. <span class="chk">checked</span></p>
+<p><b>Bicycle</b> (practical Q4, slide 69): rear wheel fixed at C, driven; front wheel at (L, 0), steered by β, not driven. Rear no-slide: v = 0. Front no-slide: \(-u\sin\beta+L\dot\theta\cos\beta=0\), so</p>
+\[ \dot\theta=\frac{u\tan\beta}{L},\qquad \text{turning radius } R=\frac{L}{\tan\beta} \]
+<p><span class="chk">checked</span> Steering jammed straight (β = 0): θ̇ = 0 and v = 0, so it can only roll forwards or backwards.</p></div>
+</div>
+
+<!-- 7 -->
+<div class="sub" id="w10-hol">
+<h3>7 · Manoeuvrability; holonomic vs non-holonomic <span class="pgs"><a class="pg" data-doc="w10-lec" data-page="62">pp. 62–68</a></span></h3>
+<div class="layer derive"><span class="tag">Definitions</span>
+<p><b>Degree of manoeuvrability</b> δ<sub>M</sub> = δ<sub>m</sub> + δ<sub>s</sub> (<a class="pg" data-doc="w10-lec" data-page="63">p.63</a>). The slide’s informal wording: δ<sub>m</sub> (mobility) ≈ how many directions the chassis can be driven in directly; δ<sub>s</sub> (steerability) ≈ how many independent steering angles. A precise version <span class="added">added: Siegwart et al. ch. 3</span>: stack the no-slide rows of all standard wheels into C<sub>1</sub>; then \(\delta_m=3-\operatorname{rank}C_1\) and \(\delta_s=\operatorname{rank}C_{1s}\) (the steered wheels’ rows). It reproduces all four slide examples (<a class="pg" data-doc="w10-lec" data-page="64">p.64</a>):</p>
+<div class="tbl"><table><tr><th>Robot</th><th>δ<sub>m</sub></th><th>δ<sub>s</sub></th><th>δ<sub>M</sub></th></tr>
+<tr><td>2 fixed wheels on one axle + castor (differential drive)</td><td>2</td><td>0</td><td>2</td></tr>
+<tr><td>2 fixed + 1 steered standard (tricycle / car-like)</td><td>1</td><td>1</td><td>2</td></tr>
+<tr><td>2 steered standard + 1 Swedish</td><td>1</td><td>2</td><td>3</td></tr>
+<tr><td>3 Swedish (omni triangle)</td><td>3</td><td>0</td><td>3</td></tr></table></div>
+<p><span class="chk">rank computation checked for each row</span></p>
+<p><b>Holonomic constraint</b> (<a class="pg" data-doc="w10-lec" data-page="66">p.66</a>): an equation in positions only, f(x, y, θ, …) = 0. <b>Non-holonomic</b> (<a class="pg" data-doc="w10-lec" data-page="67">p.67</a>): involves velocities and cannot be integrated into a position-only equation. The no-sliding condition of a standard wheel, \(-\dot x\sin\theta+\dot y\cos\theta=0\) for a differential drive, is the classic example. It forbids sideways velocity at every instant but not any final position: parallel parking is possible, just not directly. <b>Holonomic robot</b>: no non-holonomic constraints, so δ<sub>M</sub> = δ<sub>m</sub> = 3 (the omni triangle).</p></div>
+<div class="angle">Explain-type marks: “is the bicycle holonomic?” No. Its rear no-slide constraint restricts velocity, not position, and cannot be integrated, yet the bicycle can still reach any (x, y, θ) by manoeuvring. Name the constraint equation, say “velocity, not integrable”, and give the consequence.</div>
+</div>
+
+<h3>Guided problems: solve on paper first</h3>
+<div class="gp" data-topic="w10"><div class="head"><b>P10.1 · Omni triangle (practical Q1 = Sample Q10)</b><span class="chip derive">derive</span><span class="marks" data-id="w10-p1" data-topic="w10"></span></div>
+<p>Derive the relation between \(\dot\varphi_1,\dot\varphi_2,\dot\varphi_3\) and (u, v, θ̇) for the three-omni-wheel robot (centre-to-vertex d, rollers ⊥ drive).</p>
+<details class="hint"><summary>Hint 1</summary><p>Wheels at (0, d), (√3d/2, −d/2), (−√3d/2, −d/2). Pick each drive direction tangential and write its β.</p></details>
+<details class="hint"><summary>Hint 2</summary><p>γ = 0, so \(r\dot\varphi_i=\cos\beta_i(u-\dot\theta y_i)+\sin\beta_i(v+\dot\theta x_i)\).</p></details>
+<details class="sol"><summary>Full solution</summary><p>See section 5 and <a href="#sample" data-goto="sample" data-anchor="sq10">Sample Q10</a> for the full model answer. Row 1 (β = 0): \(r\dot\varphi_1=u-d\dot\theta\). Rows 2 and 3 follow with β = ∓120°. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w10"><div class="head"><b>P10.2 · Where does it go? (practical Q2)</b><span class="chip calc">calculate</span><span class="chip sketch">sketch</span><span class="marks" data-id="w10-p2" data-topic="w10"></span></div>
+<p>d = 0.10 m, r = 0.05 m, constant \(\dot{\boldsymbol\varphi}\) = (4, −1, −1) rad/s, starting at the origin with θ = 0. Find (u, v, θ̇), describe the path, and give the pose after 2 s.</p>
+<details class="hint"><summary>Hint 1</summary><p>Use the inverse matrix of section 5.</p></details>
+<details class="hint"><summary>Hint 2</summary><p>Constant (u, v, θ̇) means a circle about the ICR, which is at \((-v/\dot\theta,\;u/\dot\theta)\) in the chassis frame.</p></details>
+<div class="ansrow"><label>θ̇ (rad/s)<input data-ans="-0.3333" data-tol="0.001" data-label="θ̇" inputmode="decimal" data-wrong='[{"v":0.3333,"msg":"sign: with clockwise drive directions, positive φ̇ sums turn the robot clockwise."}]'></label><label>x after 2 s (m)<input data-ans="0.3092" data-tol="0.001" data-label="x" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>u = (0.05/3)(8 + 1 + 1) = 0.1667 m/s; v = (0.05/√3)(−1 + 1) = 0; θ̇ = −(0.05/0.3)(4 − 1 − 1) = −0.3333 rad/s. ICR at (0, u/θ̇) = (0, −0.5) m: a clockwise circle of radius 0.5 m. After 2 s, θ = −0.6667 rad, x = R sin|θ| = 0.5 sin 0.6667 = 0.3092 m, y = −0.5(1 − cos 0.6667) = −0.1071 m. Euler integration with dt = 0.01 s lands within 0.55 mm of this. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w10"><div class="head"><b>P10.3 · ICR of a differential drive (practical Q3)</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w10-p3" data-topic="w10"></span></div>
+<p>Derive the position of the ICR for wheel speeds \(\dot\varphi_1\) (left, at +a) and \(\dot\varphi_2\) (right, at −a). Evaluate for a = 0.3 m, \(\dot\varphi\) = (2, 5) rad/s.</p>
+<details class="hint"><summary>Hint</summary><p>The ICR is the chassis point with zero velocity: \(u-\dot\theta y=0\), v = 0 → on the axle at y = u/θ̇.</p></details>
+<div class="ansrow"><label>y<sub>ICR</sub> (m)<input data-ans="0.7" data-tol="0.002" data-label="y" inputmode="decimal" data-wrong='[{"v":-0.7,"msg":"sign: the faster right wheel turns the robot left, so the ICR is on +y."}]'></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>\(y_{ICR}=\dfrac{u}{\dot\theta}=\dfrac{r(\dot\varphi_1+\dot\varphi_2)/2}{r(\dot\varphi_2-\dot\varphi_1)/(2a)}=a\dfrac{\dot\varphi_1+\dot\varphi_2}{\dot\varphi_2-\dot\varphi_1}\), on the axle (x = 0). Equal speeds: at infinity (straight). Opposite speeds: at the centre (spin). Here 0.3 × 7/3 = 0.7 m. r cancels. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w10"><div class="head"><b>P10.4 · Bicycle (practical Q4)</b><span class="chip derive">derive</span><span class="chip explain">explain</span><span class="marks" data-id="w10-p4" data-topic="w10"></span></div>
+<p>Rear wheel fixed and driven, front wheel steered and not driven, wheelbase L. Derive the kinematics. Is it holonomic? Evaluate θ̇ for u = 2 m/s, β = 20°, L = 1.2 m.</p>
+<div class="ansrow"><label>θ̇ (rad/s)<input data-ans="0.6066" data-tol="0.001" data-label="θ̇" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>Rear rolling: \(r\dot\varphi_r=u\). Rear no-slide: v = 0. Front no-slide (β, at (L, 0)): \(-u\sin\beta+L\dot\theta\cos\beta=0\Rightarrow\dot\theta=u\tan\beta/L\). In {O}: \(\dot x=u\cos\theta\), \(\dot y=u\sin\theta\), \(\dot\theta=u\tan\beta/L\). Non-holonomic: \(-\dot x\sin\theta+\dot y\cos\theta=0\) restricts velocity only and cannot be integrated. Numbers: 2 tan 20°/1.2 = 0.6066 rad/s, turning radius 3.297 m. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w10"><div class="head"><b>P10.5 · Tricycle wheel command</b><span class="chip calc">calculate</span><span class="marks" data-id="w10-p5" data-topic="w10"></span></div>
+<p>A tricycle with the front wheel at b = 0.6 m (r = 0.1 m) must move at u = 0.4 m/s while turning at θ̇ = 0.5 rad/s. Find \(\dot\varphi_1\) and β<sub>1</sub>.</p>
+<div class="ansrow"><label>\(\dot\varphi_1\) (rad/s)<input data-ans="5" data-tol="0.01" data-label="φ̇1" inputmode="decimal"></label><label>β<sub>1</sub> (deg)<input data-ans="36.870" data-tol="0.05" data-label="β1" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>Contact velocity (0.4, 0.6 × 0.5) = (0.4, 0.3) m/s, magnitude 0.5 m/s, so \(\dot\varphi_1\) = 0.5/0.1 = 5 rad/s and β<sub>1</sub> = atan2(0.3, 0.4) = 36.870°. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w10"><div class="head"><b>P10.6 · Spot the error</b><span class="chip spot">spot the error</span><span class="marks" data-id="w10-p6" data-topic="w10"></span></div>
+<p>“For a differential drive, \(\dot\varphi_1=(u+a\dot\theta)/r\) for the left wheel at y = +a; and since both wheels are standard, v can be any value.”</p>
+<details class="sol"><summary>Answer</summary><p>The left wheel’s contact velocity is \(u-\dot\theta\,y=u-a\dot\theta\): turning left (θ̇ &gt; 0) slows the inner (left) wheel. And the no-slide constraint of the fixed wheels forces v = 0: a standard wheel cannot slide sideways.</p></details></div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w10"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w10-q1" data-topic="w10"></span></div><p>Which wheel types constrain the chassis motion?</p><details class="sol"><summary>Answer</summary><p>Only standard wheels (fixed and steerable), which cannot slide sideways. Castor, Swedish and spherical wheels impose no constraint.</p></details></div>
+<div class="gp" data-topic="w10"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w10-q2" data-topic="w10"></span></div><p>Differential drive, r = 0.1 m, a = 0.2 m, \(\dot\varphi\) = (−5, 5) rad/s. u and θ̇?</p><details class="sol"><summary>Answer</summary><p>u = 0; θ̇ = 0.1(10)/0.4 = 2.5 rad/s: a spin on the spot about C.</p></details></div>
+<div class="gp" data-topic="w10"><div class="head"><b>Q3</b><span class="chip explain">concept</span><span class="marks" data-id="w10-q3" data-topic="w10"></span></div><p>What does δ<sub>M</sub> = 3 mean for the omni triangle?</p><details class="sol"><summary>Answer</summary><p>All three chassis velocities (u, v, θ̇) can be set directly and independently: the robot is holonomic and omnidirectional.</p></details></div>
+
+<div class="box" data-reading="w10"></div>
+
+<script data-after>
+W3D.kinds.wheels = function (root) {
+  const stage = root.querySelector('.stage'), side = root.querySelector('.side'), id = root.id, D2R = Math.PI / 180;
+  const R = { dd: { r: 0.05, a: 0.15, title: 'Differential drive (r 0.05, a 0.15 m)', sl: [['φ̇1 (left)', -8, 8, 4], ['φ̇2 (right)', -8, 8, 6]] },
+    omni: { r: 0.05, d: 0.10, title: 'Omni triangle (r 0.05, d 0.10 m)', sl: [['φ̇1', -8, 8, 4], ['φ̇2', -8, 8, -1], ['φ̇3', -8, 8, -1]] },
+    tri: { r: 0.1, b: 0.6, title: 'Tricycle (r 0.1, b 0.6 m)', sl: [['φ̇1 (front)', -8, 8, 5], ['β1 (deg)', -80, 80, 36.87]] } };
+  let kind = 'dd', vals = R.dd.sl.map(s => s[3]);
+  const cv = document.createElement('canvas'); stage.appendChild(cv); const g = cv.getContext('2d');
+  function twist() { const p = R[kind];
+    if (kind === 'dd') return [p.r * (vals[0] + vals[1]) / 2, 0, p.r * (vals[1] - vals[0]) / (2 * p.a)];
+    if (kind === 'omni') { const [f1, f2, f3] = vals; return [p.r / 3 * (2 * f1 - f2 - f3), p.r / Math.sqrt(3) * (f3 - f2), -p.r / (3 * p.d) * (f1 + f2 + f3)]; }
+    const be = vals[1] * D2R, sp = p.r * vals[0]; return [sp * Math.cos(be), 0, sp * Math.sin(be) / p.b]; }
+  function pose(z, T) { const [u, v, w] = z; if (Math.abs(w) < 1e-9) return [u * T, v * T, 0]; const th = w * T; return [(u * Math.sin(th) + v * (Math.cos(th) - 1)) / w, (u * (1 - Math.cos(th)) + v * Math.sin(th)) / w, th]; }
+  function buildSide() { side.innerHTML = '<label class="eyebrow" for="' + id + '-k">Robot</label><select id="' + id + '-k">' + Object.keys(R).map(k => '<option value="' + k + '"' + (k === kind ? ' selected' : '') + '>' + R[k].title + '</option>').join('') + '</select>' +
+      R[kind].sl.map((s, i) => W3D.sliderRow(id + '-s' + i, s[0], s[1], s[2], vals[i], 0.1, s[0].includes('deg') ? '°' : '')).join('') + '<div class="out"></div>';
+    side.querySelector('#' + id + '-k').addEventListener('change', e => { kind = e.target.value; vals = R[kind].sl.map(s => s[3]); buildSide(); draw(); });
+    R[kind].sl.forEach((s, i) => { const el = side.querySelector('#' + id + '-s' + i); el.addEventListener('input', () => { vals[i] = +el.value; el.nextElementSibling.textContent = (+el.value).toFixed(1); draw(); }); }); }
+  let S = 200, O = [0, 0], W = 300, H = 340;
+  function size() { W = stage.clientWidth; H = Math.max(stage.clientHeight, 340); const dpr = Math.min(devicePixelRatio || 1, 2); cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); S = Math.min(W, H) / 2.6; O = [W / 2, H / 2]; draw(); }
+  const P = (x, y) => [O[0] + x * S, O[1] - y * S];
+  function chassis(pz, alpha) { const c = W3D.css, p = R[kind], th = pz[2], cs = Math.cos(th), sn = Math.sin(th), T = (x, y) => P(pz[0] + cs * x - sn * y, pz[1] + sn * x + cs * y);
+    g.globalAlpha = alpha; g.strokeStyle = c('--ink'); g.lineWidth = 2; g.beginPath();
+    let wheels = [];
+    if (kind === 'dd') { [[-0.12, -0.2], [0.12, -0.2], [0.12, 0.2], [-0.12, 0.2]].forEach((q, i) => { const s = T(...q); i ? g.lineTo(...s) : g.moveTo(...s); }); wheels = [[0, p.a, 0], [0, -p.a, 0]]; }
+    else if (kind === 'omni') { [90, -30, 210].forEach((al, i) => { const s = T(p.d * 1.6 * Math.cos(al * D2R), p.d * 1.6 * Math.sin(al * D2R)); i ? g.lineTo(...s) : g.moveTo(...s); }); wheels = [[0, p.d, 0], [p.d * Math.cos(-30 * D2R), p.d * Math.sin(-30 * D2R), -120 * D2R], [p.d * Math.cos(210 * D2R), p.d * Math.sin(210 * D2R), 120 * D2R]]; }
+    else { [[-0.1, -0.2], [p.b + 0.05, -0.05], [p.b + 0.05, 0.05], [-0.1, 0.2]].forEach((q, i) => { const s = T(...q); i ? g.lineTo(...s) : g.moveTo(...s); }); wheels = [[p.b, 0, vals[1] * D2R], [0, 0.18, 0], [0, -0.18, 0]]; }
+    g.closePath(); g.stroke();
+    wheels.forEach(([x, y, be]) => { const wl = 0.07; const a1 = T(x - wl * Math.cos(be), y - wl * Math.sin(be)), a2 = T(x + wl * Math.cos(be), y + wl * Math.sin(be)); g.strokeStyle = c('--accent'); g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(...a1); g.lineTo(...a2); g.stroke(); });
+    const o = T(0, 0), xa = T(0.12, 0); g.strokeStyle = c('--axx'); g.lineWidth = 2; g.beginPath(); g.moveTo(...o); g.lineTo(...xa); g.stroke(); g.globalAlpha = 1; }
+  function draw() { const c = W3D.css; g.clearRect(0, 0, W, H);
+    g.strokeStyle = c('--line'); g.lineWidth = 1; for (let k = -6; k <= 6; k++) { const a = P(k * 0.5, -3), b = P(k * 0.5, 3), d1 = P(-3, k * 0.5), d2 = P(3, k * 0.5); g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.moveTo(...d1); g.lineTo(...d2); g.stroke(); }
+    const z = twist();
+    g.strokeStyle = c('--exam'); g.lineWidth = 2; g.beginPath(); for (let k = 0; k <= 240; k++) { const pz = pose(z, k * 6 / 240), s = P(pz[0], pz[1]); k ? g.lineTo(...s) : g.moveTo(...s); } g.stroke();
+    [2, 4, 6].forEach(T => chassis(pose(z, T), 0.35)); chassis([0, 0, 0], 1);
+    let icr = null; if (Math.abs(z[2]) > 1e-6) { icr = [-z[1] / z[2], z[0] / z[2]]; const s = P(...icr); g.fillStyle = c('--bad'); g.beginPath(); g.arc(s[0], s[1], 5, 0, 7); g.fill(); g.fillStyle = c('--ink'); g.font = '12px IBM Plex Mono, monospace'; g.fillText('ICR', s[0] + 7, s[1] - 7); }
+    const p2 = pose(z, 2);
+    side.querySelector('.out').innerHTML = '<div class="mono" style="font-size:.82rem;line-height:1.6">u = ' + z[0].toFixed(4) + ' m/s<br>v = ' + z[1].toFixed(4) + ' m/s<br>θ̇ = ' + z[2].toFixed(4) + ' rad/s<br>ICR (chassis) = ' + (icr ? '(' + icr[0].toFixed(3) + ', ' + icr[1].toFixed(3) + ') m' : 'at infinity (straight)') + '<br>pose after 2 s = (' + p2[0].toFixed(4) + ', ' + p2[1].toFixed(4) + ', ' + p2[2].toFixed(4) + ' rad)</div>';
+    window.__state[id] = { kind, zeta: z, icr, pose2: p2 }; }
+  buildSide(); new ResizeObserver(size).observe(stage); window.addEventListener('enn-theme', draw); size();
+  W3D.instances[id] = { set(k, v) { kind = k; vals = v.slice(); buildSide(); draw(); return window.__state[id]; } };
+};
+</script>

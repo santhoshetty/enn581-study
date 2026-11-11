@@ -1,0 +1,101 @@
+\week{W2}{Forward kinematics: frames, ETS, proximal DH}{2}
+\begin{multicols}{3}
+\hd{Homogeneous transform \pg{12}}
+\begin{fbx}[Pose of \{B\} in \{A\}]
+\[\tr AB=\begin{bmatrix}{}^A\Rm_B & {}^A\mathbf t_B\\ \mathbf 0^\top & 1\end{bmatrix},\quad {}^A\mathbf P=\tr AB\,{}^B\mathbf P,\quad \tr BA=\begin{bmatrix}\Rm^\top & -\Rm^\top\mathbf t\\ \mathbf 0^\top&1\end{bmatrix}\]
+\use{columns of $\Rm$ = B's unit axes in A; $\mathbf t$ = B's origin in A. Inverse: transpose $\Rm$, and the translation becomes $-\Rm^\top\mathbf t$ (not $-\mathbf t$).}
+\end{fbx}
+\begin{fbx}[Compounding \pg{13}]
+$\tr AC=\tr AB\,\tr BC$ (inner indices cancel).\\
+Right-multiply = next move about/along the \emph{current} frame.\\
+Left-multiply = about/along the \emph{fixed} frame.
+\end{fbx}
+\begin{worked}[order matters]
+$R_x(30^\circ)t_z(2)$: C's origin $=(0,-1.000,1.732)$.\\ $t_z(2)R_x(30^\circ)$: origin $=(0,0,2)$. \chk
+\end{worked}
+
+\hd{Planar RRR by trigonometry \pg{6--9}}
+\[x=\textstyle\sum_k L_k\cos\phi_k,\quad y=\sum_k L_k\sin\phi_k,\quad \phi_k=q_1+\dots+q_k,\quad q_E=\phi_3\]
+\begin{worked}
+$L=(0.5,0.4,0.2)$\,m, $q=(30^\circ,45^\circ,-60^\circ)$: $\phi=(30,75,15)^\circ$, $x=0.7297$, $y=0.6881$\,m, $q_E=15^\circ$. \chk
+\end{worked}
+\begin{trap}
+Using the joint angles themselves (cos 45°) instead of the running sums. At $q=0$ everything agrees, so test a non-zero pose.
+\end{trap}
+
+\hd{Elementary Transform Sequence (ETS) \pg{15--19}}
+Six moves: $t_x,t_y,t_z,R_x,R_y,R_z$, each with a constant or a joint variable. Walk base → tool, write every move in order, multiply.
+\begin{recipe}[FK by ETS (W13 Q1)]
+\begin{enumerate}
+\item Draw \{S\}. Mark every joint axis and its drawn positive direction.
+\item Translations to the first joint; then $R_{axis}(\pm\theta_i)$ (minus if the drawn arrow is opposite to the right-hand rule).
+\item Continue to the tool; finish with the constant rotation that matches the drawn \{T\}.
+\item Group per joint: $^{i-1}\T_i$ = “indicate intermediate frames”.
+\item Multiply (at least the position column). Check at all $\theta=0$.
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[Furuta pendulum \pg{19}]
+$\tr BE=t_z(L_0)R_z(\theta_1)t_x(L_1)$\\ \hspace*{2.2em}$R_x(\theta_2)t_z(-L_2)R_y(\pi)$\\
+$x=L_1c_1-L_2s_1s_2,\ y=L_1s_1+L_2c_1s_2,\ z=L_0-L_2c_2$ \chk
+\end{fbx}
+\begin{worked}
+$L=(0.5,0.4,0.3)$, $\theta=(60^\circ,45^\circ)$: $\mathbf p=(0.0163,\,0.4525,\,0.2879)$\,m. Workspace: $\rho^2+(z-L_0)^2=L_1^2+L_2^2$, a spherical band $|z-L_0|\le L_2$ (not a torus). \chk
+\end{worked}
+
+\columnbreak
+\hd{Proximal (modified, Craig) DH \pg{21--36}}
+\begin{fbx}[Link transform \pg{28}]
+\[{}^{i-1}\T_i=R_x(\alpha_{i-1})\,t_x(a_{i-1})\,R_z(\theta_i)\,t_z(d_i)\]\[=\begin{bmatrix}c\theta_i&-s\theta_i&0&a_{i-1}\\ s\theta_ic\alpha_{i-1}&c\theta_ic\alpha_{i-1}&-s\alpha_{i-1}&-s\alpha_{i-1}d_i\\ s\theta_is\alpha_{i-1}&c\theta_is\alpha_{i-1}&c\alpha_{i-1}&c\alpha_{i-1}d_i\\0&0&0&1\end{bmatrix}\]
+\use{then ${}^0\T_n={}^0\T_1\,{}^1\T_2\cdots{}^{n-1}\T_n$. Revolute variable $\theta_i$; prismatic variable $d_i$.}
+\end{fbx}
+\begin{tabularx}{\linewidth}{@{}lX@{}}\toprule
+$a_{i-1}$ & distance $z_{i-1}\to z_i$ along $x_{i-1}$ (common normal), $\ge0$\\
+$\alpha_{i-1}$ & angle $z_{i-1}\to z_i$ about $x_{i-1}$\\
+$d_i$ & distance $x_{i-1}\to x_i$ along $z_i$ (signed)\\
+$\theta_i$ & angle $x_{i-1}\to x_i$ about $z_i$\\\bottomrule
+\end{tabularx}
+\begin{recipe}[Assign proximal frames \pg{29}]
+\begin{enumerate}
+\item Joint axes. For axes $i$, $i{+}1$ find the common normal (or the intersection).
+\item Origin of $\{i\}$ where the normal meets axis $i$; $z_i$ along axis $i$.
+\item $x_i$ along the normal towards axis $i{+}1$ (if the axes intersect: normal to their plane).
+\item $y_i$ completes a right-handed frame.
+\item $\{0\}=\{1\}$ at $q_1=0$; choose $\{N\}$ to zero as many parameters as possible.
+\item Row $i$: $a_{i-1},\alpha_{i-1}$ look back (axis $i{-}1\to i$); $d_i,\theta_i$ along axis $i$.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[Furuta DH table \pg{34}]
+\begin{tabular}{@{}ccccc@{}}$i$&$a_{i-1}$&$\alpha_{i-1}$&$d_i$&$\theta_i$\\\hline 1&0&0&$L_0$&$q_1{+}90^\circ$\\2&0&$90^\circ$&$L_1$&$q_2$\\3&0&$90^\circ$&$L_2$&$0$\end{tabular}\\
+$\{3\}\ne\{E\}$: ${}^3\T_E=R_z(-90^\circ)$ makes the product equal the ETS for all $q$. \chk
+\end{worked}
+\begin{fbx}[Franka Panda, published proximal DH]
+$a$: 0, 0, 0, 0.0825, $-$0.0825, 0, 0.088;\quad $\alpha$: 0, $-90$, 90, 90, $-90$, 90, 90°\\
+$d$: 0.333, 0, 0.316, 0, 0.384, 0, 0; flange $d=0.107$. At $q=0$: flange at $(0.088, 0, 0.926)$\,m. \chk
+\end{fbx}
+
+\hd{Distal (standard) DH \pg{37--40}}
+${}^{i-1}\T_i=R_z(\theta_i)\,t_z(d_i)\,t_x(a_i)\,R_x(\alpha_i)$; frame $\{i\}$ sits on axis $i{+}1$; joint $i$ turns about $z_{i-1}$.
+\begin{trap}
+Never mix: a proximal table in the distal matrix gives a different robot. Corke's toolbox \texttt{DHRobot} is distal (\texttt{RevoluteMDH} for proximal). Write ``proximal (Craig) DH'' on your answer.
+\end{trap}
+
+\columnbreak
+\hd{Why 4 parameters? \pg{42--44}}
+6 numbers relate two bodies; DH imposes 2 rules (proximal: $x_i\perp z_{i+1}$ and $x_i$ meets $z_{i+1}$), so $6-2=4$. Cost: a frame may lie off the link. A good model is \textbf{complete}, \textbf{continuous} (DH fails for nearly parallel axes: the common normal jumps) and \textbf{minimal}.
+
+\hd{URDF \pg{45--47}}
+XML of \texttt{<link>}s and \texttt{<joint>}s: joint \texttt{origin} = constant ETS steps; \texttt{axis} = which $R$ the joint is. Slide example = $R_z(q_1)t_x(1)R_z(q_2)t_x(1)$.
+
+\hd{Notebook exercises}
+\textbf{Two frames (Q3).} Origin $(3,5,2)$; $x_B=-z_A$, $z_B=+y_A$, so $y_B=-x_A$:
+\[\tr AB=\begin{bmatrix}0&-1&0&3\\0&0&1&5\\-1&0&0&2\\0&0&0&1\end{bmatrix}\]\[=t(3,5,2)\,R_y(90^\circ)\,R_x(-90^\circ)\ \chk\]
+\textbf{PUMA by ETS (Q5).} \[t_z(L_b)R_z(q_1)R_y(q_2)t_z(L_u)R_y(q_3)\,t_z(L_f)R_z(q_4)R_y(q_5)R_z(q_6)\] Coincident axes: no translation between consecutive rotations (shoulder; spherical wrist). The wrist centre does not move with $q_4..q_6$. \chk
+\begin{slideerr}[notebook]
+Cell 35 writes \texttt{tz(-30)} for $-0.30$\,m, so its printed pose is wrong. A filled-in Q3 answer \texttt{ty(5) tx(3) Ry(90) Rx(90)} misses $t_z(2)$ and the sign of the last rotation.
+\end{slideerr}
+
+\hd{W13 Q1 arm (answer shape)}
+$\tr ST=R_z(\theta_1)t_z(L_1{+}L_2)R_y(-\theta_2)t_x(L_3)$\\ \hspace*{2.2em}$R_y(-\theta_3)t_x(L_4)R_x(90^\circ)$
+\[\tr ST=\begin{bmatrix}c_1c_{23}&-c_1s_{23}&s_1&c_1r\\ s_1c_{23}&-s_1s_{23}&-c_1&s_1r\\ s_{23}&c_{23}&0&L_1{+}L_2{+}L_3s_2{+}L_4s_{23}\\0&0&0&1\end{bmatrix}\]
+$r=L_3c_2+L_4c_{23}$. Check $\theta=0$: tip $(L_3{+}L_4,0,L_1{+}L_2)$, $y_T=z_S$. \chk
+\end{multicols}

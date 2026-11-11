@@ -1,0 +1,201 @@
+\bpart{DERIV}{Full derivations (re-read instead of re-inventing)}{16}
+\begin{multicols}{3}
+\begin{fbx}[(a) Proximal DH link transform multiplied out]
+${}^{i-1}\T_i=R_x(\alpha)\,t_x(a)\,R_z(\theta)\,t_z(d)$ (write $\alpha=\alpha_{i-1}$, $a=a_{i-1}$). Multiply left to right.\\
+Step 1: $R_x(\alpha)\,t_x(a)=\begin{bmatrix}1&0&0&a\\0&c\alpha&-s\alpha&0\\0&s\alpha&c\alpha&0\\0&0&0&1\end{bmatrix}$.\\
+Step 2: $R_z(\theta)\,t_z(d)=\begin{bmatrix}c\theta&-s\theta&0&0\\s\theta&c\theta&0&0\\0&0&1&d\\0&0&0&1\end{bmatrix}$.\\
+Step 3, rotation block $R_x(\alpha)R_z(\theta)$, row by row:\\
+row 1 $=(c\theta,\,-s\theta,\,0)$;\\
+row 2 $=c\alpha\,(s\theta,\,c\theta,\,0)-s\alpha\,(0,0,1)=(c\alpha s\theta,\;c\alpha c\theta,\;-s\alpha)$;\\
+row 3 $=s\alpha\,(s\theta,\,c\theta,\,0)+c\alpha\,(0,0,1)=(s\alpha s\theta,\;s\alpha c\theta,\;c\alpha)$.\\
+Step 4, translation: $R_z$ leaves the $z$-axis alone, so the two shifts add inside $R_x(\alpha)$: $\mathbf p=R_x(\alpha)(a,0,d)^\top=(a,\,-s\alpha\,d,\,c\alpha\,d)$.
+\[{}^{i-1}\T_i=\begin{bmatrix}c\theta&-s\theta&0&a\\s\theta c\alpha&c\theta c\alpha&-s\alpha&-s\alpha\,d\\s\theta s\alpha&c\theta s\alpha&c\alpha&c\alpha\,d\\0&0&0&1\end{bmatrix}\]
+Checks: $\alpha=0$: planar rotation, $\mathbf p=(a,0,d)$. $\theta=a=\alpha=0$: pure $t_z(d)$. \chk
+\end{fbx}
+
+\begin{fbx}[(b) Planar 2R inverse kinematics, both methods]
+$x=L_1c_1+L_2c_{12}$,\ $y=L_1s_1+L_2s_{12}$.\\
+\textbf{Algebraic.} Square and add; $c_1c_{12}+s_1s_{12}=c_2$:\\
+$x^2+y^2=L_1^2+L_2^2+2L_1L_2\,c_2$\\
+$\Rightarrow c_2=\dfrac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2}$; reachable iff $|c_2|\le1$.\\
+$s_2=\pm\sqrt{1-c_2^2}$, $q_2=\atantwo(s_2,c_2)$: two branches.\\
+Expand $c_{12},s_{12}$ and put $k_1=L_1+L_2c_2$, $k_2=L_2s_2$:\\
+$x=k_1c_1-k_2s_1$,\ $y=k_1s_1+k_2c_1$.\\
+This is $(k_1,k_2)$ rotated by $q_1$, so $\arg(x,y)=q_1+\mu$ with $\mu=\atantwo(k_2,k_1)$:
+\[q_1=\atantwo(y,x)-\atantwo(L_2s_2,\;L_1+L_2c_2)\]
+\textbf{Geometric.} Triangle: origin $O$, elbow $E$, tip $P$; sides $L_1,L_2$, $r=|OP|$. The \emph{interior} angle at $E$ is $\pi-q_2$.\\
+Cosine rule: $r^2=L_1^2+L_2^2-2L_1L_2\cos(\pi-q_2)=L_1^2+L_2^2+2L_1L_2\cos q_2$ (same $c_2$).\\
+Drop a perpendicular from $P$ to line $OE$: height $L_2\sin(\pi-q_2)=L_2s_2$, base $L_1+L_2c_2$, so $\tan\mu=\dfrac{L_2s_2}{L_1+L_2c_2}$ ($\mu$ = angle at $O$ between link 1 and $OP$).\\
+$q_2>0$ (tip anticlockwise of link 1): link 1 lies \emph{below} $OP$, $q_1=\atantwo(y,x)-\mu$.\\
+$q_2<0$: $\mu<0$, link 1 lies above $OP$; the same formula gives $q_1=\atantwo(y,x)+|\mu|$.\\
+\textbf{Both branches:} $(q_1,q_2)$ and $(q_1',-q_2)$ with $\mu\to-\mu$.\\
+Check: $L=(0.5,0.4)$, $P=(0.5,0.3)$: $c_2=-0.1750$; $q=(-11.52^\circ,\,100.08^\circ)$ or $(73.45^\circ,\,-100.08^\circ)$; FK reproduces $P$ for both. \chk
+\end{fbx}
+
+\begin{fbx}[(c) Spherical wrist: decoupling and ZYZ wrist angles]
+Axes 4, 5, 6 meet at the wrist centre $W$, so $q_4..q_6$ cannot move $W$: $W$ depends on $q_1..q_3$ only.\\
+1. $\mathbf p_W=\mathbf p_E-d_6\,{}^0\Rm_E\,[0\ 0\ 1]^\top$ (third column of $\Rm$).\\
+2. Top view: $q_1=\atantwo(y_W,x_W)$; second branch $q_1+\pi$.\\
+3. Vertical plane: $r_W=\sqrt{x_W^2+y_W^2}$, height $z_W-H$; upper arm $G$, forearm $F$, $q_3$ relative (a 2R problem, as in (b)):
+\[\cos q_3=\frac{r_W^2+(z_W-H)^2-F^2-G^2}{2FG},\quad q_3=\atantwo(\pm\sqrt{1-c_3^2},c_3)\]
+\[q_2=\atantwo(z_W-H,\,r_W)-\atantwo(Fs_3,\;G+Fc_3)\]
+4. ${}^3\Rm_6=({}^0\Rm_3)^\top\,{}^0\Rm_6=R_z(q_4)R_y(q_5)R_z(q_6)$. Multiplying out, the entries needed are\\
+$r_{13}=c_4s_5$,\ $r_{23}=s_4s_5$,\ $r_{33}=c_5$,\\ $r_{31}=-s_5c_6$,\ $r_{32}=s_5s_6$.\\
+5. $r_{13}^2+r_{23}^2=s_5^2$, so for $s_5\ge0$:
+\[\begin{aligned}q_5&=\atantwo\!\big(\sqrt{r_{13}^2+r_{23}^2},\,r_{33}\big)\\ q_4&=\atantwo(r_{23},r_{13}),\ q_6=\atantwo(r_{32},-r_{31})\end{aligned}\]
+6. Flip: $s_5<0$ gives $q_5\to-q_5$ and, dividing by $-s_5$, $q_4\to q_4+\pi$, $q_6\to q_6+\pi$. If $s_5=0$ only $q_4+q_6$ is fixed (singular).\\
+Count: shoulder $\times$ elbow $\times$ wrist flip $=8$.\\
+Check: $H,G,F=0.5,0.4,0.3$, $W=(0.4813,0.4039,0.5974)$: $q_1=40^\circ$, $c_3=0.6428$; $q_3=-50^\circ\Rightarrow q_2=30^\circ$; $q_3=+50^\circ\Rightarrow q_2=-12.378^\circ$. \chk\\
+Sign convention: $q_3$ anticlockwise relative angle, as on the W3 page.
+\end{fbx}
+
+\begin{fbx}[(d) Gr\"ubler--Kutzbach from free bodies]
+$N$ bodies including ground; ground is fixed, so $N-1$ moving bodies, each free with $D$ DoF ($D=3$ planar, 6 spatial): total freedom $D(N-1)$.\\
+A joint with $F_i$ DoF allows $F_i$ relative motions, so it removes $D-F_i$:
+\[M=D(N-1)-\sum_{i=1}^J(D-F_i)=D(N-1)-DJ+\sum F_i\]
+\[\boxed{M=D(N-J-1)+\textstyle\sum_iF_i}\]
+Joint DoF: R, P $=1$; U $=2$; S $=3$. A prismatic pair counts as 2 bodies.\\
+\textbf{Extended form.} The plain count assumes (i) every constraint independent, (ii) every DoF moves the output. Correct both:
+\[M=D(N-J-1)+\sum F_i+R_C-R_M\]
+$R_C=\sum F_i-\sum_k u_k$ ($u_k$: distinct platform DoF allowed by loop $k$, union over loops); $R_M$: idle local spins.\\
+Worked: planar 3-RPR $3(8-9-1)+9=3$. Planar four-bar $3(4-4-1)+4=1$. Common delta $6(11-15-1)+39=9$, then $9+0-6=3$ ($R_M=6$ rod spins). 4RRR: $6(10-12-1)+12=-6$; $R_C=12-5=7$, so $M=-6+7-0=1$ (platform only translates in $z$). Gough--Stewart 6-UPS: $6(14-18-1)+36=6$. \chk
+\end{fbx}
+
+\begin{fbx}[(e) Four-bar: loop closure and FK by circle intersection]
+Frames: $A=L_1(c\theta_1,s\theta_1)$, $D=(L_0,0)$, coupler $AB=L_2=a+b$ with $K$ on it ($|AK|=a$, $|KB|=b$), rocker $DB=L_3$ at angle $\varphi_1$.\\
+\textbf{Break at $K$} (pose of $K$ from both sides):
+\begin{align*}L_1c_{\theta_1}+a\cos(\theta_1{+}\varphi_2)&=L_0+L_3c_{\varphi_1}+b\cos(\varphi_1{+}\varphi_3)\\ L_1s_{\theta_1}+a\sin(\theta_1{+}\varphi_2)&=L_3s_{\varphi_1}+b\sin(\varphi_1{+}\varphi_3)\\ \theta_1+\varphi_2&=\varphi_1+\varphi_3+\pi\end{align*}
+Three equations; unknowns $\varphi_1,\varphi_2,\varphi_3$.\\
+\textbf{Break at both ends of the coupler:} only its length: $|A-B|^2=L_2^2$ with $B=D+L_3(c_{\varphi_1},s_{\varphi_1})$:
+\[(L_1c_{\theta_1}-L_0-L_3c_{\varphi_1})^2+(L_1s_{\theta_1}-L_3s_{\varphi_1})^2-L_2^2=0\]
+\textbf{FK.} $\theta_1$ known: $A,D$ fixed. $B$ is on circle$(A,L_2)$ and circle$(D,L_3)$. With $d=|AD|$, $\hat u=(D-A)/d$, $\hat n=\hat u$ turned $+90^\circ$, foot distance $x$ and half-chord $h$ from $x^2+h^2=L_2^2$, $(d-x)^2+h^2=L_3^2$:
+\[x=\frac{L_2^2-L_3^2+d^2}{2d},\ h=\sqrt{L_2^2-x^2},\ B=A+x\hat u\pm h\hat n\]
+Assembles iff $|L_2-L_3|\le d\le L_2+L_3$ (two modes, one at the limit, none otherwise). Then $\varphi_1=\atantwo(B_y,B_x-L_0)$, $\varphi=\atantwo(B-A)$, $K=A+a(\cos\varphi,\sin\varphi)$.\\
+\textbf{IK} (pose of $K$, angle $\varphi$): $A=K-a(\cos\varphi,\sin\varphi)$, $\theta_1=\atantwo(A_y,A_x)$; $B=K+b(\cos\varphi,\sin\varphi)$, $\varphi_1=\atantwo(B_y,B_x-L_0)$.\\
+Check ($L_0,L_1,L_2,L_3=1,0.5,0.45,0.6$, $a=0.2$, $\theta_1=70^\circ$): $A=(0.1710,0.4698)$, $d=0.9529$, $x=0.3938$, $h=0.2178$. Lower mode ($-h\hat n$): $B=(0.4062,0.0862)$, $\varphi=-58.486^\circ$, $K=(0.2756,0.2993)$. Upper mode: $B=(0.6210,0.4651)$. IK from $K,\varphi$ returns $\theta_1=70^\circ$. \chk
+\end{fbx}
+
+\begin{fbx}[(f) Cubic trajectories: coefficients]
+$q=a_0+a_1t+a_2t^2+a_3t^3$, $\dot q=a_1+2a_2t+3a_3t^2$, $\ddot q=2a_2+6a_3t$.\\
+$q(0)=q_0\Rightarrow a_0=q_0$; $\dot q(0)=\dot q_0\Rightarrow a_1=\dot q_0$.\\
+Let $\Delta=q_F-q_0$, $r=\Delta-\dot q_0T$, $s=\dot q_F-\dot q_0$. The end conditions are\\
+$a_2T^2+a_3T^3=r$ and $2a_2T+3a_3T^2=s$.\\
+(2/T)\,first $-$ second: $-a_3T^2=2r/T-s$, so $a_3T^2=s-2r/T$:
+\[a_3=\frac{-2\Delta+(\dot q_0+\dot q_F)T}{T^3},\quad a_2=\frac{3\Delta-(2\dot q_0+\dot q_F)T}{T^2}\]
+Rest to rest ($\dot q_0=\dot q_F=0$): $a_2=\dfrac{3\Delta}{T^2}$, $a_3=-\dfrac{2\Delta}{T^3}$.\\
+Then $\dot q=\dfrac{6\Delta}{T^2}t-\dfrac{6\Delta}{T^3}t^2$, peak at $t=T/2$: $\dot q_{max}=\dfrac{3\Delta}{2T}=1.5\Delta/T$. $\ddot q(0)=+6\Delta/T^2$, $\ddot q(T)=-6\Delta/T^2$.\\
+Check: $10^\circ\to50^\circ$ in 2 s: $(10,0,30,-10)$, peak $30^\circ$/s. $20^\circ\to80^\circ$ in 3 s, $\dot q_F=10$: $a_2=16.667$, $a_3=-3.333$, $q(3)=80$, $\dot q(3)=10$. \chk
+\end{fbx}
+
+\begin{fbx}[(f) Two cubics through a via point, continuous acceleration]
+Segment 1 on $[0,T_1]$, segment 2 on $[0,T_2]$ (own clock), $a_{ij}$ = coefficient $j$ of segment $i$: \textbf{8 unknowns}.\\
+Conditions (8): (1) $q_1(0)=q_0$; (2) $\dot q_1(0)=0$; (3) $q_1(T_1)=q_v$; (4) $q_2(0)=q_v$; (5) $q_2(T_2)=q_F$; (6) $\dot q_2(T_2)=0$; (7) $\dot q_1(T_1)=\dot q_2(0)$; (8) $\ddot q_1(T_1)=\ddot q_2(0)$.\\
+Let $w=\dot q_v$ (unknown via speed), $d_1=q_v-q_0$, $d_2=q_F-q_v$. Conditions 1--7 are met by the closed cubic with end speeds $(0,w)$ and $(w,0)$:\\
+$a_{10}=q_0$, $a_{11}=0$, $a_{12}=\dfrac{3d_1-wT_1}{T_1^2}$, $a_{13}=\dfrac{-2d_1+wT_1}{T_1^3}$;\\
+$a_{20}=q_v$, $a_{21}=w$, $a_{22}=\dfrac{3d_2-2wT_2}{T_2^2}$, $a_{23}=\dfrac{-2d_2+wT_2}{T_2^3}$.\\
+Condition 8: $\ddot q_1(T_1)=2a_{12}+6a_{13}T_1=\dfrac{-6d_1+4wT_1}{T_1^2}$, $\ddot q_2(0)=2a_{22}=\dfrac{6d_2-4wT_2}{T_2^2}$. Equate and solve for $w$:
+\[w=\frac{3\big[T_1^2(q_F-q_v)+T_2^2(q_v-q_0)\big]}{2T_1T_2(T_1+T_2)}\ \xrightarrow{T_1=T_2=T}\ w=\frac{3(q_F-q_0)}{4T}\]
+Equal durations: $w$ does not depend on $q_v$; shared acceleration $=3(q_0+q_F-2q_v)/T^2$ and $a_{21}=3(q_F-q_0)/(4T)$.\\
+Check ($q_0,q_v,q_F=10,40,20$, $T=1$): $w=7.5$; seg 1 $=10+82.5t^2-52.5t^3$; seg 2 $=40+7.5t-75t^2+47.5t^3$; acceleration $-150$ both sides. With $T_1=1$, $T_2=2$: $w=25$, acceleration $-80$. \chk
+\end{fbx}
+
+\begin{fbx}[(g) LSPB (trapezoid) blend time]
+Blend $+a$ for $t_B$, coast at $v=a\,t_B$, blend $-a$ for $t_B$; total time $t_F$, $\Delta=q_F-q_0>0$.\\
+Blend 1 moves $\tfrac12at_B^2$. Coast lasts $t_F-2t_B$: moves $a t_B(t_F-2t_B)$. Blend 2 moves $vt_B-\tfrac12at_B^2=at_B^2-\tfrac12at_B^2$.\\
+Sum: $\Delta=\tfrac12at_B^2+at_Bt_F-2at_B^2+at_B^2-\tfrac12at_B^2=a\,t_Bt_F-a\,t_B^2$.
+\[a\,t_B^2-a\,t_F\,t_B+\Delta=0\ \Rightarrow\ t_B=\frac{t_F}2\mp\frac{\sqrt{a^2t_F^2-4a\Delta}}{2a}\]
+Two blends must fit ($t_B\le t_F/2$): take the minus sign.\\
+Real iff $a^2t_F^2-4a\Delta\ge0\iff a\ge\dfrac{4\Delta}{t_F^2}$ (non-strict). Equality: $t_B=t_F/2$, no coast, triangle with peak $2\Delta/t_F$.\\
+Coast speed $v=at_B=\tfrac12\big[at_F-\sqrt{a^2t_F^2-4a\Delta}\big]$, always in $(\Delta/t_F,\,2\Delta/t_F]$.\\
+Check: $120^\circ$ in 2 s: $a_{min}=120^\circ$/s$^2$ ($t_B=1$, peak 120$^\circ$/s). $a=150$: $t_B=0.5528$, $v=82.9^\circ$/s. $a=300$: $t_B=0.2254$, $v=67.6^\circ$/s. \chk
+\end{fbx}
+
+\begin{fbx}[(h) 2R Jacobian, $\det\mathbf J$, and $\boldsymbol\tau=\mathbf J^\top\mathbf F$]
+$x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$. Differentiate with $\dot c_{12}=-s_{12}(\dot q_1+\dot q_2)$:
+\[\mathbf J=\begin{bmatrix}\partial x/\partial q_1&\partial x/\partial q_2\\\partial y/\partial q_1&\partial y/\partial q_2\end{bmatrix}=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}\]
+\textbf{Determinant:}\\
+$\det\mathbf J=(-L_1s_1-L_2s_{12})L_2c_{12}+L_2s_{12}(L_1c_1+L_2c_{12})$\\
+$=L_1L_2(s_{12}c_1-c_{12}s_1)+L_2^2(s_{12}c_{12}-s_{12}c_{12})$\\
+$=L_1L_2\sin(q_{12}-q_1)=L_1L_2\sin q_2.$\\
+Singular at $q_2=0,\pi$ (arm straight or folded): no tool velocity along the arm.\\
+\textbf{Statics by virtual work.} Tiny joint motion $\delta\mathbf q$ moves the tool by $\delta\mathbf x=\mathbf J\delta\mathbf q$. Actuators do $\boldsymbol\tau^\top\delta\mathbf q$; the tool force $\mathbf F$ (applied to the environment) does $\mathbf F^\top\delta\mathbf x=\mathbf F^\top\mathbf J\delta\mathbf q$. Equilibrium: equal for \emph{every} $\delta\mathbf q$:
+\[\boldsymbol\tau^\top=\mathbf F^\top\mathbf J\ \Rightarrow\ \boldsymbol\tau=\mathbf J^\top\mathbf F\]
+Same frame for $\mathbf J$ and $\mathbf F$; opposite sign if $\mathbf F$ is the load on the tool.\\
+Check: $L=(0.5,0.4)$, $q=(30^\circ,60^\circ)$, $\mathbf F=(10,-20)$ N: $\mathbf J=\begin{bmatrix}-0.65&-0.4\\0.4330&0\end{bmatrix}$, $\boldsymbol\tau=(-15.160,-4.000)$ N\,m ($\mathbf J\mathbf F$ would wrongly give $(1.5,4.330)$). \chk
+\end{fbx}
+
+\begin{fbx}[(i) 2R point-mass Lagrange, every step]
+Masses $m_1$ at the tip of $L_1$, $m_2$ at the tip of $L_2$; $q_1$ from horizontal, $q_2$ relative; gravity $-y$.\\
+\textbf{Positions:} $x_1=L_1c_1$, $y_1=L_1s_1$; $x_2=L_1c_1+L_2c_{12}$, $y_2=L_1s_1+L_2s_{12}$.\\
+\textbf{Velocities:} $\dot x_2=-L_1s_1\dot q_1-L_2s_{12}(\dot q_1{+}\dot q_2)$, $\dot y_2=L_1c_1\dot q_1+L_2c_{12}(\dot q_1{+}\dot q_2)$.\\
+\textbf{Kinetic:} $K_1=\tfrac12m_1L_1^2\dot q_1^2$. $v_2^2=\dot x_2^2+\dot y_2^2$, cross term $2L_1L_2(s_1s_{12}+c_1c_{12})=2L_1L_2c_2$:\\
+$v_2^2=L_1^2\dot q_1^2+L_2^2(\dot q_1{+}\dot q_2)^2+2L_1L_2c_2\,\dot q_1(\dot q_1{+}\dot q_2)$.
+\[K=\tfrac12\big(M_{11}\dot q_1^2+2M_{12}\dot q_1\dot q_2+M_{22}\dot q_2^2\big)\]
+$M_{11}=m_1L_1^2+m_2(L_1^2+2L_1L_2c_2+L_2^2)$, $M_{12}=m_2(L_1L_2c_2+L_2^2)$, $M_{22}=m_2L_2^2$.\\
+\textbf{Potential:} $P=m_1gL_1s_1+m_2g(L_1s_1+L_2s_{12})$. $\mathcal L=K-P$.\\
+Let $h=m_2L_1L_2s_2$. Only $c_2$ varies: $\partial M_{11}/\partial q_2=-2h$, $\partial M_{12}/\partial q_2=-h$, so $\dot M_{11}=-2h\dot q_2$, $\dot M_{12}=-h\dot q_2$.\\
+\textbf{Joint 1.} $\partial K/\partial q_1=0$.\\
+$\partial\mathcal L/\partial\dot q_1=M_{11}\dot q_1+M_{12}\dot q_2$\\
+$\tfrac d{dt}(\cdot)=M_{11}\ddot q_1+M_{12}\ddot q_2-2h\dot q_1\dot q_2-h\dot q_2^2$\\
+$-\partial\mathcal L/\partial q_1=+\partial P/\partial q_1=g_1$.\\
+\textbf{Joint 2.} $\partial\mathcal L/\partial\dot q_2=M_{12}\dot q_1+M_{22}\dot q_2$\\
+$\tfrac d{dt}(\cdot)=M_{12}\ddot q_1+M_{22}\ddot q_2-h\dot q_1\dot q_2$\\
+$\partial K/\partial q_2=\tfrac12(-2h)\dot q_1^2+(-h)\dot q_1\dot q_2=-h\dot q_1^2-h\dot q_1\dot q_2$\\
+$Q_2=\tfrac d{dt}(\cdot)-\partial K/\partial q_2+g_2$: the $-h\dot q_1\dot q_2$ terms cancel.
+\[\mathbf M=\begin{bmatrix}M_{11}&M_{12}\\M_{12}&M_{22}\end{bmatrix},\ \mathbf C=\begin{bmatrix}-h(2\dot q_1\dot q_2+\dot q_2^2)\\h\dot q_1^2\end{bmatrix}\]
+\[\mathbf g=\begin{bmatrix}(m_1{+}m_2)gL_1c_1+m_2gL_2c_{12}\\m_2gL_2c_{12}\end{bmatrix},\quad \mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g\]
+Check ($m=2,1$ kg; $L=1,0.8$ m; $q=(30^\circ,45^\circ)$; $\dot q=(1,-0.5)$; $\ddot q=(0.5,2)$): $\mathbf Q=(32.7397,\,4.4797)$ N\,m. \chk
+\end{fbx}
+
+\begin{fbx}[(j) Partitioned control: error equation, gains, steady state, PID]
+Plant $m\ddot x+b\dot x+kx=f$. Write $f=\alpha f'+\beta$ with $\alpha=m$, $\beta=b\dot x+kx$: then $\ddot x=f'$ (unit mass).\\
+Servo law with $E=x_d-x$: $f'=\ddot x_d+k_v\dot E+k_pE$. Substitute $x=x_d-E$ in $\ddot x=f'$:\\
+$\ddot x_d-\ddot E=\ddot x_d+k_v\dot E+k_pE$
+\[\ddot E+k_v\dot E+k_pE=0,\qquad s^2+k_vs+k_p=0\]
+Roots $s=\tfrac12\big(-k_v\pm\sqrt{k_v^2-4k_p}\big)$. Equal roots iff $k_v^2-4k_p=0$:
+\[k_v^2=4k_p\iff k_v=2\sqrt{k_p},\quad\omega_n=\sqrt{k_p},\ \zeta=\frac{k_v}{2\sqrt{k_p}}\]
+(The slide's ``$k_p^2=4k_v$'' has the subscripts swapped.) Example $k_p=25\Rightarrow k_v=10$, double pole at $-5$.\\
+\textbf{Constant disturbance.} Plant sees $f-f_d$: $m\ddot x=mf'-f_d\Rightarrow\ddot x=f'-f_d/m$. With $E=x_d-x$ the sign flips:
+\[\ddot E+k_v\dot E+k_pE=f_d/m\]
+Steady state ($\dot E=\ddot E=0$): $k_pE=f_d/m$:
+\[E_{ss}=\frac{f_d}{k_p\,m}\]
+$k_v,b,k$ drop out. Check: $f_d=10$, $m=2$, $k_p=25$: $0.2$ m; $m=5$: $0.08$ m.\\
+\textbf{PID.} $f'=\ddot x_d+k_v\dot E+k_pE+k_i\!\int\!E\,dt$ gives $\ddot E+k_v\dot E+k_pE+k_i\!\int\!E\,dt=f_d/m$. Differentiate once:
+\[\dddot E+k_v\ddot E+k_p\dot E+k_iE=\dot f_d/m\]
+Constant $f_d$: all derivatives vanish, $k_iE=0$, so $E_{ss}=0$ (integral settles at $f_d/(mk_i)$).\\
+Stable iff $k_vk_p>k_i$ (Routh--Hurwitz); at equality $(s+k_v)(s^2+k_p)$.\\
+Check $k_p=25,k_v=10,k_i=40$: roots $-7.335$, $-1.332\pm1.918j$; $k_i=250$: $-10,\pm5j$. Simulation on the real plant ($m=2,b=3,k=8$): PD error $0.2$ m; PID $\to0$, $\int E=0.125$. \chk
+\end{fbx}
+
+\begin{fbx}[(k) Generalised wheel model, three steps; omni triangle]
+Notation: $\boldsymbol\zeta=(u,v,\dot\theta)$ chassis velocity in $\{C\}$; wheel $i$ at $({}^Cx_i,{}^Cy_i)$, drive direction $\beta_i$ from $x_C$, roller angle $\gamma_i$, radius $r$.\\
+\textbf{Step 1} (wheel frame turned by $\beta$): ${}^C\mathbf v_{W}=R(\beta)\,{}^W\mathbf v$, so ${}^W\mathbf v=R(\beta)^\top\,{}^C\mathbf v$.\\
+\textbf{Step 2} (rigid chassis): contact-point velocity $=$ chassis velocity $+\dot\theta\hat z\times\mathbf p$:
+\[{}^C\mathbf v_W=\begin{bmatrix}u-\dot\theta\,{}^Cy\\v+\dot\theta\,{}^Cx\end{bmatrix}=\begin{bmatrix}1&0&-{}^Cy\\0&1&{}^Cx\end{bmatrix}\boldsymbol\zeta\]
+\textbf{Step 3} (drive component). Roller direction $(-\sin\gamma,\cos\gamma)$ is free, so $v_{drive}=v_x+v_y\tan\gamma$:
+\[r\dot\varphi=\begin{bmatrix}1&\tan\gamma\end{bmatrix}\begin{bmatrix}c\beta&s\beta\\-s\beta&c\beta\end{bmatrix}\begin{bmatrix}1&0&-{}^Cy\\0&1&{}^Cx\end{bmatrix}\boldsymbol\zeta\]
+$\gamma=0$: $r\dot\varphi=c\beta\,(u-\dot\theta\,{}^Cy)+s\beta\,(v+\dot\theta\,{}^Cx)$.\\
+Standard wheel also has no-slide: $0=-s\beta\,(u-\dot\theta\,{}^Cy)+c\beta\,(v+\dot\theta\,{}^Cx)$.\\
+\textbf{Omni triangle} (\emph{this site's convention}: drive directions clockwise, $\beta=0^\circ,-120^\circ,+120^\circ$; wheels at $(0,d)$, $(\tfrac{\sqrt3}2d,-\tfrac d2)$, $(-\tfrac{\sqrt3}2d,-\tfrac d2)$; $\gamma=0$):\\
+W1: $c\beta=1,s\beta=0$: $r\dot\varphi_1=u-d\dot\theta$.\\
+W2: $c\beta=-\tfrac12$, $s\beta=-\tfrac{\sqrt3}2$: $r\dot\varphi_2=-\tfrac12(u+\tfrac d2\dot\theta)-\tfrac{\sqrt3}2(v+\tfrac{\sqrt3}2d\dot\theta)=-\tfrac12u-\tfrac{\sqrt3}2v-d\dot\theta$.\\
+W3: $c\beta=-\tfrac12$, $s\beta=\tfrac{\sqrt3}2$: $r\dot\varphi_3=-\tfrac12u+\tfrac{\sqrt3}2v-d\dot\theta$.
+\[\dot{\boldsymbol\varphi}=\frac1r\begin{bmatrix}1&0&-d\\-\tfrac12&-\tfrac{\sqrt3}2&-d\\-\tfrac12&\tfrac{\sqrt3}2&-d\end{bmatrix}\boldsymbol\zeta,\quad\boldsymbol\zeta=\frac r3\begin{bmatrix}2&-1&-1\\0&-\sqrt3&\sqrt3\\-\tfrac1d&-\tfrac1d&-\tfrac1d\end{bmatrix}\dot{\boldsymbol\varphi}\]
+$\det=\tfrac{3\sqrt3}2d\ne0$: holonomic. Reverse the drive sense and all signs flip.\\
+Check: $r=0.05$, $d=0.1$, $\dot{\boldsymbol\varphi}=(4,-1,-1)$: $u=0.1667$, $v=0$, $\dot\theta=-0.3333$; ICR $(-v/\dot\theta,u/\dot\theta)=(0,-0.5)$ m, clockwise circle of radius 0.5 m. \chk
+\end{fbx}
+
+\begin{fbx}[(l) Differential drive: inverse model and ICR]
+Fixed standard wheels, $\beta=0$, $\gamma=0$: left at $(0,+a)$, right at $(0,-a)$.\\
+Rolling rows ($r\dot\varphi=u-\dot\theta\,{}^Cy$):
+\[r\dot\varphi_1=u-a\dot\theta,\qquad r\dot\varphi_2=u+a\dot\theta\]
+No-slide row ($\beta=0$, ${}^Cx=0$): $v+\dot\theta\cdot0=0\Rightarrow v=0$.\\
+Add and subtract:
+\[u=\frac r2(\dot\varphi_1+\dot\varphi_2),\qquad\dot\theta=\frac r{2a}(\dot\varphi_2-\dot\varphi_1)\]
+\textbf{ICR:} the chassis point with zero velocity, $(x,y)$ with $u-\dot\theta y=0$ and $v+\dot\theta x=0$:
+\[(x,y)=\Big(-\frac v{\dot\theta},\ \frac u{\dot\theta}\Big)=\Big(0,\ a\,\frac{\dot\varphi_1+\dot\varphi_2}{\dot\varphi_2-\dot\varphi_1}\Big)\]
+$r$ cancels. Equal speeds: ICR at infinity (straight). Opposite speeds: ICR at the centre (spin). $y>0$ means left of the robot.\\
+Inertial: $\dot x=u\cos\theta$, $\dot y=u\sin\theta$, $\dot\theta$ as above.\\
+Check: $r=0.05$, $a=0.15$, $\dot\varphi=(4,6)$: $u=0.25$ m/s, $\dot\theta=0.3333$ rad/s, ICR $y=0.75$ m left. $a=0.3$, $\dot\varphi=(2,5)$: $y=0.3\cdot7/3=0.7$ m. $r=0.1$, $a=0.2$, $\dot\varphi=(-5,5)$: $u=0$, $\dot\theta=2.5$ rad/s. \chk
+\end{fbx}
+\end{multicols}

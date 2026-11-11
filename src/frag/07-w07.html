@@ -1,0 +1,248 @@
+<p class="eyebrow">Week 7 · Dynamics of manipulators</p>
+<h2>What torques make the arm move like that?</h2>
+<p class="lead">Kinematics says where the arm goes; dynamics says what it costs. Every serial arm obeys \(\mathbf Q=\mathbf M(\mathbf q)\ddot{\mathbf q}+\mathbf C(\mathbf q,\dot{\mathbf q})+\mathbf g(\mathbf q)\). This week gives two ways to find M, C and g: Lagrange (energy, the exam’s method) and Newton–Euler (forces, the computer’s method).</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Dynamics<small>51 slides · notebook “7 manipulator dynamics” · practical sheet “Week 8 – Dynamics”</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w07-lec">📖 View here</button>
+    <button type="button" class="btn" data-view="w08-prac">📖 Practical sheet</button>
+    <button type="button" class="btn" data-dl="notes/w07-lec.pdf" data-name="ENN581 W7 Dynamics.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w07-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>Sample question 4</b> (<a class="pg" data-doc="w13-lec" data-page="8">W13 p.8</a>): “Derive the equations of motion. Mass, moments of inertia and positions of centre of mass are given.” The lecturer’s hand-written plan: FK frames → velocities → KE, positions → PE, then \(Q_i=\frac{d}{dt}\frac{\partial\mathcal L}{\partial\dot q_i}-\frac{\partial\mathcal L}{\partial q_i}\) for each joint. The 3-joint version is solved on the <a href="#sample" data-goto="sample" data-anchor="sq4">Sample Qs tab</a>. This tab builds the method on the slides’ 2-link arm.</p>
+  <p><b>Where the marks are (indicative):</b> COM positions from FK; velocities by differentiating; KE and PE written in full; \(\mathcal L=K-P\); one Euler–Lagrange line per joint; M, C, g identified; a physical check (M symmetric, g only from gravity, C vanishes at rest).</p>
+  <p><b>Where marks are lost:</b> \(\mathcal L=K+P\); forgetting the cross term \(2L_1L_2\cos q_2\) in the second mass’s speed; differentiating with respect to t before \(\dot q\); a sign error in PE (gravity direction); calling a \(\dot q_i\dot q_j\) term centripetal.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (the W8 sheet is about dynamics, solved here)</span>
+  <p>The sheet has three questions: a single link’s accelerations, the 3D RRR equations of motion, and torques along a cubic trajectory for a 3-link planar arm. All three are solved below as P7.1–P7.3. The W7–8 scripts (<code>rp_lagrangian_dynamics.py</code>, <code>rp_newton_euler.py</code>) derive the RP arm both ways and check that they agree. Their results are reproduced in section 7.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>Four kinds of effort</h4>Holding a heavy bag at arm’s length (gravity, g), swinging it faster (inertia, M), the outward pull when you spin around with it (centripetal), and the sideways push when you move it while turning (Coriolis). Q adds them up.</div>
+    <div class="card"><h4>Lagrange = energy bookkeeping</h4>Write down how much kinetic and potential energy the arm has, as a function of its joints. One recipe (differentiate, differentiate, subtract) turns that single scalar into all the joint torques.</div>
+    <div class="card"><h4>Newton–Euler = pass the bucket</h4>Walk outwards computing each link’s motion, then walk back inwards handing the forces down the chain, link by link, like a bucket brigade. Same answer, much less algebra for a computer.</div>
+    <div class="card"><h4>Far mass is heavy mass</h4>A mass far from the joint is harder to spin: inertia grows with distance squared (the parallel-axis theorem). That is why M<sub>11</sub> grows when the arm stretches out.</div>
+  </div>
+  <div class="vids" data-vids="w07"></div>
+</div>
+
+<div class="widget" data-w3d="dyn2r" id="w7-dyn">
+  <div class="wh"><b>Two-link arm: Lagrange equations, simulated</b><span class="eyebrow">point masses 2 kg and 1 kg at the link tips · L1 = 1.0 m, L2 = 0.8 m · g = 9.81 m/s² · RK4</span></div>
+  <div class="wbody"><div class="stage"></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> start from θ = (30°, 0°) with <b>τ = 0</b>. The arm falls and whips around chaotically, yet the total energy line stays flat: the equations of motion are right. Switch to <b>τ = g(q)</b> (gravity compensation): the arm stays exactly where you put it. With a small push it would drift, because C and M are not cancelled. Watch M<sub>11</sub> change with q<sub>2</sub>.</div>
+</div>
+
+<!-- 1 -->
+<div class="sub" id="w7-why">
+<h3>1 · Forward and inverse dynamics; where torque goes <span class="pgs"><a class="pg" data-doc="w07-lec" data-page="6">pp. 6–14</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p><b>Inverse dynamics:</b> given the motion (q, \(\dot{\mathbf q}\), \(\ddot{\mathbf q}\)), find the torques. Used for <b>control</b>. <b>Forward dynamics:</b> given the torques, find the motion. Used for <b>simulation</b> (<a class="pg" data-doc="w07-lec" data-page="8">pp. 8–10</a>). Torque goes to inertial, centripetal, Coriolis, static/gravity, friction and external loads (<a class="pg" data-doc="w07-lec" data-page="11">p.11</a>).</p>
+<div class="tbl"><table><tr><th></th><th>Lagrangian</th><th>Newton–Euler</th></tr>
+<tr><td>Basis</td><td>energy</td><td>force and moment balance per link</td></tr><tr><td>Treats the robot</td><td>as a whole</td><td>link by link</td></tr>
+<tr><td>Internal reaction forces</td><td>absent</td><td>computed along the way</td></tr><tr><td>Output</td><td>closed-form equations</td><td>numbers, iteratively</td></tr>
+<tr><td>Best for</td><td>analysis, control design</td><td>real-time inverse dynamics, model-based control</td></tr>
+<tr><td>Cost (n = 6, multiplications)</td><td>66 394 (O(n⁴))</td><td>547 (O(n))</td></tr></table></div>
+<p>Comparison from slide 14; operation counts from slide 47 (<a class="pg" data-doc="w07-lec" data-page="47">p.47</a>): NE needs 104n − 77 multiplications and 92n − 70 additions; Lagrange needs 32n⁴ + 86n³ + 171n² + 53n − 128 and 25n⁴ + 66n³ + 129n² + 42n − 96. <span class="chk">n = 6 values checked</span></p></div>
+</div>
+
+<!-- 2 -->
+<div class="sub" id="w7-lag">
+<h3>2 · The Lagrangian method on the slides’ two-link arm <span class="pgs"><a class="pg" data-doc="w07-lec" data-page="15">pp. 15–24</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>\(\mathcal L=K-P\) (<a class="pg" data-doc="w07-lec" data-page="16">p.16</a>), and for each joint (<a class="pg" data-doc="w07-lec" data-page="17">p.17</a>):</p>
+\[ Q_i=\frac{d}{dt}\!\left(\frac{\partial\mathcal L}{\partial\dot q_i}\right)-\frac{\partial\mathcal L}{\partial q_i} \]
+<p>Q<sub>i</sub> is a torque (N·m) for a revolute joint and a force (N) for a prismatic joint. <b>Arm:</b> point masses m<sub>1</sub> at the tip of L<sub>1</sub> and m<sub>2</sub> at the tip of L<sub>2</sub>; q<sub>1</sub> from the horizontal, q<sub>2</sub> relative to link 1; gravity along −y (<a class="pg" data-doc="w07-lec" data-page="18">p.18</a>).</p>
+<p><b>Positions</b> (FK): \(x_1=L_1c_1,\;y_1=L_1s_1\); \(x_2=L_1c_1+L_2c_{12},\;y_2=L_1s_1+L_2s_{12}\).</p>
+<p><b>Velocities</b> (differentiate; <a class="pg" data-doc="w07-lec" data-page="20">p.20</a>): \(\dot x_2=-L_1s_1\dot q_1-L_2s_{12}(\dot q_1+\dot q_2)\), \(\dot y_2=L_1c_1\dot q_1+L_2c_{12}(\dot q_1+\dot q_2)\).</p>
+<p><b>Kinetic energy.</b> Squaring and adding, the cross terms combine through \(c_1c_{12}+s_1s_{12}=c_2\):</p>
+\[ K_1=\tfrac12m_1L_1^2\dot q_1^2,\qquad K_2=\tfrac12m_2\Big[(L_1^2+2L_1L_2c_2+L_2^2)\dot q_1^2+2(L_2^2+L_1L_2c_2)\dot q_1\dot q_2+L_2^2\dot q_2^2\Big] \]
+<p><b>Potential energy</b> (<a class="pg" data-doc="w07-lec" data-page="21">p.21</a>): \(P_1=m_1gL_1s_1\), \(P_2=m_2g(L_1s_1+L_2s_{12})\).</p>
+<p><b>Apply Euler–Lagrange</b> to \(\mathcal L=K_1+K_2-P_1-P_2\) and collect terms (<a class="pg" data-doc="w07-lec" data-page="24">pp. 22–25</a>):</p>
+\[ \mathbf M=\begin{bmatrix} m_1L_1^2+m_2(L_1^2+2L_1L_2c_2+L_2^2) & m_2(L_1L_2c_2+L_2^2)\\ m_2(L_1L_2c_2+L_2^2) & m_2L_2^2\end{bmatrix} \]
+\[ \mathbf C=\begin{bmatrix}-m_2L_1L_2s_2\,(2\dot q_1\dot q_2+\dot q_2^2)\\ m_2L_1L_2s_2\,\dot q_1^2\end{bmatrix},\qquad \mathbf g=\begin{bmatrix}(m_1+m_2)gL_1c_1+m_2gL_2c_{12}\\ m_2gL_2c_{12}\end{bmatrix} \]
+<p><span class="chk">K<sub>2</sub>, M, C, g all reproduced symbolically from the Lagrangian</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe (any arm)</span><ol>
+<li>Choose generalised coordinates q (the joint variables). Draw gravity’s direction.</li>
+<li>Write each COM position from FK. Differentiate for the velocities.</li>
+<li>\(K=\sum\tfrac12m_i\mathbf v_{C_i}^\top\mathbf v_{C_i}+\tfrac12\boldsymbol\omega_i^\top\mathbf I_i\boldsymbol\omega_i\) (drop the second term for point masses). \(P=\sum m_ig\,h_i\).</li>
+<li>For each joint: \(\partial\mathcal L/\partial\dot q_i\) → d/dt (chain rule; product rule on \(\cos q_2\cdot\dot q_1\)) → subtract \(\partial\mathcal L/\partial q_i\).</li>
+<li>Collect into M (coefficients of \(\ddot q\)), C (velocity products), g (the rest).</li>
+<li>Check: M symmetric, M<sub>22</sub> &gt; 0, g independent of \(\dot q\), C = 0 at rest. A unit check per term.</li></ol></div>
+<div class="worked"><span class="tag">Worked numbers</span>
+<p>m = (2, 1) kg, L = (1.0, 0.8) m, g = 9.81 m/s², at q = (30°, 45°), \(\dot{\mathbf q}\) = (1, −0.5) rad/s, \(\ddot{\mathbf q}\) = (0.5, 2) rad/s²:</p>
+<p>\(\mathbf M=\begin{bmatrix}4.7714&1.2057\\1.2057&0.6400\end{bmatrix}\) kg·m², \(\mathbf C=(0.4243,\;0.5657)\), \(\mathbf g=(27.5183,\;2.0312)\) N·m, so \(\mathbf Q=(32.7397,\;4.4797)\) N·m. <span class="chk">checked; Newton–Euler gives the same</span> Gravity dominates, as the slides say (<a class="pg" data-doc="w07-lec" data-page="27">p.27</a>).</p></div>
+<div class="angle">A frequent short question: “which terms remain when the arm is held still?” Only g. “At constant joint speed?” C and g. “Which entry of M changes as the elbow bends, and why?” M<sub>11</sub> and M<sub>12</sub>, through \(\cos q_2\): the second mass moves closer to joint 1.</div>
+</div>
+
+<!-- 3 -->
+<div class="sub" id="w7-gen">
+<h3>3 · The general form and what each term means <span class="pgs"><a class="pg" data-doc="w07-lec" data-page="25">pp. 25–33</a></span></h3>
+<div class="layer derive"><span class="tag">Structure</span>
+\[ \mathbf Q=\mathbf M(\mathbf q)\ddot{\mathbf q}+\mathbf C(\mathbf q,\dot{\mathbf q})+\mathbf g(\mathbf q)+\mathbf f(\dot{\mathbf q})+\mathbf J^\top(\mathbf q)\,\mathbf w \]
+<p>Sizes: n×1 = (n×n)(n×1) + n×1 + n×1 (<a class="pg" data-doc="w07-lec" data-page="25">p.25</a>). f is friction; w is an external wrench (contact), mapped to the joints by the Jacobian transpose (<a class="pg" data-doc="w07-lec" data-page="26">p.26</a>).</p>
+<p><b>M</b>, the joint-space inertia matrix (<a class="pg" data-doc="w07-lec" data-page="28">p.28</a>): symmetric and positive definite (so always invertible). Diagonal M<sub>jj</sub> is the inertia joint j feels; off-diagonal M<sub>ij</sub> couples joint j’s acceleration into joint i’s torque. PUMA 560 example on the slide: M<sub>11</sub> = 3.659, M<sub>12</sub> = −0.4044.</p>
+<p><b>C</b> splits into <b>centripetal</b> terms (squares \(\dot q_i^2\)) and <b>Coriolis</b> terms (products \(\dot q_i\dot q_j\), i ≠ j) (<a class="pg" data-doc="w07-lec" data-page="30">p.30</a>). For the 2R arm, with \(h=m_2L_1L_2s_2\):</p>
+\[ \mathbf C=\underbrace{\begin{bmatrix}0&-h\\h&0\end{bmatrix}\begin{bmatrix}\dot q_1^2\\\dot q_2^2\end{bmatrix}}_{\text{centripetal}}+\underbrace{\begin{bmatrix}-2h\\0\end{bmatrix}\dot q_1\dot q_2}_{\text{Coriolis}} \]
+<p><span class="chk">checked</span> <span class="added">our split; the slide’s handwriting here is not legible</span></p>
+<p><b>g</b> is present even at rest and usually dominates (<a class="pg" data-doc="w07-lec" data-page="27">p.27</a>). For the PUMA 560 the slide lists [0, 31.64, 6.035, 0, 0.02825, 0] N·m at rest, [0, 46.01, 8.772, 0, 0.02825, 0] with the arm stretched out, and [0, −0.7752, 0.2489, 0, 0, 0] pointing up. Shoulder and elbow carry almost everything, and stretching out raises the shoulder torque (longer lever).</p>
+<p><b>Forward dynamics</b> (<a class="pg" data-doc="w07-lec" data-page="48">p.48</a>): \(\ddot{\mathbf q}=\mathbf M^{-1}\big(\mathbf Q-\mathbf C-\mathbf g-\mathbf f-\mathbf J^\top\mathbf w\big)\), then integrate. This is what the widget above does. <b>Task space</b> (<a class="pg" data-doc="w07-lec" data-page="32">p.32</a>): \(\boldsymbol{\mathcal F}=\mathbf M_x\ddot{\mathbf x}+\mathbf C_x+\mathbf g_x\) and \(\mathbf Q=\mathbf J^\top\boldsymbol{\mathcal F}\).</p>
+<p>Two properties used in control proofs <span class="added">added</span>: \(\dot{\mathbf M}-2\mathbf C_{mat}\) is skew-symmetric (with C written as a matrix times \(\dot{\mathbf q}\) via Christoffel symbols); and total energy is conserved when Q = 0 and there is no friction. Both are checked for the Sample Q4 arm.</p></div>
+<div class="angle">Spot-the-error favourites: “g depends on \(\dot q\)” (no); “M is diagonal” (only for special arms, e.g. the RP arm below); “\(\dot q_1\dot q_2\) is centripetal” (no, Coriolis); “forward dynamics is for control” (no, for simulation).</div>
+</div>
+
+<!-- 4 -->
+<div class="sub" id="w7-inertia">
+<h3>4 · Rigid bodies: Newton, Euler and the inertia tensor <span class="pgs"><a class="pg" data-doc="w07-lec" data-page="34">pp. 34–39</a></span></h3>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>For a link with mass m, COM acceleration \(\dot{\mathbf v}_C\), angular velocity ω and acceleration \(\dot{\boldsymbol\omega}\) (<a class="pg" data-doc="w07-lec" data-page="34">p.34</a>):</p>
+\[ \mathbf F=m\,\dot{\mathbf v}_C\quad(\text{Newton}),\qquad \mathbf N={}^C\mathbf I\,\dot{\boldsymbol\omega}+\boldsymbol\omega\times{}^C\mathbf I\,\boldsymbol\omega\quad(\text{Euler}) \]
+<p>The inertia tensor about frame {A} (<a class="pg" data-doc="w07-lec" data-page="36">p.36</a>), uniform density ρ:</p>
+\[ {}^A\mathbf I=\begin{bmatrix}I_{xx}&I_{xy}&I_{xz}\\I_{xy}&I_{yy}&I_{yz}\\I_{xz}&I_{yz}&I_{zz}\end{bmatrix},\quad I_{xx}=\iiint(y^2+z^2)\rho\,dv,\;\dots,\quad I_{xy}=-\iiint xy\,\rho\,dv,\;\dots \]
+<p><b>Cuboid</b> W × L × H (x, y, z), frame at a corner (<a class="pg" data-doc="w07-lec" data-page="38">p.38</a>) and at the centroid (<a class="pg" data-doc="w07-lec" data-page="39">p.39</a>):</p>
+\[ {}^{corner}\mathbf I=m\begin{bmatrix}\frac{L^2+H^2}{3}&-\frac{WL}{4}&-\frac{HW}{4}\\-\frac{WL}{4}&\frac{W^2+H^2}{3}&-\frac{HL}{4}\\-\frac{HW}{4}&-\frac{HL}{4}&\frac{L^2+W^2}{3}\end{bmatrix},\qquad {}^{C}\mathbf I=\frac m{12}\operatorname{diag}\big(L^2+H^2,\;W^2+H^2,\;L^2+W^2\big) \]
+<p>“The frame of reference is important”: the same body has different tensors in different frames. <b>Parallel-axis theorem</b> <span class="added">added</span>: with p the COM in {A}, \({}^A\mathbf I={}^C\mathbf I+m\big(\mathbf p^\top\mathbf p\,\mathbf 1_3-\mathbf p\mathbf p^\top\big)\). With p = (W/2, L/2, H/2) it turns the centroid tensor into the corner tensor exactly. <span class="chk">both tensors and the theorem checked by integration</span></p></div>
+<div class="worked"><span class="tag">Worked numbers</span><p>m = 6 kg, W = 0.2, L = 0.3, H = 0.1 m. Centroid: diag(0.050, 0.025, 0.065) kg·m². Corner: \(\begin{bmatrix}0.200&-0.090&-0.030\\-0.090&0.100&-0.045\\-0.030&-0.045&0.260\end{bmatrix}\) kg·m². <span class="chk">checked</span></p></div>
+<div class="box warn-box"><span class="tag">Slides vs slides</span><p>Slide 37 writes \(I_{xy}=\iiint xy\rho\,dv=m(WL)/4\) without a minus sign, while the matrix on slide 38 has −m(WL)/4. They agree only if the minus belongs to the definition of the off-diagonal entry, which is how slide 36 defines it. Put the minus in.</p></div>
+</div>
+
+<!-- 5 -->
+<div class="sub" id="w7-ne">
+<h3>5 · Iterative Newton–Euler <span class="pgs"><a class="pg" data-doc="w07-lec" data-page="40">pp. 40–46</a></span></h3>
+<div class="layer derive"><span class="tag">Algorithm</span>
+<p><b>Outward pass</b> (i = 1 … n), joint axis \(\hat Z\) of each frame, \(R={}^{i-1}_{\;\;i}\mathbf R\), \(\mathbf P_i\) = origin of {i} in {i−1} <span class="added">recursions from the unit’s NE script and Craig ch. 6</span>:</p>
+\[ \boldsymbol\omega_i=R^\top\boldsymbol\omega_{i-1}+\dot q_i\hat Z,\qquad \dot{\boldsymbol\omega}_i=R^\top\dot{\boldsymbol\omega}_{i-1}+R^\top\boldsymbol\omega_{i-1}\times\dot q_i\hat Z+\ddot q_i\hat Z \]
+\[ \dot{\mathbf v}_i=R^\top\big(\dot{\boldsymbol\omega}_{i-1}\times\mathbf P_i+\boldsymbol\omega_{i-1}\times(\boldsymbol\omega_{i-1}\times\mathbf P_i)+\dot{\mathbf v}_{i-1}\big),\qquad \dot{\mathbf v}_{C_i}=\dot{\boldsymbol\omega}_i\times\mathbf P_{C_i}+\boldsymbol\omega_i\times(\boldsymbol\omega_i\times\mathbf P_{C_i})+\dot{\mathbf v}_i \]
+<p>(for revolute joints; prismatic joints add \(2\boldsymbol\omega_i\times\dot d_i\hat Z+\ddot d_i\hat Z\) to \(\dot{\mathbf v}_i\) and leave ω unchanged). Then \(\mathbf F_i=m_i\dot{\mathbf v}_{C_i}\), \(\mathbf N_i=\mathbf I_i\dot{\boldsymbol\omega}_i+\boldsymbol\omega_i\times\mathbf I_i\boldsymbol\omega_i\).</p>
+<p><b>Inward pass</b> (i = n … 1, with \(\mathbf f_{n+1}=\mathbf n_{n+1}=0\)), \(R'={}^{i}_{\;i+1}\mathbf R\):</p>
+\[ \mathbf f_i=R'\mathbf f_{i+1}+\mathbf F_i,\qquad \mathbf n_i=\mathbf N_i+R'\mathbf n_{i+1}+\mathbf P_{C_i}\times\mathbf F_i+\mathbf P_{i+1}\times R'\mathbf f_{i+1},\qquad \tau_i=\mathbf n_i\cdot\hat Z \]
+<p><b>Gravity trick:</b> start with \(\dot{\mathbf v}_0=(0,g,0)\), i.e. pretend the base accelerates upwards, instead of adding gravity to every link. <span class="chk">our implementation equals the Lagrangian 2R result at 50 random states (the slide 46 homework)</span></p></div>
+<div class="box warn-box"><span class="tag">Slides vs textbook</span><p>Slide 45 writes \({}^iT_{i+1}\) where a rotation \({}^i\mathbf R_{i+1}\) is meant, and its moment balance omits rotating \(\mathbf n_{i+1}\) into frame {i}. Craig’s equations, used above, include the rotation.</p></div>
+<div class="angle">NE is rarely derived by hand in an exam. Expect “explain the two passes and why NE is O(n)” or “compute \(\dot{\mathbf v}_C\) for one link” (P7.1 below).</div>
+</div>
+
+<!-- 6 -->
+<div class="sub" id="w7-rp">
+<h3>6 · The RP arm (Craig’s example, the unit’s practical script) <span class="pgs">script</span></h3>
+<div class="layer derive"><span class="tag">Result</span>
+<p>Revolute θ<sub>1</sub> then a prismatic extension d<sub>2</sub> along the arm; link 1’s COM at l<sub>1</sub>; inertias I<sub>zz1</sub>, I<sub>zz2</sub>; gravity −y. Lagrange gives</p>
+\[ \tau_1=(m_1l_1^2+I_{zz1}+I_{zz2}+m_2d_2^2)\ddot\theta_1+2m_2d_2\dot\theta_1\dot d_2+(m_1l_1+m_2d_2)g\cos\theta_1 \]
+\[ f_2=m_2\ddot d_2-m_2d_2\dot\theta_1^2+m_2g\sin\theta_1 \]
+<p>M is diagonal (no coupling); \(2m_2d_2\dot\theta_1\dot d_2\) is Coriolis (extending while turning); \(-m_2d_2\dot\theta_1^2\) is centrifugal (spinning flings the slider out). <span class="chk">checked symbolically</span></p>
+<p>Script values m<sub>1</sub> = 2 kg, m<sub>2</sub> = 1 kg, l<sub>1</sub> = 0.3 m, I<sub>zz1</sub> = 0.05, I<sub>zz2</sub> = 0.02 kg·m², at θ<sub>1</sub> = 0.7 rad, d<sub>2</sub> = 0.6 m, \(\dot\theta_1\) = 1.3, \(\dot d_2\) = −0.8, \(\ddot\theta_1\) = 2.0, \(\ddot d_2\) = 1.5 give τ<sub>1</sub> = 8.9757 N·m and f<sub>2</sub> = 6.8058 N. <span class="chk">checked</span></p></div>
+</div>
+
+<h3>Guided problems: solve on paper first</h3>
+<div class="gp" data-topic="w07"><div class="head"><b>P7.1 · Single link: accelerations (practical sheet Q1)</b><span class="chip derive">derive</span><span class="marks" data-id="w07-p1" data-topic="w07"></span></div>
+<p>A 1-DoF link (revolute about z<sub>1</sub>) has m = 1 kg, COM at \({}^1\mathbf P_C=[3,0,0]^\top\) m, \({}^C\mathbf I=\operatorname{diag}(1,2,3)\) kg·m², starts at rest and moves as \(q(t)=bt+ct^2\). Give the link’s angular acceleration and the COM’s linear acceleration in {1}. Then the joint torque (no gravity).</p>
+<details class="hint"><summary>Hint 1</summary><p>\(\boldsymbol\omega=\dot q\,\hat z\), \(\dot{\boldsymbol\omega}=\ddot q\,\hat z\).</p></details>
+<details class="hint"><summary>Hint 2</summary><p>\(\dot{\mathbf v}_C=\dot{\boldsymbol\omega}\times\mathbf P_C+\boldsymbol\omega\times(\boldsymbol\omega\times\mathbf P_C)\): a tangential part and a centripetal part.</p></details>
+<details class="sol"><summary>Full solution</summary>
+<p>\(\dot q=b+2ct\), \(\ddot q=2c\). So \({}^1\dot{\boldsymbol\omega}=[0,\,0,\,2c]^\top\) rad/s².</p>
+<p>\(\dot{\boldsymbol\omega}\times\mathbf P_C=2c\,\hat z\times3\hat x=[0,\,6c,\,0]\) (tangential). \(\boldsymbol\omega\times(\boldsymbol\omega\times\mathbf P_C)=-\dot q^2\,[3,0,0]\) (centripetal, pointing back to the axis). So \({}^1\dot{\mathbf v}_C=[-3(b+2ct)^2,\;6c,\;0]^\top\) m/s².</p>
+<p>Torque: \(\mathbf N={}^C\mathbf I\dot{\boldsymbol\omega}+\boldsymbol\omega\times\mathbf I\boldsymbol\omega=[0,0,6c]\) (the second term is zero because ω lies along a principal axis). Then \(\tau=N_z+(\mathbf P_C\times\mathbf F)_z=6c+3\cdot6c=24c\). Check by the parallel-axis theorem: \(I_{zz}+m\cdot3^2=3+9=12\), and \(12\ddot q=24c\) ✓. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w07"><div class="head"><b>P7.2 · The 3D RRR arm (practical sheet Q2, notebook Q1)</b><span class="chip derive">derive</span><span class="marks" data-id="w07-p2" data-topic="w07"></span></div>
+<p>Derive the equations of motion of the 3D RRR arm (waist, shoulder, elbow), and give the joint torques for a prescribed trajectory.</p>
+<details class="hint"><summary>Hint</summary><p>Work in the arm’s vertical plane, which spins at \(\dot q_1\): a point at horizontal distance ρ and height h has \(v^2=\dot\rho^2+\dot h^2+\rho^2\dot q_1^2\).</p></details>
+<details class="sol"><summary>Full solution</summary><p>This is Sample Q4: the full M, C (V) and g with distributed links are on the <a href="#sample" data-goto="sample" data-anchor="sq4">Sample Qs tab</a>, all verified (energy conserved, Ṁ − 2C skew-symmetric). For a prescribed trajectory q(t), substitute q, \(\dot{\mathbf q}\), \(\ddot{\mathbf q}\) into \(\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf V+\mathbf g\): that is inverse dynamics.</p></details></div>
+
+<div class="gp" data-topic="w07"><div class="head"><b>P7.3 · Three-link planar arm along a cubic (practical sheet Q3)</b><span class="chip calc">calculate</span><span class="chip derive">derive</span><span class="marks" data-id="w07-p3" data-topic="w07"></span></div>
+<p>L = (3, 2, 1) m. The arm starts at rest at tool pose (5, 1, 90°) and must stop at (−3, 3, 180°). Find start and goal joint angles, a cubic trajectory (take T = 2 s, the same as on the W9 tab), and the joint torques at t = 0, 1, 2 s with point masses 3, 2, 1 kg at the distal ends. Assume the arm moves in a vertical plane with gravity along −y (state this).</p>
+<details class="hint"><summary>Hint 1: start pose</summary><p>Wrist point = (5 − cos 90°, 1 − sin 90°) = (5, 0). Its distance 5 = L<sub>1</sub> + L<sub>2</sub>: the arm is fully stretched, so θ<sub>2</sub> = 0, θ<sub>1</sub> = 0, θ<sub>3</sub> = 90°.</p></details>
+<details class="hint"><summary>Hint 2: goal pose</summary><p>Wrist point (−2, 3): cos θ<sub>2</sub> = (13 − 13)/12 = 0. Take θ<sub>2</sub> = +90°.</p></details>
+<details class="hint"><summary>Hint 3: torques</summary><p>Build M, C, g for three point masses exactly like section 2, with three link tips.</p></details>
+<div class="ansrow"><label>τ<sub>1</sub>(0) (N·m)<input data-ans="548.814" data-tol="0.5" data-label="τ1" inputmode="decimal"></label><label>τ<sub>2</sub>(0) (N·m)<input data-ans="160.176" data-tol="0.2" data-label="τ2" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary>
+<p><b>Joint angles.</b> Start q<sub>0</sub> = (0°, 0°, 90°), a boundary (singular) configuration with one solution. Goal: θ<sub>2</sub> = ±90°. Branch θ<sub>2</sub> = +90° gives θ<sub>1</sub> = atan2(3, −2) − atan2(2, 3) = 123.69° − 33.69° = 90°, θ<sub>3</sub> = 180° − 90° − 90° = 0°. The other branch is (157.38°, −90°, 112.62°). Take q<sub>f</sub> = (90°, 90°, 0°). <span class="chk">checked</span></p>
+<p><b>Cubics</b> (T = 2 s, rest to rest): \(a_2=3\Delta/T^2\), \(a_3=-2\Delta/T^3\) with Δ = (90°, 90°, −90°): a<sub>2</sub> = (67.5, 67.5, −67.5) °/s², a<sub>3</sub> = (−22.5, −22.5, 22.5) °/s³. Initial accelerations \(2a_2\) = ±2.3562 rad/s².</p>
+<p><b>Torques</b> (Lagrange, point masses, g = 9.81):</p>
+<div class="tbl"><table><tr><th>t (s)</th><th>q (deg)</th><th>τ<sub>1</sub></th><th>τ<sub>2</sub></th><th>τ<sub>3</sub> (N·m)</th></tr>
+<tr><td>0</td><td>(0, 0, 90)</td><td>548.814</td><td>160.176</td><td>2.356</td></tr>
+<tr><td>1</td><td>(45, 45, 45)</td><td>70.817</td><td>20.781</td><td>5.078</td></tr>
+<tr><td>2</td><td>(90, 90, 0)</td><td>−268.947</td><td>−141.712</td><td>−21.591</td></tr></table></div>
+<p>At t = 0 the arm is at rest, so τ = M\(\ddot{\mathbf q}\) + g. Gravity alone at that pose is \(g_1=9.81(3\cdot3+2\cdot5+1\cdot5)=235.44\) N·m: every mass hangs on a long lever. <span class="chk">all checked; τ(0) matches the W9 tab’s independent calculation</span></p></details></div>
+
+<div class="gp" data-topic="w07"><div class="head"><b>P7.4 · Two-link torque by hand</b><span class="chip calc">calculate</span><span class="marks" data-id="w07-p4" data-topic="w07"></span></div>
+<p>For the slides’ 2R arm with m = (2, 1) kg, L = (1.0, 0.8) m: compute τ<sub>2</sub> at q = (30°, 45°), \(\dot{\mathbf q}\) = (1, −0.5) rad/s, \(\ddot{\mathbf q}\) = (0.5, 2) rad/s².</p>
+<details class="hint"><summary>Hint</summary><p>Row 2: \(\tau_2=M_{21}\ddot q_1+M_{22}\ddot q_2+m_2L_1L_2s_2\dot q_1^2+m_2gL_2c_{12}\).</p></details>
+<div class="ansrow"><label>τ<sub>2</sub> (N·m)<input data-ans="4.4797" data-tol="0.005" data-label="τ2" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>M<sub>21</sub> = 1(1·0.8·cos 45° + 0.64) = 1.2057; M<sub>22</sub> = 0.64. C<sub>2</sub> = 1·1·0.8·sin 45°·1² = 0.5657. g<sub>2</sub> = 1·9.81·0.8·cos 75° = 2.0312. τ<sub>2</sub> = 1.2057(0.5) + 0.64(2) + 0.5657 + 2.0312 = 4.4797 N·m. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w07"><div class="head"><b>P7.5 · Inertia about a corner</b><span class="chip calc">calculate</span><span class="marks" data-id="w07-p5" data-topic="w07"></span></div>
+<p>A 6 kg box, 0.2 × 0.3 × 0.1 m (x, y, z). Find I<sub>xx</sub> and I<sub>xy</sub> about a corner frame aligned with the edges.</p>
+<div class="ansrow"><label>I<sub>xx</sub><input data-ans="0.2" data-tol="0.001" data-label="Ixx" inputmode="decimal"></label><label>I<sub>xy</sub><input data-ans="-0.09" data-tol="0.001" data-label="Ixy" inputmode="decimal" data-wrong='[{"v":0.09,"msg":"products of inertia carry a minus sign in the tensor."}]'></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div>
+<details class="sol"><summary>Full solution</summary><p>I<sub>xx</sub> = m(L² + H²)/3 = 6(0.09 + 0.01)/3 = 0.200 kg·m². I<sub>xy</sub> = −mWL/4 = −6(0.2)(0.3)/4 = −0.090 kg·m². Or by the parallel-axis theorem: 0.05 + 6(0.15² + 0.05²) = 0.200 ✓. <span class="chk">checked</span></p></details></div>
+
+<div class="gp" data-topic="w07"><div class="head"><b>P7.6 · Spot the errors</b><span class="chip spot">spot the error</span><span class="marks" data-id="w07-p6" data-topic="w07"></span></div>
+<p>A student’s 2R result: “\(\mathcal L=K+P\); \(g_2=m_2gL_2\sin(q_1+q_2)\); the \(-2m_2L_1L_2s_2\dot q_1\dot q_2\) term is centripetal; M<sub>12</sub> = m<sub>2</sub>L<sub>1</sub>L<sub>2</sub>c<sub>2</sub>.”</p>
+<details class="sol"><summary>Answer</summary><p>(1) \(\mathcal L=K-P\). (2) With q measured from the horizontal and gravity along −y, the lever arm is horizontal: \(g_2=m_2gL_2\cos(q_1+q_2)\). (3) A product of two different joint rates is Coriolis. (4) M<sub>12</sub> = m<sub>2</sub>(L<sub>1</sub>L<sub>2</sub>c<sub>2</sub> + L<sub>2</sub>²): the L<sub>2</sub>² part was dropped.</p></details></div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w07"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w07-q1" data-topic="w07"></span></div><p>Why is M always invertible?</p><details class="sol"><summary>Answer</summary><p>It is symmetric positive definite: kinetic energy \(\tfrac12\dot{\mathbf q}^\top\mathbf M\dot{\mathbf q}\) is positive for any non-zero motion.</p></details></div>
+<div class="gp" data-topic="w07"><div class="head"><b>Q2</b><span class="chip explain">concept</span><span class="marks" data-id="w07-q2" data-topic="w07"></span></div><p>Forward or inverse dynamics for (a) a simulator, (b) a computed-torque controller?</p><details class="sol"><summary>Answer</summary><p>(a) Forward: torques in, motion out. (b) Inverse: desired motion in, torques out.</p></details></div>
+<div class="gp" data-topic="w07"><div class="head"><b>Q3</b><span class="chip calc">calculate</span><span class="marks" data-id="w07-q3" data-topic="w07"></span></div><p>How many multiplications does Newton–Euler need for n = 7?</p><details class="sol"><summary>Answer</summary><p>104(7) − 77 = 651.</p></details></div>
+
+<div class="box" data-reading="w07"></div>
+
+<script data-after>
+W3D.kinds.dyn2r = function (root) {
+  const stage = root.querySelector('.stage'), side = root.querySelector('.side'), id = root.id, D2R = Math.PI / 180;
+  const m1 = 2, m2 = 1, L1 = 1.0, L2 = 0.8, g = 9.81;
+  const MCG = (q, v) => { const c2 = Math.cos(q[1]), s2 = Math.sin(q[1]), c1 = Math.cos(q[0]), c12 = Math.cos(q[0] + q[1]);
+    const M = [[m1 * L1 * L1 + m2 * (L1 * L1 + 2 * L1 * L2 * c2 + L2 * L2), m2 * (L1 * L2 * c2 + L2 * L2)], [m2 * (L1 * L2 * c2 + L2 * L2), m2 * L2 * L2]];
+    const C = [-m2 * L1 * L2 * s2 * (2 * v[0] * v[1] + v[1] * v[1]), m2 * L1 * L2 * s2 * v[0] * v[0]];
+    const G = [(m1 + m2) * g * L1 * c1 + m2 * g * L2 * c12, m2 * g * L2 * c12]; return { M, C, G }; };
+  const energy = (q, v) => { const { M } = MCG(q, v); const K = 0.5 * (M[0][0] * v[0] * v[0] + 2 * M[0][1] * v[0] * v[1] + M[1][1] * v[1] * v[1]);
+    const P = m1 * g * L1 * Math.sin(q[0]) + m2 * g * (L1 * Math.sin(q[0]) + L2 * Math.sin(q[0] + q[1])); return [K, P]; };
+  let mode = 'free';
+  function f(s) { const q = [s[0], s[1]], v = [s[2], s[3]], { M, C, G } = MCG(q, v); const tau = mode === 'gc' ? G : [0, 0];
+    const r = [tau[0] - C[0] - G[0], tau[1] - C[1] - G[1]], det = M[0][0] * M[1][1] - M[0][1] * M[1][0];
+    return [v[0], v[1], (M[1][1] * r[0] - M[0][1] * r[1]) / det, (-M[1][0] * r[0] + M[0][0] * r[1]) / det]; }
+  function rk4(s, h) { const k1 = f(s), k2 = f(s.map((x, i) => x + h / 2 * k1[i])), k3 = f(s.map((x, i) => x + h / 2 * k2[i])), k4 = f(s.map((x, i) => x + h * k3[i]));
+    return s.map((x, i) => x + h / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])); }
+  let q0 = [30 * D2R, 0], s = [q0[0], q0[1], 0, 0], t = 0, hist = [], run = false, raf = 0;
+  const cv = document.createElement('canvas'); stage.appendChild(cv); const gx = cv.getContext('2d');
+  side.innerHTML = W3D.sliderRow(id + '-a', 'q1(0)', -180, 180, 30, 1, '°') + W3D.sliderRow(id + '-b', 'q2(0)', -180, 180, 0, 1, '°') +
+    '<div style="display:flex;gap:.4rem;flex-wrap:wrap"><button type="button" class="btn small primary" data-a="free">Run τ = 0</button><button type="button" class="btn small" data-a="gc">Run τ = g(q)</button><button type="button" class="btn small" data-a="stop">Stop / reset</button></div><div class="out"></div>';
+  let S = 100, O = [0, 0], W = 300, H = 340;
+  function size() { W = stage.clientWidth; H = Math.max(stage.clientHeight, 340); const dpr = Math.min(devicePixelRatio || 1, 2); cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px'; gx.setTransform(dpr, 0, 0, dpr, 0, 0); S = Math.min(W, H * 0.62) / 4.0; O = [W / 2, H * 0.36]; draw(); }
+  const P = (x, y) => [O[0] + x * S, O[1] - y * S];
+  function draw() {
+    const c = W3D.css; gx.clearRect(0, 0, W, H);
+    gx.strokeStyle = c('--line'); gx.beginPath(); gx.arc(O[0], O[1], (L1 + L2) * S, 0, 7); gx.stroke();
+    const q = [s[0], s[1]], A = [L1 * Math.cos(q[0]), L1 * Math.sin(q[0])], B = [A[0] + L2 * Math.cos(q[0] + q[1]), A[1] + L2 * Math.sin(q[0] + q[1])];
+    gx.lineCap = 'round'; gx.lineWidth = 5; gx.strokeStyle = c('--accent'); gx.beginPath(); gx.moveTo(...P(0, 0)); gx.lineTo(...P(...A)); gx.stroke();
+    gx.strokeStyle = c('--ink'); gx.beginPath(); gx.moveTo(...P(...A)); gx.lineTo(...P(...B)); gx.stroke();
+    [[A, 9], [B, 6.5]].forEach(([p, r]) => { gx.fillStyle = c('--exam'); gx.beginPath(); gx.arc(...P(...p), r, 0, 7); gx.fill(); });
+    gx.fillStyle = c('--muted'); gx.font = '12px IBM Plex Mono, monospace'; gx.fillText('g ↓', 10, 18);
+    // energy plot
+    const y0 = H * 0.70, hh = H * 0.26; gx.strokeStyle = c('--line'); gx.strokeRect(10, y0, W - 20, hh);
+    if (hist.length > 1) { const Es = hist.flatMap(h => [h[1], h[2], h[1] + h[2]]); const lo = Math.min(...Es), hi = Math.max(...Es), span = Math.max(hi - lo, 1e-6), tmax = Math.max(hist[hist.length - 1][0], 1);
+      [[1, '--accent', 'K'], [2, '--exam', 'P'], [3, '--ink', 'K+P']].forEach(([k, col, lab], j) => { gx.strokeStyle = c(col); gx.lineWidth = k === 3 ? 2.5 : 1.5; gx.beginPath();
+        hist.forEach((h, i) => { const val = k === 3 ? h[1] + h[2] : h[k]; const X = 10 + (W - 20) * h[0] / tmax, Y = y0 + hh - hh * (val - lo) / span; i ? gx.lineTo(X, Y) : gx.moveTo(X, Y); }); gx.stroke();
+        gx.fillStyle = c(col); gx.fillText(lab, 16 + j * 48, y0 + 14); }); }
+    gx.fillStyle = c('--muted'); gx.fillText('energy (J) vs time', W - 150, y0 + 14);
+    const { M, C, G } = MCG(q, [s[2], s[3]]), E = energy(q, [s[2], s[3]]);
+    side.querySelector('.out').innerHTML = '<div class="mono" style="font-size:.8rem;line-height:1.55">t = ' + t.toFixed(2) + ' s · q = (' + (q[0] / D2R).toFixed(1) + '°, ' + (q[1] / D2R).toFixed(1) + '°)<br>M = [[' + M[0][0].toFixed(3) + ', ' + M[0][1].toFixed(3) + '], [' + M[1][0].toFixed(3) + ', ' + M[1][1].toFixed(3) + ']]<br>C = (' + C[0].toFixed(3) + ', ' + C[1].toFixed(3) + ') N·m<br>g = (' + G[0].toFixed(3) + ', ' + G[1].toFixed(3) + ') N·m<br>K + P = ' + (E[0] + E[1]).toFixed(5) + ' J</div>';
+    window.__state[id] = { t, q: q.map(v => v / D2R), E: E[0] + E[1] };
+  }
+  function reset() { cancelAnimationFrame(raf); run = false; s = [q0[0], q0[1], 0, 0]; t = 0; hist = []; draw(); }
+  function loop() { if (!run) return; if (!root.closest('section').hidden) { for (let k = 0; k < 33; k++) { s = rk4(s, 0.0005); t += 0.0005; } const E = energy([s[0], s[1]], [s[2], s[3]]); hist.push([t, E[0], E[1]]); if (hist.length > 1200) hist.shift(); draw(); } raf = requestAnimationFrame(loop); }
+  ['a', 'b'].forEach((k, i) => { const sl = side.querySelector('#' + id + '-' + k); sl.addEventListener('input', () => { q0[i] = +sl.value * D2R; sl.nextElementSibling.textContent = sl.value + '°'; reset(); }); });
+  side.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (!b) return; reset(); if (b.dataset.a !== 'stop') { mode = b.dataset.a; run = !matchMedia('(prefers-reduced-motion: reduce)').matches; if (!run) { for (let k = 0; k < 4000; k++) { s = rk4(s, 0.0005); t += 0.0005; } } draw(); loop(); } });
+  new ResizeObserver(size).observe(stage); window.addEventListener('enn-theme', draw); size();
+  W3D.instances[id] = { simulate(qdeg, T, m = 'free') { mode = m; let st = [qdeg[0] * D2R, qdeg[1] * D2R, 0, 0]; const n = Math.round(T / 0.0005); for (let k = 0; k < n; k++) st = rk4(st, 0.0005);
+    const E0 = energy([qdeg[0] * D2R, qdeg[1] * D2R], [0, 0]), E1 = energy([st[0], st[1]], [st[2], st[3]]); return { q: [st[0] / D2R, st[1] / D2R], dE: (E1[0] + E1[1]) - (E0[0] + E0[1]) }; },
+    mcg(qdeg, v) { const r = MCG(qdeg.map(x => x * D2R), v); return r; } };
+};
+</script>

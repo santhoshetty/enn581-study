@@ -1,0 +1,538 @@
+<p class="eyebrow">Week 11 · Wheeled robot dynamics</p>
+<h2>What force and torque on the wheels produce which motion of the chassis?</h2>
+<p class="lead">Week 10 told you which chassis velocity a given wheel motion produces. Dynamics asks the reverse of cause and effect: which forces and torques accelerate the chassis. The deck applies Newton–Euler to one rigid planar body, packs the result into \(\mathbf M\dot{\boldsymbol\zeta}+c(\boldsymbol\zeta)={}^C\mathbf Q\), and shows how wheel forces build \({}^C\mathbf Q\). This tab rebuilds every line, fixes two slips in the slides (pp. 24–25 and p. 34), and ends with a simulator you drive with wheel torques.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Wheeled Robots Dynamics<small>40 slides · Dr KM Digumarti · no practical sheet this week</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w11-lec">📖 View here</button>
+    <button type="button" class="btn" data-dl="notes/w11-lec.pdf" data-name="ENN581 W11 Wheeled Robots Dynamics.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w11-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>No W11 question appears among the W13 sample questions.</b> The two nearest are Question 4, “Derive the equations of motion” (<a class="pg" data-doc="w13-lec" data-page="8">W13 p.8</a>, mass, moments of inertia and centre-of-mass positions given), and Question 10, a three-omni-wheel robot (<a class="pg" data-doc="w13-lec" data-page="20">W13 p.20</a>) answered with the W10 wheel model (<a class="pg" data-doc="w13-lec" data-page="21">W13 p.21</a>). W11 is the mobile-robot version of Q4, and its wheel-force step is the transpose of Q10’s kinematic map. Treat a “derive and use \(\mathbf M\dot{\boldsymbol\zeta}+c=\mathbf Q\)” question as plausible, not promised.</p>
+  <p><b>Where the marks would be (indicative; marks not published):</b> a free-body picture with frames {O}, {C}, {G}; the force and moment balance with the moment-transfer term; the acceleration of G with the \(u\dot\theta\), \(v\dot\theta\) terms; the matrix form with M, c and Q named; the wheel-force matrix \(\begin{bmatrix}1&1\\0&0\\-a&a\end{bmatrix}\); a one-line check (units, or \(c=0\) at rest).</p>
+  <p><b>Where marks are lost:</b> \(v\dot\theta\) written where \(u\dot\theta\) belongs (the slides do it, see section 4); \(\mathbf J\) used where \(\mathbf J^\top\) is needed in \({}^C\mathbf Q=\mathbf J^\top\,{}^O\mathbf Q\); the parallel-axis term \(m(x_G^2+y_G^2)\) forgotten in the third diagonal entry; the sign of the moment-transfer term; mixing chassis-frame and inertial-frame quantities in one equation. The deck has no control content (no look-ahead point, no tracking law); that sits in W8–W9.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (optional, no coding in the exam)</span>
+  <p>There is no instructor notebook or practical sheet for Week 11 in the course files, so nothing here has saved output. The nearest instructor code is the Week-12 helper <code>diffdrive.py</code> (wheel radius 0.1 m, wheel base 0.5 m). It is <b>kinematic</b>, not dynamic, and it has bugs: it moves along \(\cos/\sin(\omega\,\mathrm{d}t)\) instead of the heading \(\theta\), and it overwrites its <code>angular_velocity</code> argument. Do not copy it as a model answer. The simulator in this tab is the dynamic counterpart.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>Dynamics is the cause, kinematics the effect</h4>W10 answered “if the chassis moves like this, how fast must each wheel turn?” W11 answers “how hard must the wheels push to make it move like this?” Like a shopping trolley: speed tells you where it goes, but only a push changes the speed.</div>
+    <div class="card"><h4>One push, one twist</h4>A rigid body obeys two laws: net force \(=m\times\)acceleration of the centre of mass, net torque \(=I\times\)angular acceleration. These are the same Newton and Euler equations as for an arm link in W7 (<a class="pg" data-doc="w07-lec" data-page="34">W7 p.34</a>), now for one body in a plane.</div>
+    <div class="card"><h4>Turning at constant speed still accelerates you</h4>In a car on a bend you are pushed outward even at a steady 60 km/h. Your speed along the car’s nose is constant, but the nose direction keeps rotating, so the velocity vector changes. That is the \(u\dot\theta\) term: a sideways acceleration with no sideways speed.</div>
+    <div class="card"><h4>Add up pushes with lever arms</h4>Each wheel pushes forward at a distance from the axle midpoint. Sum the pushes for the net force. Sum push \(\times\) lever arm for the net twist. That sum is a matrix, and it is the transpose of the W10 wheel-speed matrix, because the power must be the same either way.</div>
+    <div class="card"><h4>Wheels grip sideways like skate blades</h4>A skate glides forward but resists sideways motion. That side grip is what bends the path into a circle. The slide-37 matrix lists only the forward pushes; the sideways force is a reaction that the no-slip rule supplies.</div>
+  </div>
+  <div class="vids" data-vids="w11"></div>
+</div>
+
+<div class="widget" data-w3d="ddsim" id="w11-dd">
+  <div class="wh"><b>Differential-drive simulator</b><span class="eyebrow">deck equations (pp. 26, 35, 37) integrated with RK4, step 5 ms</span></div>
+  <div class="wbody"><div class="stage"><button type="button" class="btn small reset">Reset</button><span class="legend">top view · camera follows the robot · 150 px per metre · x red, y green</span></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> start with the defaults (τ left 0.4, τ right 0.6 N·m, the worked example below). The robot starts from rest, \(\dot u=1\) m/s² and \(\ddot\theta=1.6\) rad/s², and the ICR sits 0.625 m to its left and <i>never moves</i> in the robot frame, so the path is a circle with speed growing. Then press “Equal torques” (straight line) and “Opposite torques” (spin on the spot, ICR at the axle midpoint). Finally untick lateral grip with unequal torques: the sideways velocity \(v\) grows because nothing resists it, which is what the slide-37 model literally says. The model has no friction or motor limit, so it stops after 5 s.</div>
+</div>
+<script data-after>
+W3D.kinds.ddsim = function (root) {
+  const id = root.id, stage = root.querySelector('.stage'), side = root.querySelector('.side'), rbtn = root.querySelector('.reset');
+  const P = { m: 10, I: 0.25, r: 0.1, a: 0.2 }, DT = 0.005, TMAX = 5, SC = 150;
+  let tl = 0.4, tr = 0.6, grip = true, run = true;
+  let S = [0, 0, 0, 0, 0, 0], tt = 0, trail = [[0, 0]], acc = 0, last = 0, tick = 0;
+  const cv = document.createElement('canvas'); stage.insertBefore(cv, stage.firstChild);
+  const g = cv.getContext('2d'); let W = 300, H = 340, dpr = 1;
+  cv.style.height = H + 'px';
+  side.innerHTML = W3D.sliderRow(id + '-tl', 'τ left', -1, 1, 0.4, 0.05, ' N·m') + W3D.sliderRow(id + '-tr', 'τ right', -1, 1, 0.6, 0.05, ' N·m') +
+    '<label style="display:flex;gap:.45rem;align-items:center;font-size:.85rem"><input type="checkbox" id="' + id + '-grip" checked> lateral grip (no sideways slide, v = 0)</label>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:.4rem"><button type="button" class="btn small" data-a="eq">Equal torques</button><button type="button" class="btn small" data-a="op">Opposite torques</button><button type="button" class="btn small" data-a="run">Pause</button></div>' +
+    '<div class="out mono" style="font-size:.78rem;line-height:1.5;white-space:pre-wrap"></div>';
+  const out = side.querySelector('.out'), sl = side.querySelector('#' + id + '-tl'), sr = side.querySelector('#' + id + '-tr'), gp = side.querySelector('#' + id + '-grip'), runBtn = side.querySelector('[data-a=run]');
+  const f2 = v => (+v).toFixed(2);
+  function deriv(s) {                                   // deck p.26 with C = G, forces from p.37 (F = tau / r), wheel inertia neglected
+    const fx = (tl + tr) / P.r, nz = P.a * (tr - tl) / P.r;
+    const th = s[2], u = s[3], v = s[4], w = s[5];
+    return [u * Math.cos(th) - v * Math.sin(th), u * Math.sin(th) + v * Math.cos(th), w,
+      fx / P.m + (grip ? 0 : v * w), grip ? 0 : -u * w, nz / P.I];
+  }
+  function rk4() {
+    const add = (s, k, h) => s.map((x, i) => x + h * k[i]);
+    const k1 = deriv(S), k2 = deriv(add(S, k1, DT / 2)), k3 = deriv(add(S, k2, DT / 2)), k4 = deriv(add(S, k3, DT));
+    S = S.map((x, i) => x + DT / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+    tt += DT; tick++;
+    if (tick % 4 === 0) { trail.push([S[0], S[1]]); if (trail.length > 1500) trail.shift(); }
+  }
+  function reset() { S = [0, 0, 0, 0, 0, 0]; tt = 0; trail = [[0, 0]]; acc = 0; tick = 0; }
+  function publish() {
+    const u = S[3], w = S[5];
+    window.__state = window.__state || {};
+    return (window.__state[id] = { u, thetadot: w, x: S[0], y: S[1], theta: S[2], v: S[4], t: tt,
+      phiL: (u - P.a * w) / P.r, phiR: (u + P.a * w) / P.r, tauL: tl, tauR: tr, grip });
+  }
+  function readout() {
+    const u = S[3], v = S[4], w = S[5], R = Math.abs(w) > 1e-6 ? u / w : Infinity;
+    out.textContent = 't = ' + tt.toFixed(2) + ' s\nu = ' + u.toFixed(3) + ' m/s    v = ' + v.toFixed(3) + ' m/s\nθ̇ = ' + w.toFixed(3) + ' rad/s   θ = ' + (S[2] * 180 / Math.PI).toFixed(1) + '°\nwheel speeds: left ' + ((u - P.a * w) / P.r).toFixed(2) + ', right ' + ((u + P.a * w) / P.r).toFixed(2) + ' rad/s\nx = ' + S[0].toFixed(3) + ' m   y = ' + S[1].toFixed(3) + ' m\nICR (robot frame): ' + (Math.abs(w) > 1e-6 ? '(' + (-v / w).toFixed(3) + ', ' + (u / w).toFixed(3) + ') m' : 'at infinity') +
+      '\nsideways force needed to hold v = 0: m·u·θ̇ = ' + (P.m * u * w).toFixed(2) + ' N' + (grip ? '' : ' (not supplied)');
+  }
+  function arrow(x0, y0, x1, y1) {
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+    const L = Math.hypot(x1 - x0, y1 - y0); if (L < 4) return; const ux = (x1 - x0) / L, uy = (y1 - y0) / L;
+    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x1 - 6 * ux + 3 * uy, y1 - 6 * uy - 3 * ux); g.lineTo(x1 - 6 * ux - 3 * uy, y1 - 6 * uy + 3 * ux); g.closePath(); g.fill();
+  }
+  function draw() {
+    const css = W3D.css, ink = css('--ink'), muted = css('--muted'), accent = css('--accent'), exam = css('--exam'), line = css('--line'), surf = css('--surface');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2, w2s = (x, y) => [cx + (x - S[0]) * SC, cy - (y - S[1]) * SC];
+    g.strokeStyle = line; g.lineWidth = 1;                      // 0.5 m grid
+    const gx0 = Math.floor((S[0] - W / 2 / SC) / 0.5) * 0.5, gy0 = Math.floor((S[1] - H / 2 / SC) / 0.5) * 0.5;
+    for (let x = gx0; x < S[0] + W / 2 / SC + 0.5; x += 0.5) { const p = w2s(x, 0)[0]; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, H); g.stroke(); }
+    for (let y = gy0; y < S[1] + H / 2 / SC + 0.5; y += 0.5) { const p = w2s(0, y)[1]; g.beginPath(); g.moveTo(0, p); g.lineTo(W, p); g.stroke(); }
+    g.strokeStyle = accent; g.lineWidth = 2; g.beginPath();      // trail
+    trail.forEach((p, i) => { const q = w2s(p[0], p[1]); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.stroke();
+    const u = S[3], v = S[4], w = S[5], th = S[2];
+    if (Math.abs(w) > 1e-3) {                                    // ICR: body point with zero velocity
+      const lx = -v / w, ly = u / w;
+      if (Math.hypot(lx, ly) < 40) {
+        const q = w2s(S[0] + Math.cos(th) * lx - Math.sin(th) * ly, S[1] + Math.sin(th) * lx + Math.cos(th) * ly);
+        g.strokeStyle = exam; g.lineWidth = 1; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(cx, cy); g.lineTo(q[0], q[1]); g.stroke(); g.setLineDash([]);
+        g.fillStyle = exam; g.beginPath(); g.arc(q[0], q[1], 4, 0, 7); g.fill();
+        g.font = '12px IBM Plex Mono, monospace'; g.fillText('ICR', q[0] + 7, q[1] - 6);
+      }
+    }
+    g.save(); g.translate(cx, cy); g.rotate(-th);
+    g.fillStyle = surf; g.strokeStyle = ink; g.lineWidth = 1.5; g.beginPath(); g.rect(-0.15 * SC, -0.19 * SC, 0.40 * SC, 0.38 * SC); g.fill(); g.stroke();
+    g.fillStyle = ink;
+    g.fillRect(-0.1 * SC, -0.225 * SC, 0.2 * SC, 0.05 * SC); g.fillRect(-0.1 * SC, 0.175 * SC, 0.2 * SC, 0.05 * SC);   // left wheel (+y) is up on screen
+    g.strokeStyle = muted; g.beginPath(); g.arc(0.2 * SC, 0, 0.03 * SC, 0, 7); g.stroke();                              // castor
+    g.font = '11px IBM Plex Mono, monospace'; g.fillStyle = muted; g.fillText('L', -0.04 * SC, -0.25 * SC); g.fillText('R', -0.04 * SC, 0.30 * SC);
+    g.strokeStyle = exam; g.fillStyle = exam; g.lineWidth = 2.5;                                                        // wheel forces F = tau / r
+    arrow(0, -0.2 * SC, 0.03 * SC * (tl / P.r), -0.2 * SC); arrow(0, 0.2 * SC, 0.03 * SC * (tr / P.r), 0.2 * SC);
+    g.lineWidth = 2; g.strokeStyle = css('--axx'); g.fillStyle = css('--axx'); arrow(0, 0, 0.14 * SC, 0);
+    g.strokeStyle = css('--axy'); g.fillStyle = css('--axy'); arrow(0, 0, 0, -0.14 * SC);
+    g.restore();
+    readout();
+  }
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2); W = stage.clientWidth || 300;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); draw();
+  }
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    if (!run || !root.offsetParent) { last = 0; return; }
+    if (!last) { last = ts; return; }
+    acc += Math.min((ts - last) / 1000, 0.05); last = ts;
+    while (acc >= DT && tt < TMAX - 1e-9) { rk4(); acc -= DT; }
+    if (tt >= TMAX - 1e-9) { run = false; runBtn.textContent = 'Run'; }
+    publish(); draw();
+  }
+  function setTau(a, b) { tl = a; tr = b; sl.value = a; sr.value = b; sl.nextElementSibling.textContent = f2(a) + ' N·m'; sr.nextElementSibling.textContent = f2(b) + ' N·m'; }
+  function restart() { reset(); run = true; runBtn.textContent = 'Pause'; publish(); draw(); }
+  sl.addEventListener('input', () => { tl = +sl.value; sl.nextElementSibling.textContent = f2(tl) + ' N·m'; });
+  sr.addEventListener('input', () => { tr = +sr.value; sr.nextElementSibling.textContent = f2(tr) + ' N·m'; });
+  gp.addEventListener('change', () => { grip = gp.checked; if (grip) S[4] = 0; });
+  rbtn.addEventListener('click', restart);
+  side.addEventListener('click', e => {
+    const b = e.target.closest('button[data-a]'); if (!b) return;
+    if (b.dataset.a === 'eq') { setTau(0.3, 0.3); restart(); }
+    else if (b.dataset.a === 'op') { setTau(-0.2, 0.2); restart(); }
+    else { if (tt >= TMAX - 1e-9) return; run = !run; runBtn.textContent = run ? 'Pause' : 'Run'; }
+  });
+  window.addEventListener('enn-theme', draw);
+  new ResizeObserver(resize).observe(stage);
+  window.__state = window.__state || {}; window.W3D.instances = window.W3D.instances || {};
+  W3D.instances[id] = {
+    simulate(a, b, gr, T) {                              // synchronous, from rest, same RK4 as the animation; used by the tests
+      setTau(a, b); grip = gr; gp.checked = gr; reset(); run = false; runBtn.textContent = 'Run';
+      for (let i = 0, n = Math.round(T / DT); i < n; i++) rk4();
+      const s = publish(); draw(); return s;
+    },
+    reset: restart
+  };
+  resize(); publish(); requestAnimationFrame(frame);
+};
+</script>
+
+<!-- ================= 1 ================= -->
+<div class="sub" id="w11-problem">
+<h3>1 · The dynamics problem: forward and inverse <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="9">pp. 9–11</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Kinematics (W10) relates <i>motions</i>. Dynamics relates a motion to the <i>forces and torques</i> that cause it. For a planar robot the pose is \(\boldsymbol\xi=(x,y,\theta)^\top\) in the inertial frame, and the net force and torque on it, also in the inertial frame, are \(\mathbf Q=(f_x,f_y,\tau_z)^\top\) (<a class="pg" data-doc="w11-lec" data-page="9">p.9</a>).</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+\[ \mathbf Q = f(\boldsymbol\xi,\dot{\boldsymbol\xi},\ddot{\boldsymbol\xi}) \]
+<p><b>Forward dynamics</b> (<a class="pg" data-doc="w11-lec" data-page="10">p.10</a>): given \(\mathbf Q\), find the trajectory \((\boldsymbol\xi,\dot{\boldsymbol\xi},\ddot{\boldsymbol\xi})\). Use: simulation and analysis. <b>Inverse dynamics</b> (<a class="pg" data-doc="w11-lec" data-page="11">p.11</a>): given a desired trajectory, find the \(\mathbf Q\) needed. Use: control.</p>
+<p>Both use the same equation. Forward solves for the acceleration and integrates; inverse evaluates the right-hand side along a known path.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Read which quantities are given. Forces or torques given and motion wanted: forward (integrate).</li>
+<li>Motion given and forces wanted: inverse (substitute, no integration).</li>
+<li>Name the frame of every vector: \(\mathbf Q\) in {O} is \({}^O\mathbf Q\); in the chassis it is \({}^C\mathbf Q\).</li>
+<li>Sanity check with a straight line: \(f=m\ddot x\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>A 10 kg robot moves along x. Forward: \(f_x=10\) N gives \(\ddot x=f_x/m=1\) m/s². Inverse: a required path \(x=\tfrac12t^2\) has \(\ddot x=1\) m/s², so \(f_x=m\ddot x=10\) N.</p></div>
+<div class="angle">Typical one-line question: “Is simulating the robot from known wheel torques forward or inverse dynamics?” (forward). “Which does a controller use to compute feed-forward torque?” (inverse). Beware the trap “inverse dynamics gives the trajectory”.</div>
+</div>
+
+<!-- ================= 2 ================= -->
+<div class="sub" id="w11-setup">
+<h3>2 · Frames, symbols, and the W10 recap <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="4">pp. 4–6</a>, <a class="pg" data-doc="w11-lec" data-page="12">p. 12</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Three frames (<a class="pg" data-doc="w11-lec" data-page="12">p.12</a>): {O} fixed to the world (inertial); {C} attached to the chassis at a convenient reference point; {G} at the centre of mass, with the <b>same orientation as {C}</b> but a different origin. The chassis has mass \(m\) and a moment of inertia \({}^G I\) about the vertical axis through G. In {C}, G sits at \(({}^Cx_G,{}^Cy_G)\); in {C} the chassis velocity is \(\boldsymbol\zeta=(u,v,\dot\theta)^\top\), with \(u\) along \(\hat x_C\) and \(v\) along \(\hat y_C\).</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation: the W10 wheel model, recapped</span>
+<p>The generalised wheel model (<a class="pg" data-doc="w11-lec" data-page="6">p.6</a>) gives the angular velocity \(\dot\varphi_i\) of wheel \(i\) from the chassis velocity:</p>
+\[ \dot\varphi_i=\begin{bmatrix}\tfrac1{r_i}&\tfrac{\tan\gamma_i}{r_i}\end{bmatrix}\begin{bmatrix}\cos\beta_i&\sin\beta_i\\-\sin\beta_i&\cos\beta_i\end{bmatrix}\begin{bmatrix}1&0&-{}^Cy_{W_i}\\0&1&{}^Cx_{W_i}\end{bmatrix}\begin{bmatrix}\cos\theta&\sin\theta&0\\-\sin\theta&\cos\theta&0\\0&0&1\end{bmatrix}\begin{bmatrix}\dot x\\\dot y\\\dot\theta\end{bmatrix} \]
+<p>\(r_i\): wheel radius (m). \(\gamma_i\): angle between the free-roll velocity and the normal to the wheel plane. \(\beta_i\): angle between the drive velocity and the chassis. \(({}^Cx_{W_i},{}^Cy_{W_i})\): wheel position in {C} (m). \(\theta\): chassis orientation (rad). The last 3×3 matrix is \(\mathbf J^{-1}=\mathbf J^\top\): it turns the global \((\dot x,\dot y,\dot\theta)\) into the chassis-frame \(\boldsymbol\zeta=(u,v,\dot\theta)\). The dynamics below works with \(\boldsymbol\zeta\).</p>
+<p>For a standard fixed wheel at \((0,y_W)\) pointing forward (\(\gamma=0,\beta=0\)) this reduces to \(\dot\varphi=(u-y_W\dot\theta)/r\). <span class="added">added</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Sketch {O}, {C}, {G}; mark \(\theta\) from \(\hat x_O\) to \(\hat x_C\), anticlockwise positive.</li>
+<li>Write \(\boldsymbol\xi\) (global pose) and \(\boldsymbol\zeta\) (chassis velocity) separately and say which frame each is in.</li>
+<li>State the link \(\dot{\boldsymbol\xi}=\mathbf J(\boldsymbol\xi)\boldsymbol\zeta\) with \(\mathbf J\) the rotation about z by \(\theta\) (<a class="pg" data-doc="w11-lec" data-page="30">p.30</a>).</li>
+<li>Check \(\mathbf J^{-1}=\mathbf J^\top\) for a rotation.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>A differential drive: \(r=0.1\) m, wheels at \(y_W=\pm a=\pm0.2\) m (left is \(+y\)). At \(u=1\) m/s, \(\dot\theta=1.6\) rad/s: left \(\dot\varphi_L=(1-0.2\cdot1.6)/0.1=6.8\) rad/s, right \(\dot\varphi_R=(1+0.2\cdot1.6)/0.1=13.2\) rad/s. <span class="chk">checked</span></p></div>
+<div class="angle">The recap is the bridge: expect a question that first asks for the wheel speeds (W10 formula) and then for the wheel forces (this week). Keep \(\boldsymbol\xi\) (global) and \(\boldsymbol\zeta\) (chassis) separate: the single most common error is mixing them.</div>
+</div>
+
+<!-- ================= 3 ================= -->
+<div class="sub" id="w11-ne">
+<h3>3 · Newton–Euler balance on the chassis <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="14">pp. 14–17</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Two sets of loads act on the chassis. The <b>applied</b> loads from the wheels, drawn at C: a force \(({}^Cf_x,{}^Cf_y)\) and a torque \({}^Cn_z\). The <b>inertial</b> loads at G: a force \(({}^CF_x,{}^CF_y)=m\,{}^C\ddot{\mathbf P}_G\) and a torque \({}^CN_z\). Newton–Euler says they balance. The twist: the applied force acts at C but the inertial force acts at G, so moving one to the other creates a moment.</p>
+<figure class="svg"><svg viewBox="0 0 420 220" role="img" aria-label="Applied wrench at C and inertial wrench at G on a chassis">
+  <defs><marker id="w11a1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <rect x="30" y="40" width="360" height="150" rx="6" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+  <g stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3" fill="none" style="color:var(--muted)"><line x1="120" y1="140" x2="120" y2="100" marker-end="url(#w11a1)"/><line x1="120" y1="140" x2="160" y2="140" marker-end="url(#w11a1)"/><line x1="120" y1="140" x2="230" y2="90"/></g>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--muted)"><text x="164" y="144">x̂</text><text x="112" y="96">ŷ</text><text x="168" y="124">P<tspan dy="4" font-size="10">CG</tspan></text></g>
+  <circle cx="120" cy="140" r="4" fill="var(--ink)"/><circle cx="230" cy="90" r="4" fill="var(--ink)"/>
+  <g font-family="IBM Plex Mono, monospace" font-size="13" fill="var(--ink)"><text x="92" y="160">{C}</text><text x="238" y="108">{G}</text></g>
+  <g stroke="var(--exam)" stroke-width="2.5" fill="none" style="color:var(--exam)"><line x1="120" y1="140" x2="185" y2="170" marker-end="url(#w11a1)"/><line x1="120" y1="140" x2="75" y2="75" marker-end="url(#w11a1)"/><path d="M140,140 A20,20 0 1 0 120,160" marker-end="url(#w11a1)"/></g>
+  <g stroke="var(--accent)" stroke-width="2.5" fill="none" style="color:var(--accent)"><line x1="230" y1="90" x2="300" y2="75" marker-end="url(#w11a1)"/><line x1="230" y1="90" x2="245" y2="52" marker-end="url(#w11a1)"/><path d="M250,90 A20,20 0 1 0 230,110" marker-end="url(#w11a1)"/></g>
+  <g font-family="IBM Plex Mono, monospace" font-size="12"><text x="188" y="186" fill="var(--exam)">f<tspan dy="4" font-size="10">x</tspan><tspan dy="-4">, f</tspan><tspan dy="4" font-size="10">y</tspan><tspan dy="-4"> at C</tspan></text><text x="30" y="70" fill="var(--exam)">n<tspan dy="4" font-size="10">z</tspan><tspan dy="-4"> (at C)</tspan></text>
+  <text x="304" y="80" fill="var(--accent)">F<tspan dy="4" font-size="10">x</tspan><tspan dy="-4">, F</tspan><tspan dy="4" font-size="10">y</tspan><tspan dy="-4"> at G</tspan></text><text x="262" y="128" fill="var(--accent)">N<tspan dy="4" font-size="10">z</tspan><tspan dy="-4"> (at G)</tspan></text></g>
+</svg><figcaption>Schematic, not to scale. Orange: applied by the wheels at C. Accent colour: inertial force and torque at G. The directions are generic; their signs come from the equations.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>All terms are in {C} (<a class="pg" data-doc="w11-lec" data-page="15">p.15</a>). Force balance:</p>
+\[ {}^C\mathbf F_G-{}^C\mathbf f_C=0\;\Rightarrow\;{}^CF_x={}^Cf_x,\quad {}^CF_y={}^Cf_y \]
+<p>Moment balance about G. The applied force acts at C, which is the vector \(-{}^C\mathbf P_{CG}\) from G, so it contributes the moment \((-{}^C\mathbf P_{CG})\times{}^C\mathbf f_C\):</p>
+\[ {}^CN_G-{}^Cn_C-(-{}^C\mathbf P_{CG})\times{}^C\mathbf f_C=0\;\Rightarrow\;{}^CN_z={}^Cn_z+\big({}^Cy_{CG}\,{}^Cf_x-{}^Cx_{CG}\,{}^Cf_y\big) \]
+<p>The z-component of \((-x,-y,0)\times(f_x,f_y,0)\) is \(-xf_y+yf_x\), which is the bracket. <span class="chk">checked</span> The slides write \({}^C\mathbf P_{CG}\) on p.15 and \({}^C\mathbf P_G\) later; they are the same vector (C to G, in {C}).</p>
+<p>The inertial loads (<a class="pg" data-doc="w11-lec" data-page="17">p.17</a>) come from Newton and Euler (the same laws as <a class="pg" data-doc="w07-lec" data-page="34">W7 p.34</a>):</p>
+\[ {}^C\mathbf F_G=m\,{}^C\dot{\boldsymbol\upsilon}_G\;(F_x=m\,{}^C\ddot x_G,\;F_y=m\,{}^C\ddot y_G),\qquad {}^C\mathbf N_G={}^G\mathbf I\dot{\boldsymbol\omega}+\boldsymbol\omega\times{}^G\mathbf I\boldsymbol\omega\;\Rightarrow\;{}^CN_z={}^GI\,\ddot\theta \]
+<p>In planar motion \(\boldsymbol\omega\) is along z and so is \({}^G\mathbf I\boldsymbol\omega\), so the \(\boldsymbol\omega\times{}^G\mathbf I\boldsymbol\omega\) term vanishes. The slide’s handwritten note: \(m\) and \({}^GI\) are known; \(\ddot x_G,\ddot y_G,\ddot\theta\) are the unknowns. The one missing piece is the acceleration of G.</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Draw applied loads at C and inertial loads at G, all in {C}.</li>
+<li>Write \(F_x=f_x\), \(F_y=f_y\).</li>
+<li>Write the moment about G, remembering the lever arm \(-\mathbf P_{CG}\) for the applied force.</li>
+<li>Replace the inertial loads by \(m\,\ddot{\mathbf P}_G\) and \({}^GI\ddot\theta\).</li>
+<li>Sanity check: if C = G the lever arm is zero and \({}^Cn_z={}^GI\ddot\theta\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>G is 0.05 m ahead of C (\(x_G=0.05\), \(y_G=0\) m). Applied \({}^Cf=(10,4)\) N and \({}^Cn_z=0.4\) N·m. Moment about G: \({}^CN_z=0.4+(0\cdot10-0.05\cdot4)=0.2\) N·m. The sideways push 0.05 m ahead of G produces a clockwise moment about G that reduces the net twist. <span class="chk">checked</span></p></div>
+<div class="angle">Calculation or sketch. Marks go to the free-body figure and to the moment-transfer sign. A common slip is to treat the applied torque as acting about G without the \(y f_x-x f_y\) term.</div>
+</div>
+
+<!-- ================= 4 ================= -->
+<div class="sub" id="w11-accel">
+<h3>4 · The acceleration of the centre of mass in a rotating frame <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="19">pp. 19–24</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>The chassis frame turns with the robot, so the unit vectors \(\hat x_C,\hat y_C\) rotate at \(\dot\theta\): \(\dot{\hat x}=\dot\theta\,\hat y\) and \(\dot{\hat y}=-\dot\theta\,\hat x\). A velocity written as \(u\hat x+v\hat y\) therefore changes even when \(u\) and \(v\) do not. The \(u\hat x\) part swings towards \(+\hat y\); the \(v\hat y\) part swings towards \(-\hat x\).</p>
+<figure class="svg"><svg viewBox="0 0 520 210" role="img" aria-label="Rotation of the unit vectors: u x-hat swings towards y-hat, v y-hat swings towards minus x-hat">
+  <defs><marker id="w11a2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">
+  <g stroke="var(--axx)" stroke-width="2.5" fill="none" style="color:var(--axx)"><line x1="40" y1="170" x2="150" y2="170" marker-end="url(#w11a2)"/><line x1="40" y1="170" x2="143" y2="131" marker-end="url(#w11a2)"/></g>
+  <line x1="150" y1="170" x2="143" y2="131" stroke="var(--exam)" stroke-width="3"/>
+  <path d="M100,170 A60,60 0 0 0 96,150" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+  <text x="156" y="174" fill="var(--axx)">u x̂ at t</text><text x="148" y="126" fill="var(--axx)">u x̂ at t+dt</text>
+  <text x="156" y="152" fill="var(--exam)">change = u θ̇ dt</text><text x="156" y="166" fill="var(--exam)" font-size="11"> along +ŷ</text>
+  <g stroke="var(--axy)" stroke-width="2.5" fill="none" style="color:var(--axy)"><line x1="360" y1="190" x2="360" y2="90" marker-end="url(#w11a2)"/><line x1="360" y1="190" x2="322" y2="98" marker-end="url(#w11a2)"/></g>
+  <line x1="360" y1="90" x2="322" y2="98" stroke="var(--exam)" stroke-width="3"/>
+  <path d="M360,130 A60,60 0 0 0 337,134" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+  <text x="368" y="104" fill="var(--axy)">v ŷ at t</text><text x="316" y="84" fill="var(--axy)" text-anchor="end">v ŷ at t+dt</text>
+  <text x="368" y="130" fill="var(--exam)">change = −v θ̇ dt</text><text x="368" y="144" fill="var(--exam)" font-size="11">along x̂</text>
+  </g></svg><figcaption>Schematic, not to scale; the turn angle dθ = θ̇ dt is exaggerated. Together: the acceleration of C in {C} is (u̇ − vθ̇, v̇ + uθ̇).</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation (the slides, then an independent check)</span>
+<p>Position of G in {O} (<a class="pg" data-doc="w11-lec" data-page="19">p.19</a>): \({}^O\mathbf P_G={}^O\mathbf P_C+{}^O\mathbf R_C\,{}^C\mathbf P_G\). G is fixed in the chassis, so \({}^C\dot{\mathbf P}_G=0\) and \({}^O\dot{\mathbf R}_C\,\mathbf p={}^O\boldsymbol\omega_C\times{}^O\mathbf R_C\,\mathbf p\). Rotating the result into {C} (<a class="pg" data-doc="w11-lec" data-page="20">p.20</a>):</p>
+\[ {}^O\dot{\mathbf P}_G={}^O\mathbf R_C\big[{}^C\dot{\mathbf P}_C+{}^C\boldsymbol\omega_C\times{}^C\mathbf P_G\big] \]
+<p>Differentiate once more with the product rule (<a class="pg" data-doc="w11-lec" data-page="22">p.22</a>). The term \({}^C\boldsymbol\omega_C\times{}^C\dot{\mathbf P}_G\) is zero, and the derivative of \({}^O\mathbf R_C\) again produces \(\boldsymbol\omega\times\). Rotating into {C}:</p>
+\[ {}^C\ddot{\mathbf P}_G={}^C\ddot{\mathbf P}_C+{}^C\dot{\boldsymbol\omega}_C\times{}^C\mathbf P_{CG}+{}^C\boldsymbol\omega_C\times{}^C\dot{\mathbf P}_C+{}^C\boldsymbol\omega_C\times{}^C\boldsymbol\omega_C\times{}^C\mathbf P_G \]
+<p>Here \({}^C\dot{\mathbf P}_C=(u,v,0)\) and \({}^C\ddot{\mathbf P}_C=(\dot u,\dot v,0)\) are just the rates of change of the <i>components</i>. The turning of the frame is carried by the \(\boldsymbol\omega\times\) terms. Insert \(\boldsymbol\omega=(0,0,\dot\theta)\), \(\dot{\boldsymbol\omega}=(0,0,\ddot\theta)\), \({}^C\mathbf P_G=(x_G,y_G,0)\) (<a class="pg" data-doc="w11-lec" data-page="24">p.24</a>), using \((0,0,k)\times(a,b,0)=(-kb,\,ka,\,0)\):</p>
+\[ \dot{\boldsymbol\omega}\times\mathbf P_G=\ddot\theta\begin{bmatrix}-y_G\\x_G\\0\end{bmatrix},\quad \boldsymbol\omega\times\dot{\mathbf P}_C=\dot\theta\begin{bmatrix}-v\\u\\0\end{bmatrix},\quad \boldsymbol\omega\times\boldsymbol\omega\times\mathbf P_G=\dot\theta^2\begin{bmatrix}-x_G\\-y_G\\0\end{bmatrix} \]
+\[ {}^C\ddot x_G=\dot u-{}^Cy_G\ddot\theta-v\dot\theta-{}^Cx_G\dot\theta^2,\qquad {}^C\ddot y_G=\dot v+{}^Cx_G\ddot\theta+\boxed{u}\,\dot\theta-{}^Cy_G\dot\theta^2 \]
+<p>Cross-check with unit vectors alone: \(\mathbf v_C=u\hat x+v\hat y\), so \(\mathbf a_C=\dot u\hat x+\dot v\hat y+u\dot\theta\hat y-v\dot\theta\hat x=(\dot u-v\dot\theta)\hat x+(\dot v+u\dot\theta)\hat y\). <span class="chk">checked symbolically</span> (checks/w11.py derives the full G acceleration from \(\mathbf R(\theta(t))\))</p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs derivation</span><p><b>Pages 24 and 25 print \(+v\dot\theta\) in the y-acceleration</b> (\({}^C\ddot y_G=\dot v+{}^Cx_G\ddot\theta+v\dot\theta-{}^Cy_G\dot\theta^2\), and the matching \({}^CF_y\), \({}^Cf_y\)). The correct term is \(+u\dot\theta\). Three independent reasons: (1) the cross product on p.24 itself, \((0,0,\dot\theta)\times(u,v,0)=(-v\dot\theta,\,u\dot\theta,\,0)\), has \(u\dot\theta\) in y; (2) the p.26 matrix already uses \(u\) (row 2 \(m\dot\theta(u-{}^Cy_G\dot\theta)\), row 3 \(m\dot\theta({}^Cx_Gu+{}^Cy_Gv)\)), and the printed p.25 form does <i>not</i> reproduce it (checked symbolically); (3) physics: constant \(u\) on a circle with \(v=0\) needs the centripetal acceleration \(u\dot\theta\) in y, and the printed form gives zero. The x-equation (\(-v\dot\theta\)) is right. Write \(u\dot\theta\) in the exam. <span class="chk">checked</span></p></div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write \({}^C\ddot{\mathbf P}_G\) as the four-term sum (acceleration of C components, \(\dot\omega\times P\), \(\omega\times\dot P_C\), \(\omega\times\omega\times P\)).</li>
+<li>Substitute the vectors; evaluate each cross product with \((0,0,k)\times(a,b,0)=(-kb,ka,0)\).</li>
+<li>Collect x and y. Memorise the pattern: x gets \(-v\dot\theta\), y gets \(+u\dot\theta\) (the velocity components swap and the sign flips on the first).</li>
+<li>Check: if C = G and \(\ddot\theta=0\), \(\dot u=\dot v=0\), the acceleration is \(\dot\theta\,(-v,u)\), perpendicular to the velocity.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>C = G, \(u=2\) m/s, \(v=0\), \(\dot\theta=0.5\) rad/s, everything else zero. Then \({}^C\ddot x_G=0\), \({}^C\ddot y_G=u\dot\theta=1.0\) m/s², so a 10 kg chassis needs \({}^Cf_y=10\) N sideways. With G 0.05 m ahead of C the x-equation adds \(-x_G\dot\theta^2=-0.0125\) m/s². <span class="chk">checked</span></p></div>
+<div class="angle">A calculation or derivation question, and a spot-the-error one: this is where the printed slide is wrong, so a marker comparing against the slide may expect \(v\dot\theta\). Show the cross-product line so your \(u\dot\theta\) is justified.</div>
+</div>
+
+<!-- ================= 5 ================= -->
+<div class="sub" id="w11-eom">
+<h3>5 · Equations of motion in matrix form: \(\mathbf M\dot{\boldsymbol\zeta}+c(\boldsymbol\zeta)={}^C\mathbf Q\) <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="25">pp. 25–27</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Rearranged as “mass times acceleration, plus velocity terms, equals the applied load”: the same shape as an arm’s \(\mathbf M(\mathbf q)\ddot{\mathbf q}+\dots=\boldsymbol\tau\) from W7. \(\mathbf M\) carries mass and geometry. \(c(\boldsymbol\zeta)\) carries the velocity-dependent (centripetal and Coriolis) terms that exist because the frame rotates. \({}^C\mathbf Q\) is what the wheels apply.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Equate applied to inertial loads (p.25, with the corrected \(u\dot\theta\)):</p>
+\[ {}^Cf_x=m\big(\dot u-{}^Cy_G\ddot\theta-v\dot\theta-{}^Cx_G\dot\theta^2\big),\qquad {}^Cf_y=m\big(\dot v+{}^Cx_G\ddot\theta+u\dot\theta-{}^Cy_G\dot\theta^2\big) \]
+\[ {}^Cn_z={}^CN_z-\big({}^Cy_G\,{}^Cf_x-{}^Cx_G\,{}^Cf_y\big)={}^GI\ddot\theta-\big({}^Cy_G\,{}^Cf_x-{}^Cx_G\,{}^Cf_y\big) \]
+<p>Substitute \(f_x,f_y\) into the moment equation. The coefficient of \(\ddot\theta\) is \({}^GI+m({}^Cx_G^2+{}^Cy_G^2)\). Collect the terms in \(\dot u,\dot v,\ddot\theta\) (<a class="pg" data-doc="w11-lec" data-page="26">p.26</a>):</p>
+\[ \underbrace{\begin{bmatrix}m&0&-m\,{}^Cy_G\\0&m&m\,{}^Cx_G\\-m\,{}^Cy_G&m\,{}^Cx_G&{}^GI+m({}^Cx_G^2+{}^Cy_G^2)\end{bmatrix}}_{\mathbf M}\begin{bmatrix}\dot u\\\dot v\\\ddot\theta\end{bmatrix}+\underbrace{\begin{bmatrix}-m\dot\theta\,(v+{}^Cx_G\dot\theta)\\m\dot\theta\,(u-{}^Cy_G\dot\theta)\\m\dot\theta\,({}^Cx_G\,u+{}^Cy_G\,v)\end{bmatrix}}_{c(\boldsymbol\zeta)}=\underbrace{\begin{bmatrix}{}^Cf_x\\{}^Cf_y\\{}^Cn_z\end{bmatrix}}_{{}^C\mathbf Q} \]
+<p><span class="chk">checked symbolically</span> Reading the pieces. \(\mathbf M\) is constant and symmetric; its lower-right entry is the inertia about C by the parallel-axis theorem. \(c\) is zero when \(\boldsymbol\zeta=0\), so at rest \(\dot{\boldsymbol\zeta}=\mathbf M^{-1}\,{}^C\mathbf Q\). Everything is written in {C} (the boxed note on p.26). Homework on <a class="pg" data-doc="w11-lec" data-page="27">p.27</a>: derive the same equations with Lagrange’s method. The result must match, since both describe the same body. <span class="added">added</span> (the Lagrange route is not worked in the deck)</p>
+<p><b>Special case C = G</b> (\({}^Cx_G={}^Cy_G=0\)): \(\mathbf M=\mathrm{diag}(m,m,{}^GI)\) and \(c=(-mv\dot\theta,\;mu\dot\theta,\;0)^\top\). The diagonal \(\mathbf M\) means no coupling between force and torque. <span class="added">added</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Start from the two component equations and the moment equation.</li>
+<li>Substitute \(f_x,f_y\) into \(n_z\) before collecting terms.</li>
+<li>Read \(\mathbf M\) from the coefficients of \(\dot u,\dot v,\ddot\theta\), and \(c\) from everything left (velocity terms).</li>
+<li>Check: \(\mathbf M\) symmetric; \(\mathbf M_{33}=I_G+m(x_G^2+y_G^2)\); \(c=0\) at rest.</li>
+<li>To find accelerations: \(\dot{\boldsymbol\zeta}=\mathbf M^{-1}({}^C\mathbf Q-c)\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example: off-centre COM</span>
+<p>\(m=10\) kg, \({}^GI=0.25\) kg·m², G is 0.05 m ahead of C (\(x_G=0.05\), \(y_G=0\) m). At rest (\(c=0\)) the wheels apply \({}^Cf=(10,0)\) N and \({}^Cn_z=0.4\) N·m. Inertia about C: \(0.25+10(0.05)^2=0.275\) kg·m². The equations:</p>
+\[ \begin{bmatrix}10&0&0\\0&10&0.5\\0&0.5&0.275\end{bmatrix}\begin{bmatrix}\dot u\\\dot v\\\ddot\theta\end{bmatrix}=\begin{bmatrix}10\\0\\0.4\end{bmatrix} \]
+<p>Row 1: \(\dot u=1.0\) m/s². Row 2: \(\dot v=-0.05\,\ddot\theta\). Row 3: \(0.5(-0.05\ddot\theta)+0.275\ddot\theta=0.25\ddot\theta=0.4\), so \(\ddot\theta=1.6\) rad/s² and \(\dot v=-0.08\) m/s². C accelerates sideways because it swings about G (\(a_{C,y}=-x_G\ddot\theta\)). The naive \({}^Cn_z/0.275=1.4545\) rad/s² ignores the coupling and is wrong. <span class="chk">checked</span></p></div>
+<div class="angle">Calculation (solve a 3×3 at rest) or explanation (“what does each term mean, and what vanishes when C = G?”). Frequent trap: using \({}^GI\) as the third diagonal entry when C ≠ G.</div>
+</div>
+
+<!-- ================= 6 ================= -->
+<div class="sub" id="w11-inertial">
+<h3>6 · From the chassis frame to the inertial frame <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="28">pp. 28–34</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>The chassis form is convenient for simulation, but a planner or a world-frame controller works with \((\boldsymbol\xi,\dot{\boldsymbol\xi},\ddot{\boldsymbol\xi})\) and a force \({}^O\mathbf Q\) in world axes. Two ingredients convert it (<a class="pg" data-doc="w11-lec" data-page="28">p.28</a>): a way to write \(\boldsymbol\zeta,\dot{\boldsymbol\zeta}\) in terms of \(\boldsymbol\xi\) and its derivatives, and a relation between \({}^C\mathbf Q\) and \({}^O\mathbf Q\).</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p><b>Velocities</b> (<a class="pg" data-doc="w11-lec" data-page="30">p.30</a>): from W10, \(\dot{\boldsymbol\xi}=\mathbf J(\boldsymbol\xi)\boldsymbol\zeta\) with \(\mathbf J\) the rotation about z by \(\theta\) (the slide’s “\(\mathbf J(\eta)\)” is a typo for \(\mathbf J(\boldsymbol\xi)\)). Differentiate:</p>
+\[ \ddot{\boldsymbol\xi}=\dot{\mathbf J}\boldsymbol\zeta+\mathbf J\dot{\boldsymbol\zeta}\;\Rightarrow\;\dot{\boldsymbol\zeta}=\mathbf J^{-1}\big[\ddot{\boldsymbol\xi}-\dot{\mathbf J}\boldsymbol\zeta\big]=\mathbf J^{-1}\big[\ddot{\boldsymbol\xi}-\dot{\mathbf J}\mathbf J^{-1}\dot{\boldsymbol\xi}\big] \]
+<p><b>Loads</b> (<a class="pg" data-doc="w11-lec" data-page="32">p.32</a>): power is the same in any frame, \({}^O\mathbf Q\cdot\dot{\boldsymbol\xi}={}^C\mathbf Q\cdot\boldsymbol\zeta\). Insert \(\dot{\boldsymbol\xi}=\mathbf J\boldsymbol\zeta\): \({}^O\mathbf Q^\top\mathbf J\boldsymbol\zeta={}^C\mathbf Q^\top\boldsymbol\zeta\) for every \(\boldsymbol\zeta\), hence</p>
+\[ \mathbf J(\boldsymbol\xi)^\top\,{}^O\mathbf Q={}^C\mathbf Q \]
+<p>This is the same “transpose of the velocity map maps loads back” rule as \(\boldsymbol\tau=\mathbf J^\top\mathbf F\) for arms (statics, <a class="pg" data-doc="w06-lec" data-page="58">W6 p.58</a>). For a rotation \(\mathbf J^\top=\mathbf J^{-1}\), so \({}^O\mathbf Q=\mathbf J\,{}^C\mathbf Q\): rotate the load by \(\theta\). <span class="added">added</span></p>
+<p><b>Plug in</b> (<a class="pg" data-doc="w11-lec" data-page="34">p.34</a>). Substitute \(\dot{\boldsymbol\zeta}\) and \({}^C\mathbf Q\) into \(\mathbf M\dot{\boldsymbol\zeta}+c=\,{}^C\mathbf Q\) and multiply by \((\mathbf J^\top)^{-1}\):</p>
+\[ {}^O\mathbf M\,\ddot{\boldsymbol\xi}+{}^Oc(\boldsymbol\xi,\dot{\boldsymbol\xi})={}^O\mathbf Q,\qquad {}^O\mathbf M=(\mathbf J^\top)^{-1}\mathbf M\,\mathbf J^{-1},\quad {}^Oc=(\mathbf J^\top)^{-1}\Big[c-\mathbf M\,\mathbf J^{-1}\dot{\mathbf J}\,\mathbf J^{-1}\dot{\boldsymbol\xi}\Big] \]
+<p>Entirely in terms of \(\boldsymbol\xi,\dot{\boldsymbol\xi},\ddot{\boldsymbol\xi}\), as the slide says. <span class="chk">checked numerically</span> on random poses, velocities and COM offsets</p>
+<p><b>Special case C = G:</b> \((\mathbf J^\top)^{-1}=\mathbf J\), so \({}^O\mathbf M=\mathbf J\,\mathrm{diag}(m,m,{}^GI)\,\mathbf J^\top=\mathrm{diag}(m,m,{}^GI)\), and \({}^Oc=0\). A free rigid body obeys \(m\ddot x=f_x\), \(m\ddot y=f_y\), \({}^GI\ddot\theta=\tau_z\) in world axes, with no velocity terms. The Coriolis-like terms of the chassis form exist only because the chassis axes rotate. <span class="chk">checked</span> <span class="added">added</span></p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs derivation</span><p><b>Page 34, third line, drops a \(\mathbf J^{-1}\).</b> The slide prints \({}^Oc=(\mathbf J^\top)^{-1}[c-\mathbf M\,\dot{\mathbf J}\,\mathbf J^{-1}\dot{\boldsymbol\xi}]\). Expanding line 2 of the same slide, \(\mathbf M\mathbf J^{-1}(\ddot{\boldsymbol\xi}-\dot{\mathbf J}\mathbf J^{-1}\dot{\boldsymbol\xi})\), gives the subtracted term \(\mathbf M\,\mathbf J^{-1}\dot{\mathbf J}\,\mathbf J^{-1}\dot{\boldsymbol\xi}\), with an extra \(\mathbf J^{-1}\) in front of \(\dot{\mathbf J}\). The two agree only at \(\theta=0\) (where \(\mathbf J=\mathbf I\)). Test: C = G, \(m=10\), \(\theta=90^\circ\), \(u=1\), \(v=0\), \(\dot\theta=2\): the correct \({}^Oc=0\) (free body), the printed formula gives \((-20,\,20,\,0)\). The p.30 equations are correct. <span class="chk">checked</span></p></div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>State \(\dot{\boldsymbol\xi}=\mathbf J\boldsymbol\zeta\) and differentiate to get \(\dot{\boldsymbol\zeta}\).</li>
+<li>State the power argument and conclude \({}^C\mathbf Q=\mathbf J^\top\,{}^O\mathbf Q\).</li>
+<li>Substitute and pre-multiply by \((\mathbf J^\top)^{-1}\) to read \({}^O\mathbf M\) and \({}^Oc\).</li>
+<li>For a rotation, use \(\mathbf J^{-1}=\mathbf J^\top\) to simplify.</li>
+<li>Check the C = G case: \({}^O\mathbf M\) diagonal and constant.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>Use the section 8 robot (C = G, \(m=10\), \({}^GI=0.25\)) at rest with \(\theta=30^\circ\) and the wheel wrench \({}^C\mathbf Q=(10,0,0.4)\). Then \({}^O\mathbf Q=\mathbf J\,{}^C\mathbf Q=(10\cos30^\circ,\,10\sin30^\circ,\,0.4)=(8.660,\,5.000,\,0.4)\), and \(\ddot{\boldsymbol\xi}={}^O\mathbf M^{-1}\,{}^O\mathbf Q=(0.866,\,0.5,\,1.6)\) (m/s², m/s², rad/s²). It is the chassis answer \((1,0,1.6)\) with the linear part rotated by \(30^\circ\). <span class="chk">checked</span></p></div>
+<div class="angle">A derive question (“show \({}^C\mathbf Q=\mathbf J^\top\,{}^O\mathbf Q\)”, six lines) or a spot-the-error (transpose, inverse, which frame). Say “power is frame-independent” in words; that is the key idea.</div>
+</div>
+
+<!-- ================= 7 ================= -->
+<div class="sub" id="w11-sim">
+<h3>7 · Using the model: forward simulation <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="35">p. 35</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Wheel-ground forces are most natural in the chassis frame, so simulate there (<a class="pg" data-doc="w11-lec" data-page="35">p.35</a>). Start from a known pose and velocity, with the wheel forces given. Each step: compute \(\dot{\boldsymbol\zeta}\), integrate to get \(\boldsymbol\zeta\), rotate to \(\dot{\boldsymbol\xi}\), integrate to get \(\boldsymbol\xi\). The simulator above does exactly this.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+\[ \dot{\boldsymbol\zeta}=\mathbf M^{-1}\big[{}^C\mathbf Q-c(\boldsymbol\zeta)\big],\qquad \boldsymbol\zeta\leftarrow\int\dot{\boldsymbol\zeta}\,\mathrm dt,\qquad \dot{\boldsymbol\xi}=\mathbf J(\boldsymbol\xi)\boldsymbol\zeta,\qquad \boldsymbol\xi\leftarrow\int\dot{\boldsymbol\xi}\,\mathrm dt \]
+<p>The slide says “integrate”; the simulator uses fourth-order Runge–Kutta (RK4) with a 5 ms step, which for this smooth model is far more accurate than explicit Euler. One explicit Euler step is \(\boldsymbol\zeta_{k+1}=\boldsymbol\zeta_k+\Delta t\,\dot{\boldsymbol\zeta}_k\). <span class="added">added</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Compute \(c(\boldsymbol\zeta)\) from the current velocity; at rest it is 0.</li>
+<li>Solve \(\mathbf M\dot{\boldsymbol\zeta}={}^C\mathbf Q-c\) (diagonal \(\mathbf M\): divide).</li>
+<li>Update \(\boldsymbol\zeta\), then rotate by \(\mathbf J(\theta)\) for the world velocity.</li>
+<li>Update \(\boldsymbol\xi\). Check \(\theta\) is in radians for the rotation.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>From rest with \(\dot{\boldsymbol\zeta}=(1,0,1.6)\) (section 8), one Euler step of 0.1 s gives \(\boldsymbol\zeta_1=(0.1,0,0.16)\). The pose is still the origin after step 1, because \(\boldsymbol\zeta_0=0\) means \(\dot{\boldsymbol\xi}_0=0\). <span class="chk">checked</span></p></div>
+<div class="angle">A short “list the steps of forward simulation” or a one-step numerical question. Name the frame of each quantity and the order: acceleration, velocity, then pose.</div>
+</div>
+
+<!-- ================= 8 ================= -->
+<div class="sub" id="w11-dd-sec">
+<h3>8 · From wheel forces to chassis loads: the differential drive <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="36">pp. 36–37</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>“Where does the torque on the chassis come from?” (<a class="pg" data-doc="w11-lec" data-page="36">p.36</a>): from the wheel forces at their lever arms. A differential drive has two driven wheels a distance \(2a\) apart, with C and G both at the midpoint of the axle (<a class="pg" data-doc="w11-lec" data-page="37">p.37</a>). \(F_1\) acts on the left wheel (\(+y\)) and \(F_2\) on the right (\(-y\)), both along \(+x\). The figure also shows a small passive wheel at the front (a castor): it carries load but is not driven and does not appear in the equations.</p>
+<figure class="svg"><svg viewBox="0 0 480 260" role="img" aria-label="Differential drive top view with wheel forces F1 and F2">
+  <defs><marker id="w11a3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <rect x="125" y="73" width="120" height="114" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+  <rect x="140" y="62.5" width="60" height="15" fill="var(--ink)"/><rect x="140" y="182.5" width="60" height="15" fill="var(--ink)"/>
+  <circle cx="230" cy="130" r="7" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+  <g stroke="var(--axx)" stroke-width="2" fill="none" style="color:var(--axx)"><line x1="170" y1="130" x2="222" y2="130" marker-end="url(#w11a3)"/></g>
+  <g stroke="var(--axy)" stroke-width="2" fill="none" style="color:var(--axy)"><line x1="170" y1="130" x2="170" y2="92" marker-end="url(#w11a3)"/></g>
+  <circle cx="170" cy="130" r="3.5" fill="var(--ink)"/>
+  <g stroke="var(--exam)" stroke-width="3" fill="none" style="color:var(--exam)"><line x1="170" y1="70" x2="232" y2="70" marker-end="url(#w11a3)"/><line x1="170" y1="190" x2="262" y2="190" marker-end="url(#w11a3)"/></g>
+  <g stroke="var(--muted)" stroke-width="1" fill="none"><line x1="95" y1="70" x2="95" y2="190"/><line x1="90" y1="70" x2="100" y2="70"/><line x1="90" y1="190" x2="100" y2="190"/><line x1="115" y1="70" x2="115" y2="130"/><line x1="110" y1="130" x2="120" y2="130"/></g>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">
+  <text x="30" y="134">2a = 0.4 m</text><text x="118" y="104" fill="var(--muted)" font-size="11">a</text>
+  <text x="240" y="62" fill="var(--exam)">F<tspan dy="4" font-size="10">1</tspan><tspan dy="-4"> = 4 N (left wheel, +y)</tspan></text>
+  <text x="270" y="194" fill="var(--exam)">F<tspan dy="4" font-size="10">2</tspan><tspan dy="-4"> = 6 N (right wheel, −y)</tspan></text>
+  <text x="176" y="150" font-size="11">{C, G}</text><text x="226" y="116" fill="var(--axx)">x̂</text><text x="160" y="90" fill="var(--axy)">ŷ</text>
+  <text x="242" y="148" fill="var(--muted)" font-size="11">castor</text>
+  <text x="40" y="236" fill="var(--muted)" font-size="11">z out of the page (anticlockwise positive)</text></g>
+</svg><figcaption>Top view to scale at 300 px per metre for the worked example (a = 0.2 m, r = 0.1 m); force arrows at 15 px per newton. F₂ (right wheel) pushing alone turns the robot left (anticlockwise).</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Each force along \(+x\) contributes \(f_x\). The moment about the origin is \(n_z=x\,f_y-y\,f_x\): \(F_1\) at \(y=+a\) gives \(-aF_1\), \(F_2\) at \(y=-a\) gives \(+aF_2\). Hence (<a class="pg" data-doc="w11-lec" data-page="37">p.37</a>, the handwritten matrix):</p>
+\[ \begin{bmatrix}{}^Cf_x\\{}^Cf_y\\{}^Cn_z\end{bmatrix}=\underbrace{\begin{bmatrix}1&1\\0&0\\-a&a\end{bmatrix}}_{3\times2}\begin{bmatrix}F_1\\F_2\end{bmatrix} \]
+<p>The slide stops here. Connect it to the rest. A wheel torque \(\tau_i\) gives a force \(F_i=\tau_i/r\) at the ground (wheel inertia neglected). The W10 wheel-speed map (section 2) for the two wheels is \(\dot{\boldsymbol\varphi}=\mathbf J_w\boldsymbol\zeta\), \(\mathbf J_w=\tfrac1r\begin{bmatrix}1&0&-a\\1&0&a\end{bmatrix}\) (left, right rows). Then \({}^C\mathbf Q=\mathbf J_w^\top\boldsymbol\tau\): the p.37 matrix is \(r\mathbf J_w^\top\) applied to \(F=\tau/r\). This follows because power is conserved: \(\boldsymbol\tau\cdot\dot{\boldsymbol\varphi}=\boldsymbol\tau^\top\mathbf J_w\boldsymbol\zeta={}^C\mathbf Q\cdot\boldsymbol\zeta\). <span class="chk">checked</span> <span class="added">added</span></p>
+<p>With C = G the equations of motion (section 5) become</p>
+\[ m(\dot u-v\dot\theta)=F_1+F_2,\qquad m(\dot v+u\dot\theta)=f_y,\qquad {}^GI\,\ddot\theta=a(F_2-F_1) \]
+<p>The p.37 matrix has \(f_y=0\): the two driven wheels push only forward. <b>The no-slip rule \(v=0\) from W10</b> (a wheel cannot slide along its axle) then gives \(\dot v=0\) and so requires a sideways reaction \(f_y=mu\dot\theta\) from the tyres. The model reduces to</p>
+\[ \dot u=\frac{F_1+F_2}{m},\qquad \ddot\theta=\frac{a\,(F_2-F_1)}{{}^GI},\qquad f_y^{\text{required}}=m\,u\,\dot\theta \]
+<p>If you literally set \(f_y=0\) and keep \(v\) free (the simulator’s “lateral grip” unticked), you get \(\dot v=-u\dot\theta\): the body drifts sideways like a puck. Real wheels do not, so the grip version describes a real differential drive.</p>
+</div>
+<div class="box warn-box"><span class="tag">Slide gap (not an error)</span><p>The deck never states the no-slip constraint inside the dynamics. The p.37 matrix lists only the forward drive forces; the lateral force that keeps \(v=0\) is a constraint reaction, absent from \({}^C\mathbf Q\). If a question gives wheel forces and asks for \(\dot u,\dot v,\ddot\theta\), read whether the robot is allowed to slide: with no-slip, \(\dot v=0\); free-body, use \(\mathbf M\dot{\boldsymbol\zeta}+c=\mathbf Q\) with \(f_y=0\). For ordinary wheels use no-slip and say so.</p></div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Draw the top view; mark C, G, \(\pm a\), forces \(F_1\) (left, \(+y\)) and \(F_2\) (right, \(-y\)).</li>
+<li>Write \(f_x=F_1+F_2\), \(f_y=0\), \(n_z=a(F_2-F_1)\) (the matrix).</li>
+<li>If given torques, convert \(F=\tau/r\).</li>
+<li>With C = G and no slip: \(\dot u=f_x/m\), \(\ddot\theta=n_z/{}^GI\), \(v=0\).</li>
+<li>Check the sign: the right wheel pushing harder turns the robot left (positive \(\dot\theta\)). Check power: \(\boldsymbol\tau\cdot\dot{\boldsymbol\varphi}=f_xu+n_z\dot\theta\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example: full numbers (no numbers in the deck; mine)</span>
+<p>Parameters: \(m=10\) kg, \({}^GI=0.25\) kg·m², \(r=0.1\) m, \(a=0.2\) m (track \(2a=0.4\) m), C = G, no wheel inertia. Wheel torques \(\tau_L=0.4\) and \(\tau_R=0.6\) N·m, from rest.</p>
+<p>Forces: \(F_1=\tau_L/r=4\) N, \(F_2=\tau_R/r=6\) N. Wrench: \(f_x=4+6=10\) N, \(f_y=0\), \(n_z=0.2(6-4)=0.4\) N·m.</p>
+<p>At rest \(c=0\): \(\dot u=10/10=1.0\) m/s², \(\dot v=0\) (no slip), \(\ddot\theta=0.4/0.25=1.6\) rad/s². <span class="chk">checked</span></p>
+<p>Because both accelerations are constant, \(u=t\) and \(\dot\theta=1.6t\), so the path radius \(R=u/\dot\theta=0.625\) m never changes: the robot drives a <b>circle of radius 0.625 m</b> (centre 0.625 m to its left), speeding up. Generally \(R=\dfrac{{}^GI\,f_x}{m\,n_z}\). <span class="chk">checked</span> (also against the exact solution \(x=R\sin\theta\), \(y=R(1-\cos\theta)\))</p>
+<p>At \(t=1\) s: \(u=1\) m/s, \(\dot\theta=1.6\) rad/s. Wheel speeds \(\dot\varphi_L=(1-0.32)/0.1=6.8\) and \(\dot\varphi_R=(1+0.32)/0.1=13.2\) rad/s. Sideways force to hold \(v=0\): \(mu\dot\theta=16\) N; if free, \(\dot v=-u\dot\theta=-1.6\) m/s². Power: \(0.4(6.8)+0.6(13.2)=10.64\) W \(=f_xu+n_z\dot\theta=10(1)+0.4(1.6)\). <span class="chk">checked</span></p>
+<p>At \(t=2\) s the simulator gives \(u=2.0\) m/s, \(\dot\theta=3.2\) rad/s, \(\theta=3.2\) rad, \((x,y)=(-0.036,\,1.249)\) m, matching the exact circle. <span class="chk">checked</span> (widget test vectors: checks/w11_vectors.json)</p></div>
+<div class="angle">Calculation: “given \(\tau_L,\tau_R\), \(r\), \(a\), \(m\), \(I\), find \(\dot u\) and \(\ddot\theta\)”. Marks for \(F=\tau/r\), the matrix, and the lever arm \(a\). Trap: using \(2a\) as the lever arm (doubles \(\ddot\theta\)) or swapping the sign so a harder right push turns the robot right.</div>
+</div>
+
+<!-- ================= 9 ================= -->
+<div class="sub" id="w11-swedish">
+<h3>9 · Swedish-wheel robot, castors, and the summary <span class="pgs"><a class="pg" data-doc="w11-lec" data-page="38">pp. 38–39</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Page 38 is a figure only: a chassis with four Swedish (mecanum-type) wheels, forces \(F_1\)–\(F_4\) drawn along the roller axes at about \(\pm45^\circ\) to the chassis, offsets labelled \(a\) and \(b\), and {C, G} at the centre. No equation is on the slide; the matrix is left as the exercise “write \({}^C\mathbf Q\) as a function of the wheel forces”, like the differential drive. A castor (p.37) is a free-swivelling wheel: it transmits no drive force, so it adds nothing to \({}^C\mathbf Q\).</p>
+</div>
+<div class="layer derive"><span class="tag">Method (mine; the slide gives none)</span>
+<p>Each wheel \(i\) pushes with force \(F_i\) along a unit vector \(\mathbf d_i=(d_x,d_y)\) at position \((x_i,y_i)\) in {C}. Its column in the 3×4 matrix is</p>
+\[ \begin{bmatrix}d_x\\d_y\\x_i d_y-y_i d_x\end{bmatrix} \]
+<p><b>Illustration under my own assumptions</b> (the slide’s \(a,b\) are not dimensioned precisely): wheels at \((\pm b,\pm a)\), drive directions \((1,1)/\sqrt2\) for \(F_1,F_3\) and \((1,-1)/\sqrt2\) for \(F_2,F_4\), as drawn. With \(s=1/\sqrt2\):</p>
+\[ \begin{bmatrix}{}^Cf_x\\{}^Cf_y\\{}^Cn_z\end{bmatrix}=s\begin{bmatrix}1&1&1&1\\1&-1&1&-1\\b-a&b-a&a-b&a-b\end{bmatrix}\begin{bmatrix}F_1\\F_2\\F_3\\F_4\end{bmatrix} \]
+<p>Four wheel forces, three chassis loads: a 3×4 matrix of rank 3 (for \(a\ne b\)) has a one-dimensional null space, so one combination of wheel forces (internal forces that fight each other) produces zero net load. Equal forces on all four give a pure forward force \(4sF\). <span class="chk">checked</span></p>
+<p><b>Summary (<a class="pg" data-doc="w11-lec" data-page="39">p.39</a>):</b> the dynamics equation in the body frame, \(\mathbf M\dot{\boldsymbol\zeta}+c=\,{}^C\mathbf Q\); and in the inertial frame, \({}^O\mathbf M\ddot{\boldsymbol\xi}+{}^Oc={}^O\mathbf Q\), linked by \({}^C\mathbf Q=\mathbf J^\top\,{}^O\mathbf Q\).</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe (any wheeled robot)</span><ol>
+<li>For each driven wheel, write position \((x_i,y_i)\) in {C} and the unit direction of its force.</li>
+<li>Column \(=(d_x,\,d_y,\,x_id_y-y_id_x)^\top\); stack to get \({}^C\mathbf Q=\mathbf B\mathbf F\).</li>
+<li>Count wheels versus the three chassis degrees of freedom: more wheels than 3 means redundancy and a null space.</li>
+<li>Check with equal forces (net torque zero for a symmetric layout).</li></ol></div>
+<div class="angle">Likely as an explain or sketch question: build \(\mathbf B\) for a given layout, say what its rank and shape mean. The matrix \(\mathbf B\) is the transpose of the W10 wheel-speed matrix (up to the factor \(r\)).</div>
+</div>
+
+<!-- ================= guided problems ================= -->
+<h3 id="w11-problems">Guided problems: solve on paper first</h3>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.1 · Differential-drive accelerations from torques</b><span class="chip calc">calculate</span><span class="marks" data-id="w11-p1" data-topic="w11"></span></div>
+  <p>A differential drive (C = G) has \(m=8\) kg, \({}^GI=0.2\) kg·m², wheel radius \(r=0.08\) m, half-track \(a=0.15\) m. The left and right wheel torques are 0.3 and 0.5 N·m. From rest with no wheel slip, find \(\dot u\) (m/s²) and \(\ddot\theta\) (rad/s²).</p>
+  <details class="hint"><summary>Hint 1: forces</summary><p>\(F=\tau/r\) for each wheel.</p></details>
+  <details class="hint"><summary>Hint 2: the matrix</summary><p>\(f_x=F_1+F_2\), \(n_z=a(F_2-F_1)\), with \(F_1\) the left wheel.</p></details>
+  <details class="hint"><summary>Hint 3: at rest</summary><p>\(c=0\) and \(\mathbf M=\mathrm{diag}(m,m,{}^GI)\).</p></details>
+  <div class="ansrow"><label>u̇<input data-ans="1.25" data-tol="0.01" data-label="u̇" inputmode="decimal" aria-label="u dot in m per s squared"></label><label>θ̈<input data-ans="1.875" data-tol="0.01" data-label="θ̈" inputmode="decimal" aria-label="theta double dot in rad per s squared" data-wrong='[{"v":12.5,"msg":"you left out the lever arm a: n_z = a (F2 − F1), not (F2 − F1)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(F_1=0.3/0.08=3.75\) N, \(F_2=0.5/0.08=6.25\) N. \(f_x=10\) N, \(n_z=0.15(6.25-3.75)=0.375\) N·m.</p>
+  <p>\(\dot u=f_x/m=10/8=1.25\) m/s². \(\ddot\theta=n_z/{}^GI=0.375/0.2=1.875\) rad/s². Path radius \(R=u/\dot\theta=1.25/1.875=0.667\) m. <span class="chk">checked</span></p>
+  <p>Common wrong answer: dropping the lever arm gives \(\ddot\theta=12.5\) rad/s²; using \(2a\) gives \(3.75\).</p></details>
+  <p class="blank">Close everything and write the p.37 matrix, with the figure it comes from, in 2 minutes.</p>
+</div>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.2 · Derive the acceleration terms</b><span class="chip derive">derive</span><span class="marks" data-id="w11-p2" data-topic="w11"></span></div>
+  <p>Without the cross-product formula, derive the acceleration of the chassis reference point C, expressed in {C}, for velocity \(u\hat x+v\hat y\) in a frame turning at \(\dot\theta\).</p>
+  <details class="hint"><summary>Hint 1</summary><p>Differentiate \(u\hat x+v\hat y\) as a product: the components change <i>and</i> the unit vectors change.</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>\(\dot{\hat x}=\dot\theta\,\hat y\) and \(\dot{\hat y}=-\dot\theta\,\hat x\).</p></details>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(\mathbf a_C=\dot u\hat x+u\dot{\hat x}+\dot v\hat y+v\dot{\hat y}=\dot u\hat x+u\dot\theta\hat y+\dot v\hat y-v\dot\theta\hat x\).</p>
+  <p>\(\mathbf a_C=(\dot u-v\dot\theta)\,\hat x+(\dot v+u\dot\theta)\,\hat y\). For G offset by \((x_G,y_G)\) add \(\ddot\theta(-y_G,x_G)+\dot\theta^2(-x_G,-y_G)\) to get the p.24 form with \(u\dot\theta\) in y. <span class="chk">checked</span></p>
+  <p>Common wrong answer: \(\dot u,\dot v\) alone (forgetting that the frame turns), or \(v\dot\theta\) in y (the slide typo).</p></details>
+  <p class="blank">Derive both terms from the two unit-vector derivatives in 3 minutes.</p>
+</div>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.3 · Spot the error: the slide’s y-acceleration</b><span class="chip spot">spot the error</span><span class="chip calc">calculate</span><span class="marks" data-id="w11-p3" data-topic="w11"></span></div>
+  <p>A chassis (C = G, \(m=10\) kg) drives at constant \(u=2\) m/s, \(v=0\), with constant \(\dot\theta=0.5\) rad/s. Using the slide-p.24/25 form \({}^Cf_y=m(\dot v+v\dot\theta+\dots)\), what sideways force is required? What is the correct sideways force?</p>
+  <details class="hint"><summary>Hint 1</summary><p>All derivatives and \(v\) are zero, so only one term survives in each version.</p></details>
+  <div class="ansrow"><label>correct f<sub>y</sub> (N)<input data-ans="10" data-tol="0.05" data-label="f_y" inputmode="decimal" aria-label="correct sideways force in newtons" data-wrong='[{"v":0,"msg":"that is the printed slide form (v θ̇ with v = 0). The correct term is u θ̇, which gives the centripetal force."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Printed form: \(f_y=m(0+0+v\dot\theta-0)=0\). Correct form: \(f_y=m\,u\dot\theta=10(2)(0.5)=10\) N, the centripetal force on a circle of radius \(u/\dot\theta=4\) m: \(mu^2/R=10\cdot4/4=10\) N. <span class="chk">checked</span></p>
+  <p>The printed form would say a robot can drive a circle with no sideways force, which is impossible.</p></details>
+</div>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.4 · Off-centre centre of mass</b><span class="chip calc">calculate</span><span class="chip explain">explain</span><span class="marks" data-id="w11-p4" data-topic="w11"></span></div>
+  <p>Same chassis as the worked example in section 5 (\(m=10\) kg, \({}^GI=0.25\) kg·m²), G 0.05 m ahead of C along \(\hat x\). At rest the wheels apply \({}^Cf=(10,0)\) N and \({}^Cn_z=0.4\) N·m about C. Find \(\dot v\) and \(\ddot\theta\), and explain why \(\dot v\ne0\) although \({}^Cf_y=0\).</p>
+  <details class="hint"><summary>Hint 1</summary><p>Build \(\mathbf M\): the \((2,3)\) entry is \(m\,{}^Cx_G=0.5\); the \((3,3)\) entry is \(0.25+10(0.05)^2\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>Rows 2 and 3 form a 2×2 in \(\dot v,\ddot\theta\); solve by substitution.</p></details>
+  <div class="ansrow"><label>v̇<input data-ans="-0.08" data-tol="0.002" data-label="v̇" inputmode="decimal" aria-label="v dot"></label><label>θ̈<input data-ans="1.6" data-tol="0.01" data-label="θ̈" inputmode="decimal" aria-label="theta double dot" data-wrong='[{"v":1.4545,"msg":"you divided n_z by the inertia about C and ignored the coupling with v̇ (row 2)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Row 2: \(10\dot v+0.5\ddot\theta=0\Rightarrow\dot v=-0.05\ddot\theta\). Row 3: \(0.5\dot v+0.275\ddot\theta=0.4\Rightarrow(-0.025+0.275)\ddot\theta=0.4\Rightarrow\ddot\theta=1.6\) rad/s², \(\dot v=-0.08\) m/s². <span class="chk">checked</span></p>
+  <p>Why: the wheels’ force acts through C, not through G, so it spins the body about G. Point C, 0.05 m behind G, swings sideways: \(a_{C,y}=-x_G\ddot\theta=-0.08\) m/s². (The force balance is on G: \(m\,a_{G,y}=f_y=0\).)</p>
+  <p>Common wrong answer: \(0.4/0.275=1.4545\).</p></details>
+</div>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.5 · Forward versus inverse, and why the chassis frame</b><span class="chip explain">explain</span><span class="marks" data-id="w11-p5" data-topic="w11"></span></div>
+  <p>(a) State forward and inverse dynamics and give one use of each. (b) Why does the deck simulate in the chassis frame, and what does it cost? (c) What does \(c(\boldsymbol\zeta)\) represent, and when is it zero?</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>(a) Forward: given forces and torques, find the motion (simulation, analysis). Inverse: given a desired motion, find the forces and torques (control, feed-forward). (b) Wheel–ground forces are naturally expressed in the chassis frame, so \({}^C\mathbf Q\) is easy to write, and \(\mathbf M\) is constant. The cost: velocity terms \(c(\boldsymbol\zeta)\) appear and you must rotate with \(\mathbf J(\theta)\) to get world coordinates. (c) \(c\) holds centripetal/Coriolis effects due to the rotating frame; it is zero when \(\boldsymbol\zeta=0\) (and, for C = G, its third entry is always zero).</p></details>
+</div>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.6 · Sketch: free-body diagram and ICR</b><span class="chip sketch">sketch</span><span class="marks" data-id="w11-p6" data-topic="w11"></span></div>
+  <p>Sketch the top view of a differential drive with \(F_1\) (left) and \(F_2\) (right) forward and \(F_2>F_1\). Mark {C, G}, \(\pm a\), the sideways reaction needed for no slip, the sense of \(\dot\theta\) and the ICR.</p>
+  <details class="hint"><summary>Hint 1</summary><p>The ICR lies on the axle line, on the side of the slower wheel.</p></details>
+  <details class="sol"><summary>Model answer</summary>
+  <p>Draw the axle along \(\hat y\) with F₁ at \(+a\) and F₂ at \(-a\), both along \(+\hat x\). \(F_2>F_1\): net torque \(a(F_2-F_1)>0\), anticlockwise. The ICR is on the \(+\hat y\) (left) side at distance \(R=u/\dot\theta\) from C. The lateral wheel reaction acts along \(\hat y\) at the wheels, towards the ICR, magnitude \(mu\dot\theta\). Use the simulator’s picture for the answer: its dashed line from the chassis to the ICR and the orange force arrows are this sketch.</p></details>
+</div>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.7 · Frame conversion of a wrench</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w11-p7" data-topic="w11"></span></div>
+  <p>Derive \({}^C\mathbf Q=\mathbf J^\top\,{}^O\mathbf Q\) from power invariance. Then, for the wheel wrench \({}^C\mathbf Q=(10,0,0.4)\) with the chassis at \(\theta=90^\circ\), find the inertial-frame force \({}^O\mathbf Q=(f_x,f_y,\tau_z)\).</p>
+  <details class="hint"><summary>Hint 1</summary><p>For a rotation about z, \({}^O\mathbf Q=\mathbf J\,{}^C\mathbf Q\), the same rotation as for velocities.</p></details>
+  <div class="ansrow"><label>f<sub>x</sub><input data-ans="0" data-tol="0.05" data-label="f_x" inputmode="decimal" aria-label="inertial f x in newtons"></label><label>f<sub>y</sub><input data-ans="10" data-tol="0.05" data-label="f_y" inputmode="decimal" aria-label="inertial f y in newtons" data-wrong='[{"v":-10,"msg":"rotated the wrong way (used J⊤ in place of J). The chassis x-axis points along +y at θ = 90°."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Power: \({}^O\mathbf Q\cdot\dot{\boldsymbol\xi}={}^C\mathbf Q\cdot\boldsymbol\zeta\). With \(\dot{\boldsymbol\xi}=\mathbf J\boldsymbol\zeta\): \({}^O\mathbf Q^\top\mathbf J\boldsymbol\zeta={}^C\mathbf Q^\top\boldsymbol\zeta\) for all \(\boldsymbol\zeta\), so \(\mathbf J^\top\,{}^O\mathbf Q={}^C\mathbf Q\).</p>
+  <p>\({}^O\mathbf Q=\mathbf J(90^\circ)\,(10,0,0.4)^\top=(0,10,0.4)\): \(f_x=0\), \(f_y=10\) N, \(\tau_z=0.4\) N·m (the torque does not rotate). <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.8 · Spot the error: the inertial-frame bias term</b><span class="chip spot">spot the error</span><span class="marks" data-id="w11-p8" data-topic="w11"></span></div>
+  <p>A student copies p.34 and writes \({}^Oc=(\mathbf J^\top)^{-1}[c-\mathbf M\dot{\mathbf J}\mathbf J^{-1}\dot{\boldsymbol\xi}]\). For C = G, what must \({}^Oc\) be physically, and what is wrong with this expression?</p>
+  <details class="hint"><summary>Hint 1</summary><p>In world axes a free rigid body with C = G has no velocity-dependent force.</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>Expand \(\mathbf M\,\dot{\boldsymbol\zeta}\) with \(\dot{\boldsymbol\zeta}=\mathbf J^{-1}[\ddot{\boldsymbol\xi}-\dot{\mathbf J}\mathbf J^{-1}\dot{\boldsymbol\xi}]\).</p></details>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Physically \({}^Oc=0\). The expansion gives \(\mathbf M\mathbf J^{-1}\ddot{\boldsymbol\xi}-\mathbf M\mathbf J^{-1}\dot{\mathbf J}\mathbf J^{-1}\dot{\boldsymbol\xi}\): the subtracted term needs \(\mathbf J^{-1}\) <b>before</b> \(\dot{\mathbf J}\). The printed form omits it. At \(\theta=90^\circ\), \(u=1\), \(v=0\), \(\dot\theta=2\), \(m=10\), the printed form gives \((-20,20,0)\), the corrected form gives 0. <span class="chk">checked</span></p></details>
+</div>
+
+<div class="gp" data-topic="w11">
+  <div class="head"><b>P11.9 · Swedish-wheel matrix: redundancy</b><span class="chip explain">explain</span><span class="marks" data-id="w11-p9" data-topic="w11"></span></div>
+  <p>For the four-Swedish-wheel robot of p.38 the map from wheel forces to chassis loads is 3×4. What does that shape imply, and how would you find a wheel-force set that exerts no net load?</p>
+  <details class="sol"><summary>Model answer</summary>
+  <p>Three chassis loads, four wheel forces: there are more actuators than degrees of freedom, so the map \(\mathbf B\) (3×4, rank 3 for a sensible layout) has a one-dimensional null space. Solve \(\mathbf B\mathbf F=0\) for \(\mathbf F\neq0\): forces that cancel and only squeeze the wheels against the floor (internal forces). Any chassis load is reachable with infinitely many force sets, so a controller has a free choice, for example the minimum-norm solution \(\mathbf F=\mathbf B^\top(\mathbf B\mathbf B^\top)^{-1}\,{}^C\mathbf Q\). <span class="added">added</span> (the minimum-norm choice is not in the deck)</p></details>
+</div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w11"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w11-q1" data-topic="w11"></span></div>
+<p>In \(\mathbf M\dot{\boldsymbol\zeta}+c(\boldsymbol\zeta)={}^C\mathbf Q\), what does \(\mathbf M\) depend on, and what does \(c\) depend on?</p><details class="sol"><summary>Answer</summary><p>\(\mathbf M\) depends only on geometry and mass distribution (\(m\), \({}^GI\), the COM position). \(c\) is a function of the instantaneous velocity \(\boldsymbol\zeta\) (centripetal and Coriolis terms from the rotating frame) (<a class="pg" data-doc="w11-lec" data-page="26">p.26</a>).</p></details></div>
+<div class="gp" data-topic="w11"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w11-q2" data-topic="w11"></span></div>
+<p>A differential drive (C = G, \(m=10\) kg, \(r=0.1\) m) receives 0.5 N·m on each wheel, from rest. Find \(\dot u\) and \(\ddot\theta\).</p><details class="sol"><summary>Answer</summary><p>\(F=0.5/0.1=5\) N each, \(f_x=10\) N, \(n_z=a(5-5)=0\). \(\dot u=10/10=1\) m/s² and \(\ddot\theta=0\): a straight line. <span class="chk">checked</span></p></details></div>
+<div class="gp" data-topic="w11"><div class="head"><b>Q3</b><span class="chip spot">spot the error</span><span class="marks" data-id="w11-q3" data-topic="w11"></span></div>
+<p>A student writes \({}^C\mathbf Q=\mathbf J\,{}^O\mathbf Q\). Which expression is correct, and how do you remember it?</p><details class="sol"><summary>Answer</summary><p>\({}^C\mathbf Q=\mathbf J^\top\,{}^O\mathbf Q\), from power invariance \({}^O\mathbf Q^\top\dot{\boldsymbol\xi}={}^C\mathbf Q^\top\boldsymbol\zeta\) with \(\dot{\boldsymbol\xi}=\mathbf J\boldsymbol\zeta\) (<a class="pg" data-doc="w11-lec" data-page="32">p.32</a>). Velocities map with \(\mathbf J\); loads map with \(\mathbf J^\top\). For a rotation \(\mathbf J^\top=\mathbf J^{-1}\), so the student has the rotation backwards.</p></details></div>
+
+<div class="box" data-reading="w11"></div>

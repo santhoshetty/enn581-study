@@ -1,0 +1,321 @@
+<p class="eyebrow">Week 2 · Forward kinematics</p>
+<h2>Where is the tool, given the joints?</h2>
+<p class="lead">Forward kinematics (FK) turns joint coordinates \(\mathbf q\) into the pose of the end effector. Every method in this week builds one 4×4 matrix by multiplying small, simple matrices in the right order. Get the order and the signs right and the rest is arithmetic.</p>
+
+<div class="box notes-box">
+  <div class="title">Lecture: Forward Kinematics<small>50 slides · Dr KM Digumarti · notebook “2 forward kinematics”</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w02-lec">📖 View here</button>
+    <button type="button" class="btn" data-dl="notes/w02-lec.pdf" data-name="ENN581 W2 Forward Kinematics.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w02-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How this is examined</span>
+  <p><b>Sample question 1</b> (<a class="pg" data-doc="w13-lec" data-page="4">W13 p.4</a>): “Write down the transformation matrix relating the tool frame {T} to the station frame {S} for the following RRR manipulator. <u>Indicate intermediate frames.</u>” The lecturer answers it with an elementary transform sequence (<a class="pg" data-doc="w13-lec" data-page="4">W13 p.4</a>). Expect the same: a drawn arm, write the chain, multiply.</p>
+  <p><b>Where the marks are (indicative; marks not published):</b> frames drawn on the figure with correct axes; the ETS in the right order with the right signs; each intermediate transform written; the product (at least the position column) simplified; a sanity check at θ = 0.</p>
+  <p><b>Where marks are lost:</b> multiplying in the wrong order; a rotation sign flipped because the drawn joint arrow points the other way (the lecturer writes \(R_y(-\theta_2)\)); forgetting the constant tool rotation at the end (\(R_x(90^\circ)\)); mixing proximal and distal DH in one table; leaving a calculator in degrees for a radian answer.</p>
+</div>
+
+<div class="box prac-box">
+  <span class="tag">Practical (optional, no coding in the exam)</span>
+  <p><code>puma560_fk_proximal_dh.py</code> builds a PUMA 560 from a proximal DH table, one row at a time as \(R_x(\alpha_{i-1})\,t_x(a_{i-1})\,R_z(\theta_i)\,t_z(d_i)\), and prints the robot. <code>plot_workspace.py</code> in this folder is empty. The lecture notebook’s exercises are solved below.</p>
+</div>
+
+<div class="box eli5">
+  <span class="tag">Intuition first</span>
+  <div class="cards">
+    <div class="card"><h4>A transform is a set of directions</h4>\({}^A\mathbf T_B\) says “stand at A’s origin, walk along vector \(\mathbf t\), then turn so you face like B”. Like telling a friend: “from the station, go 200 m north, then face the café door”.</div>
+    <div class="card"><h4>Walk along the arm</h4>An ETS is a walk from the base to the tool, writing down every step (translation) and every twist (rotation) in the order you meet them. The product of that list is FK.</div>
+    <div class="card"><h4>Each step is relative to where you now face</h4>“Turn left, then go two blocks” only makes sense from where you stand after turning. Multiplying on the right means: the next move is measured in the frame you just arrived in.</div>
+    <div class="card"><h4>DH is an ETS with a dress code</h4>Denavit–Hartenberg allows only four moves per link, in a fixed order: twist, slide, rotate, slide. That strict code puts every frame in a standard place, so any arm fits in one table.<span class="inprac">In the practical: the PUMA 560 script is exactly this four-move pattern, repeated six times.</span></div>
+  </div>
+  <div class="vids" data-vids="w02"></div>
+</div>
+
+<div class="widget" data-w3d="chain" data-presets="planarRRR,furuta,w13rrr,puma,panda" id="w2-chain">
+  <div class="wh"><b>3D chain explorer</b><span class="eyebrow">the frames, links and matrix all come from one ETS</span></div>
+  <div class="wbody"><div class="stage"><button type="button" class="btn small reset">Reset view</button><span class="legend">x red · y green · z blue · drag to orbit, scroll to zoom</span></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> pick “Furuta pendulum” and set θ1 = 60°, θ2 = 45°. The matrix shows position (0.0163, 0.4525, 0.2879) m, the same as the worked example below. Then choose “W13 Q1 RRR arm”: at all angles 0, see that y<sub>T</sub> points up and z<sub>T</sub> = −y<sub>S</sub>, exactly as the exam figure shows. Use “Show transform” to print any intermediate frame, which is what “indicate intermediate frames” asks for.</div>
+</div>
+
+<!-- ================= 1 ================= -->
+<div class="sub" id="w2-rrr">
+<h3>1 · FK by trigonometry: the planar RRR arm <span class="pgs"><a class="pg" data-doc="w02-lec" data-page="6">pp. 6–9</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>In a planar arm every link lies in the same plane and every joint axis points out of it. Each link is a vector of fixed length whose direction is the sum of all joint angles before it. The tip is just the sum of those vectors.</p>
+<figure class="svg"><svg viewBox="0 0 420 230" role="img" aria-label="Planar RRR arm with absolute link angles">
+  <defs><marker id="w2ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <g style="color:var(--muted)" stroke="currentColor" fill="none" stroke-width="1"><line x1="40" y1="200" x2="400" y2="200" marker-end="url(#w2ar)"/><line x1="40" y1="200" x2="40" y2="20" marker-end="url(#w2ar)"/></g>
+  <text x="404" y="204" font-size="12" fill="var(--muted)" font-family="IBM Plex Mono">x</text><text x="30" y="18" font-size="12" fill="var(--muted)" font-family="IBM Plex Mono">y</text>
+  <!-- L1=0.5 at 30°, L2=0.4 at 75°, L3=0.2 at 15° (scale 300 px/m) -->
+  <g stroke="var(--accent)" stroke-width="5" stroke-linecap="round"><line x1="40" y1="200" x2="169.9" y2="125"/><line x1="169.9" y1="125" x2="201" y2="9.1"/><line x1="201" y1="9.1" x2="258.9" y2="-6.4" stroke="var(--exam)"/></g>
+  <g fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"><circle cx="40" cy="200" r="6"/><circle cx="169.9" cy="125" r="5"/><circle cx="201" cy="9.1" r="5"/></g>
+  <g font-family="IBM Plex Mono" font-size="12" fill="var(--ink)"><text x="92" y="150">L1</text><text x="190" y="75">L2</text><text x="222" y="28">L3</text><text x="64" y="194">q1</text><text x="178" y="118">q2</text><text x="212" y="22">q3</text></g>
+  <path d="M70,200 A30,30 0 0 0 66,185" fill="none" stroke="var(--ink)"/>
+</svg><figcaption>Drawn to scale for L = (0.5, 0.4, 0.2) m, q = (30°, 45°, −60°). Link directions are 30°, 75° and 15° from x (cumulative sums); the tip runs just off the top.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Link \(k\) points at the absolute angle \(\phi_k = q_1+\dots+q_k\). Adding the three link vectors (<a class="pg" data-doc="w02-lec" data-page="7">p.7</a>):</p>
+\[ x = L_1\cos q_1 + L_2\cos(q_1+q_2) + L_3\cos(q_1+q_2+q_3) \]
+\[ y = L_1\sin q_1 + L_2\sin(q_1+q_2) + L_3\sin(q_1+q_2+q_3) \]
+<p>Orientation in the plane is one angle, the sum of all joint angles (<a class="pg" data-doc="w02-lec" data-page="9">p.9</a>): \( q_E = q_1+q_2+q_3 \).</p>
+<p>The same answer as a chain of transforms: \( {}^0\mathbf T_E = R_z(q_1)\,t_x(L_1)\,R_z(q_2)\,t_x(L_2)\,R_z(q_3)\,t_x(L_3) \). Its position column is the pair above, and \(\operatorname{atan2}(T_{21},T_{11}) = q_E\). <span class="chk">checked in checks/w02.py</span></p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe</span><ol>
+<li>Write each link’s absolute angle as a running sum.</li><li>Sum \(L_k\cos\phi_k\) for x and \(L_k\sin\phi_k\) for y.</li><li>Orientation = sum of revolute angles.</li><li>Check at q = 0: the tip must be at \((L_1+L_2+L_3, 0)\).</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>L = (0.5, 0.4, 0.2) m, q = (30°, 45°, −60°). Absolute angles: 30°, 75°, 15°.</p>
+<p>\(x = 0.5\cos30^\circ + 0.4\cos75^\circ + 0.2\cos15^\circ = 0.4330 + 0.1035 + 0.1932 = 0.7297\) m<br>
+\(y = 0.5\sin30^\circ + 0.4\sin75^\circ + 0.2\sin15^\circ = 0.2500 + 0.3864 + 0.0518 = 0.6881\) m, &nbsp; \(q_E = 15^\circ\). <span class="chk">checked</span></p>
+</div>
+<div class="angle">A trap answer uses the joint angles directly (cos 45°, cos −60°) instead of the running sums. At q = 0 every method gives the same answer, so test your formula at a non-zero pose too.</div>
+</div>
+
+<!-- ================= 2 ================= -->
+<div class="sub" id="w2-htm">
+<h3>2 · The homogeneous transformation matrix <span class="pgs"><a class="pg" data-doc="w02-lec" data-page="12">p. 12</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>\({}^A\mathbf T_B\) is the pose of frame {B} as seen from frame {A}. The top-left 3×3 block is a rotation whose <b>columns are B’s axes written in A’s coordinates</b>. The last column is where B’s origin sits in A. The bottom row \([0\;0\;0\;1]\) only makes the 4×4 maths work.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+\[ {}^A\mathbf T_B = \begin{bmatrix} {}^A\mathbf R_B & {}^A\mathbf t_{B} \\ \mathbf 0^{\top} & 1\end{bmatrix} \in SE(3),\qquad {}^A\mathbf R_B\in SO(3),\qquad {}^A\mathbf t_B\in\mathbb R^3 \]
+<p>A point known in B maps to A by one multiplication, using homogeneous coordinates \([x\;y\;z\;1]^\top\): \( {}^A\mathbf P = {}^A\mathbf T_B\,{}^B\mathbf P \) (<a class="pg" data-doc="w02-lec" data-page="12">p.12</a>). This is just \( {}^A\mathbf P = {}^A\mathbf R_B\,{}^B\mathbf P + {}^A\mathbf t_B \) written as one matrix.</p>
+<p>The elementary rotations (right-hand rule about each axis) are the building blocks for everything else:</p>
+\[ R_x(\theta)=\begin{bmatrix}1&0&0\\0&c\theta&-s\theta\\0&s\theta&c\theta\end{bmatrix},\; R_y(\theta)=\begin{bmatrix}c\theta&0&s\theta\\0&1&0\\-s\theta&0&c\theta\end{bmatrix},\; R_z(\theta)=\begin{bmatrix}c\theta&-s\theta&0\\s\theta&c\theta&0\\0&0&1\end{bmatrix} \]
+<p>Note where the minus sign sits in \(R_y\): bottom-left, the opposite place from \(R_x\) and \(R_z\). It follows from the cyclic order z→x (positive rotation about y turns z towards x). <span class="added">added</span></p>
+<p>The inverse is cheap because \(\mathbf R^{-1}=\mathbf R^\top\): \( {}^B\mathbf T_A = ({}^A\mathbf T_B)^{-1} = \begin{bmatrix}\mathbf R^\top & -\mathbf R^\top\mathbf t\\ \mathbf 0^\top & 1\end{bmatrix} \). <span class="added">added</span> <span class="chk">checked</span></p>
+</div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>\( {}^A\mathbf T_B = R_z(30^\circ)\,t(1,2,0) \). B’s origin in A is \(R_z(30^\circ)[1,2,0]^\top = (0.8660-1.0000,\;0.5000+1.7321,\;0) = (-0.1340,\;2.2321,\;0)\). The point \({}^B\mathbf P=(1,0,0)\) lands at \((0.7321,\;2.7321,\;0)\) in A, which is the origin plus B’s x-axis \((0.8660, 0.5, 0)\). <span class="chk">checked</span></p>
+</div>
+<div class="angle">“Find \({}^B\mathbf T_A\)” is a favourite one-liner. The rotation transposes, and the translation becomes \(-\mathbf R^\top\mathbf t\), not \(-\mathbf t\). Also expect “what does column 2 of R mean?”: it is B’s y-axis expressed in A.</div>
+</div>
+
+<!-- ================= 3 ================= -->
+<div class="sub" id="w2-compound">
+<h3>3 · Compound transformations and the order of multiplication <span class="pgs"><a class="pg" data-doc="w02-lec" data-page="13">p. 13</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Chaining frames chains matrices in the same order: \( {}^A\mathbf T_C = {}^A\mathbf T_B\,{}^B\mathbf T_C \). The inner subscripts cancel like fractions. Each new factor on the <b>right</b> moves along the axes of the frame you have just reached (the moving frame).</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation</span>
+<p>Slide 13: {B} is {A} rotated by θ about x<sub>A</sub>, then {C} is {B} translated by d along z<sub>B</sub>. So \( {}^A\mathbf T_C = R_x(\theta)\,t_z(d) \). The translation is along the <i>rotated</i> z-axis, so C’s origin in A is \( R_x(\theta)[0,0,d]^\top = (0,\,-d\sin\theta,\,d\cos\theta) \).</p>
+<p>Swap the order and you get \( t_z(d)\,R_x(\theta) \): slide along the old z first, then rotate in place. The origin is at \((0,0,d)\). Different matrix, different pose.</p>
+<p>Rule <span class="added">added</span>: right-multiplication = “then move in the <i>current</i> frame”; left-multiplication = “then move in the <i>fixed/original</i> frame”.</p>
+</div>
+<div class="worked"><span class="tag">Worked example</span><p>θ = 30°, d = 2: \(R_x(30^\circ)t_z(2)\) puts C at \((0, -1.000, 1.732)\); \(t_z(2)R_x(30^\circ)\) puts it at \((0,0,2)\). <span class="chk">checked</span></p></div>
+<div class="angle">If the question says “rotated about its own / the new axis”, multiply on the right. If it says “about the fixed / original axis”, multiply on the left. Write a one-line sentence saying which you used; it earns method marks even if the arithmetic slips.</div>
+</div>
+
+<!-- ================= 4 ================= -->
+<div class="sub" id="w2-ets">
+<h3>4 · Elementary Transform Sequence (ETS) <span class="pgs"><a class="pg" data-doc="w02-lec" data-page="15">pp. 15–19</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Only six moves exist: \(t_x, t_y, t_z, R_x, R_y, R_z\) (<a class="pg" data-doc="w02-lec" data-page="16">p.16</a>). Each takes a parameter η that is either a constant (a link length, a fixed twist) or a joint variable \(q_j(t)\). Walk from the base to the tool and write each move as you meet it. A joint becomes one move about (or along) its own axis.</p>
+<p>The lecturer’s tip (<a class="pg" data-doc="w02-lec" data-page="18">p.18</a>): redraw the arm with every joint displaced from rest. Then you can see which way each angle is measured, and therefore its sign.</p>
+</div>
+<div class="layer derive"><span class="tag">Derivation: Furuta pendulum</span>
+<p>Base {B} at the floor, z up. Up the post by L<sub>0</sub>, rotate by θ<sub>1</sub> about the vertical, along the arm by L<sub>1</sub>, rotate by θ<sub>2</sub> about the arm’s axis (x), down the pendulum by L<sub>2</sub>, then flip so that z<sub>E</sub> points down the link (<a class="pg" data-doc="w02-lec" data-page="19">p.19</a>):</p>
+\[ {}^B\mathbf T_E = t_z(L_0)\,R_z(\theta_1)\,t_x(L_1)\,R_x(\theta_2)\,t_z(-L_2)\,R_y(\pi) \]
+<p>Multiplying out, the position column is <span class="chk">checked symbolically</span>:</p>
+\[ x = L_1\cos\theta_1 - L_2\sin\theta_1\sin\theta_2,\quad y = L_1\sin\theta_1 + L_2\cos\theta_1\sin\theta_2,\quad z = L_0 - L_2\cos\theta_2 \]
+<p>Sanity check: at θ<sub>2</sub> = 0 the pendulum hangs straight down, so \(z = L_0-L_2\) and the tip sits at the end of the arm. ✓</p>
+<p>Intermediate (link) frames are just partial products (notebook): \({}^B\mathbf T_1 = t_z(L_0)R_z(\theta_1)\), \({}^1\mathbf T_2 = t_x(L_1)R_x(\theta_2)\), \({}^2\mathbf T_E = t_z(-L_2)R_y(\pi)\).</p>
+</div>
+<div class="layer recipe"><span class="tag">Exam recipe (W13 Q1 style)</span><ol>
+<li>Draw {S} on the figure. Mark each joint axis and the positive sense of each angle (from the drawn arrow).</li>
+<li>Walk to the first joint: write the translations (\(t_z(\cdot)\) etc.).</li>
+<li>At each joint write \(R_{axis}(\pm\theta_i)\). Use the minus sign if the drawn positive rotation is opposite to the right-hand rule about your chosen axis.</li>
+<li>Continue to the tool. Finish with any constant rotation that makes your last frame match the drawn {T}.</li>
+<li>Draw and label an intermediate frame after each joint. Write \({}^{i-1}\mathbf T_i\) for each group.</li>
+<li>Multiply, or at least give the position column. Check at all joints = 0 against the picture.</li></ol></div>
+<div class="worked"><span class="tag">Worked example</span>
+<p>L = (0.5, 0.4, 0.3) m, θ = (60°, 45°). Then \(x = 0.4(0.5) - 0.3(0.8660)(0.7071) = 0.0163\), \(y = 0.4(0.8660) + 0.3(0.5)(0.7071) = 0.4525\), \(z = 0.5 - 0.3(0.7071) = 0.2879\) m.</p>
+\[ {}^B\mathbf T_E=\begin{bmatrix}-0.5000&-0.6124&-0.6124&0.0163\\-0.8660&0.3536&0.3536&0.4525\\0&0.7071&-0.7071&0.2879\\0&0&0&1\end{bmatrix} \]
+<p><span class="chk">checked with sympy and roboticstoolbox</span></p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs notebook</span><p>Notebook cell 35 writes <code>tz(-30)</code> where it means −0.30 m. Its printed pose (−18.17, 10.95, −20.71) is therefore wrong; the correct result is the matrix above. <span class="chk">reproduced the wrong output from the typo</span></p></div>
+</div>
+
+<!-- ================= 5 ================= -->
+<div class="sub" id="w2-dh">
+<h3>5 · Proximal (modified, Craig) Denavit–Hartenberg <span class="pgs"><a class="pg" data-doc="w02-lec" data-page="21">pp. 20–36</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>Links are numbered 0 (fixed base) to n. Joint i joins link i−1 to link i (<a class="pg" data-doc="w02-lec" data-page="23">p.23</a>). In the proximal convention, frame {i} sits on <b>joint axis i</b>, at the near end of link i, with z<sub>i</sub> along that axis. Between two neighbouring axes there is exactly one shortest line, the common normal. The four parameters describe how to get from one axis to the next along it.</p>
+<figure class="svg"><svg viewBox="0 0 640 260" role="img" aria-label="Four proximal DH parameters between axis i-1 and axis i" style="max-width:640px">
+  <g font-family="IBM Plex Mono, monospace" font-size="13">
+  <!-- axis i-1 and axis i (skew lines) -->
+  <line x1="60" y1="240" x2="110" y2="20" stroke="var(--axz)" stroke-width="2.5"/>
+  <text x="118" y="28" fill="var(--axz)">z<tspan dy="4" font-size="10">i−1</tspan><tspan dy="-4"> (joint axis i−1)</tspan></text>
+  <line x1="380" y1="245" x2="440" y2="20" stroke="var(--axz)" stroke-width="2.5"/>
+  <text x="448" y="28" fill="var(--axz)">z<tspan dy="4" font-size="10">i</tspan><tspan dy="-4"> (joint axis i)</tspan></text>
+  <!-- common normal: x_{i-1}, length a_{i-1} -->
+  <line x1="88" y1="117" x2="408" y2="140" stroke="var(--axx)" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <text x="150" y="108" fill="var(--axx)">x<tspan dy="4" font-size="10">i−1</tspan><tspan dy="-4"> along the common normal</tspan></text>
+  <text x="200" y="158" fill="var(--ink)">a<tspan dy="4" font-size="10">i−1</tspan><tspan dy="-4"> = its length</tspan></text>
+  <!-- twist alpha about x_{i-1} -->
+  <path d="M436,92 a22,22 0 0 1 18,26" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+  <text x="462" y="104" fill="var(--ink)">α<tspan dy="4" font-size="10">i−1</tspan><tspan dy="-4">: z</tspan><tspan dy="4" font-size="10">i−1</tspan><tspan dy="-4"> → z</tspan><tspan dy="4" font-size="10">i</tspan></text>
+  <text x="462" y="122" fill="var(--muted)">about x<tspan dy="4" font-size="10">i−1</tspan></text>
+  <!-- offset d_i along z_i, then x_i -->
+  <line x1="408" y1="140" x2="398" y2="180" stroke="var(--ink)" stroke-width="4"/>
+  <text x="300" y="196" fill="var(--ink)">d<tspan dy="4" font-size="10">i</tspan><tspan dy="-4"> along z</tspan><tspan dy="4" font-size="10">i</tspan></text>
+  <line x1="398" y1="180" x2="560" y2="208" stroke="var(--axx)" stroke-width="2.5"/>
+  <text x="566" y="214" fill="var(--axx)">x<tspan dy="4" font-size="10">i</tspan></text>
+  <path d="M440,198 a40,40 0 0 0 4,-30" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+  <text x="452" y="240" fill="var(--ink)">θ<tspan dy="4" font-size="10">i</tspan><tspan dy="-4">: x</tspan><tspan dy="4" font-size="10">i−1</tspan><tspan dy="-4"> → x</tspan><tspan dy="4" font-size="10">i</tspan><tspan dy="-4"> about z</tspan><tspan dy="4" font-size="10">i</tspan></text>
+  <circle cx="408" cy="140" r="3.5" fill="var(--ink)"/><circle cx="398" cy="180" r="3.5" fill="var(--ink)"/>
+  </g></svg><figcaption>Schematic only, not to scale. a and α are measured along the common normal between the two axes; d and θ are measured along axis i itself. Frame {i}’s origin is the lower dot, where x<sub>i</sub> leaves axis i.</figcaption></figure>
+</div>
+<div class="layer derive"><span class="tag">Definitions and the link transform</span>
+<div class="tbl"><table><tr><th>Parameter</th><th>Measured</th><th>Slide</th></tr>
+<tr><td>\(a_{i-1}\) link length</td><td>distance from \(z_{i-1}\) to \(z_i\) along \(x_{i-1}\) (common normal); never negative</td><td><a class="pg" data-doc="w02-lec" data-page="24">p.24</a>, <a class="pg" data-doc="w02-lec" data-page="30">p.30</a></td></tr>
+<tr><td>\(\alpha_{i-1}\) link twist</td><td>angle from \(z_{i-1}\) to \(z_i\) about \(x_{i-1}\) (right-hand sense)</td><td><a class="pg" data-doc="w02-lec" data-page="25">p.25</a></td></tr>
+<tr><td>\(d_i\) link offset</td><td>signed distance from \(x_{i-1}\) to \(x_i\) along \(z_i\)</td><td><a class="pg" data-doc="w02-lec" data-page="26">p.26</a></td></tr>
+<tr><td>\(\theta_i\) joint angle</td><td>angle from \(x_{i-1}\) to \(x_i\) about \(z_i\)</td><td><a class="pg" data-doc="w02-lec" data-page="27">p.27</a></td></tr></table></div>
+<p>A revolute joint’s variable is \(\theta_i\); a prismatic joint’s variable is \(d_i\). The link transform is the ETS twist → slide → rotate → slide (<a class="pg" data-doc="w02-lec" data-page="28">p.28</a>):</p>
+\[ {}^{i-1}\mathbf T_i = R_x(\alpha_{i-1})\,t_x(a_{i-1})\,R_z(\theta_i)\,t_z(d_i) = \begin{bmatrix} c\theta_i & -s\theta_i & 0 & a_{i-1}\\ s\theta_i c\alpha_{i-1} & c\theta_i c\alpha_{i-1} & -s\alpha_{i-1} & -s\alpha_{i-1} d_i\\ s\theta_i s\alpha_{i-1} & c\theta_i s\alpha_{i-1} & c\alpha_{i-1} & c\alpha_{i-1} d_i\\ 0&0&0&1\end{bmatrix} \]
+<p>Then \({}^0\mathbf T_n = {}^0\mathbf T_1\,{}^1\mathbf T_2\cdots{}^{n-1}\mathbf T_n\) (<a class="pg" data-doc="w02-lec" data-page="35">p.35</a>).</p>
+</div>
+<div class="layer recipe"><span class="tag">Frame-assignment recipe (slide 29)</span><ol>
+<li>Identify all joint axes. Work on axes i and i+1.</li>
+<li>Find their common normal, or their intersection point. The origin of {i} is where the common normal meets axis i (or the intersection point).</li>
+<li>z<sub>i</sub> along joint axis i.</li>
+<li>x<sub>i</sub> along the common normal, pointing towards axis i+1. If the axes intersect, x<sub>i</sub> is normal to the plane containing both.</li>
+<li>y<sub>i</sub> completes a right-handed frame.</li>
+<li>Choose {0} to coincide with {1} when q<sub>1</sub> = 0. Choose {N}’s origin and x<sub>N</sub> freely, making as many parameters zero as possible.</li>
+<li>Fill the table row by row: \(a_{i-1}, \alpha_{i-1}\) look backwards (from axis i−1 to axis i); \(d_i, \theta_i\) look along axis i.</li></ol></div>
+<div class="worked"><span class="tag">Worked example: Furuta pendulum DH table (slide 34)</span>
+<div class="tbl"><table><tr><th>i</th><th>\(a_{i-1}\)</th><th>\(\alpha_{i-1}\)</th><th>\(d_i\)</th><th>\(\theta_i\)</th></tr><tr><td>1</td><td>0</td><td>0</td><td>L<sub>0</sub></td><td>q<sub>1</sub> + 90°</td></tr><tr><td>2</td><td>0</td><td>90°</td><td>L<sub>1</sub></td><td>q<sub>2</sub></td></tr><tr><td>3</td><td>0</td><td>90°</td><td>L<sub>2</sub></td><td>0°</td></tr></table></div>
+<p>The slide warns that {3} is not {E}. Multiplying the three rows and comparing with the ETS of section 4 shows the missing piece is a constant \({}^3\mathbf T_E = R_z(-90^\circ)\):</p>
+\[ {}^0\mathbf T_1\,{}^1\mathbf T_2\,{}^2\mathbf T_3\;R_z(-90^\circ) \;=\; t_z(L_0)R_z(\theta_1)t_x(L_1)R_x(\theta_2)t_z(-L_2)R_y(\pi) \quad\text{for all }\theta_1,\theta_2 \]
+<p>This is the slide 36 homework (“verify that it is the same as the ETS”). <span class="chk">checked symbolically</span> Why +90° in row 1: with q<sub>1</sub> = 0, x<sub>1</sub> must point along y<sub>0</sub> so that z<sub>2</sub> (the arm axis, reached by twisting 90° about x<sub>1</sub>) points along +x<sub>0</sub>, as in the ETS.</p>
+</div>
+<div class="worked"><span class="tag">Worked example: a real 7-DoF arm (Franka Panda, notebook Q1)</span>
+<p>Franka publishes its Panda in exactly this proximal convention. <span class="added">added</span></p>
+<div class="tbl"><table><tr><th>i</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>flange</th></tr>
+<tr><td>\(a_{i-1}\) (m)</td><td>0</td><td>0</td><td>0</td><td>0.0825</td><td>−0.0825</td><td>0</td><td>0.088</td><td>0</td></tr>
+<tr><td>\(\alpha_{i-1}\)</td><td>0</td><td>−90°</td><td>90°</td><td>90°</td><td>−90°</td><td>90°</td><td>90°</td><td>0</td></tr>
+<tr><td>\(d_i\) (m)</td><td>0.333</td><td>0</td><td>0.316</td><td>0</td><td>0.384</td><td>0</td><td>0</td><td>0.107</td></tr>
+<tr><td>\(\theta_i\)</td><td>q1</td><td>q2</td><td>q3</td><td>q4</td><td>q5</td><td>q6</td><td>q7</td><td>0</td></tr></table></div>
+<p>Note the negative \(a_4\): a DH “length” is never negative under the strict rules, but published tables sometimes keep the sign instead of flipping x. At q = 0 the flange is at (0.088, 0, 0.926) m. <span class="chk">checked against roboticstoolbox’s Panda model</span></p>
+</div>
+<div class="widget" data-w3d="dh" data-preset="furutaDH" id="w2-dh">
+  <div class="wh"><b>Proximal DH table editor</b><span class="eyebrow">each row = Rx(α<sub>i−1</sub>) · tx(a<sub>i−1</sub>) · Rz(θ<sub>i</sub>) · tz(d<sub>i</sub>)</span></div>
+  <div class="wbody"><div class="stage"><button type="button" class="btn small reset">Reset view</button><span class="legend">x red · y green · z blue</span></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> with the Furuta preset, compare the final matrix with the ETS explorer above at the same angles: they are identical, because the preset includes the slide’s missing \(R_z(-90^\circ)\). Change row 1’s α from 0 to 90 and watch the whole arm tip over: α tilts the next joint axis.</div>
+</div>
+<div class="angle">Typical questions: “fill in the DH table for this arm” (draw frames first, then each row), or “here is a table, find \({}^0\mathbf T_2\)” (substitute into the matrix above and multiply). Always say which convention you use; a correct distal table marked against a proximal answer needs that sentence.</div>
+</div>
+
+<!-- ================= 6 ================= -->
+<div class="sub" id="w2-distal">
+<h3>6 · Distal (standard) DH, and how to tell them apart <span class="pgs"><a class="pg" data-doc="w02-lec" data-page="37">pp. 37–41</a></span></h3>
+<div class="layer derive"><span class="tag">Comparison (slide 40)</span>
+<div class="tbl"><table><tr><th></th><th>Proximal / modified (Craig, this unit)</th><th>Distal / standard (DH 1955, Corke’s default)</th></tr>
+<tr><td>Frame {i} sits on</td><td>axis i (near end of link i)</td><td>axis i+1 (far end of link i)</td></tr>
+<tr><td>Link transform</td><td>\(R_x(\alpha_{i-1})\,t_x(a_{i-1})\,R_z(\theta_i)\,t_z(d_i)\)</td><td>\(R_z(\theta_i)\,t_z(d_i)\,t_x(a_i)\,R_x(\alpha_i)\)</td></tr>
+<tr><td>Row i uses</td><td>\(a_{i-1},\alpha_{i-1},d_i,\theta_i\)</td><td>\(a_i,\alpha_i,d_i,\theta_i\)</td></tr>
+<tr><td>Joint i moves about</td><td>\(z_i\)</td><td>\(z_{i-1}\)</td></tr>
+<tr><td>Constraint that makes 4 enough (p.43)</td><td>\(x_i \perp z_{i+1}\) and \(x_i\) intersects \(z_{i+1}\)</td><td>\(x_i \perp z_{i-1}\) and \(x_i\) intersects \(z_{i-1}\)</td></tr></table></div>
+\[ \text{distal: } {}^{i-1}\mathbf T_i = \begin{bmatrix} c\theta_i & -s\theta_i c\alpha_i & s\theta_i s\alpha_i & a_i c\theta_i\\ s\theta_i & c\theta_i c\alpha_i & -c\theta_i s\alpha_i & a_i s\theta_i\\ 0 & s\alpha_i & c\alpha_i & d_i\\ 0&0&0&1\end{bmatrix} \]
+</div>
+<div class="box warn-box"><span class="tag">Slides vs textbook</span><p>Craig (your book) uses proximal. Corke’s book and Robot Academy videos mostly use distal, and <code>roboticstoolbox.DHRobot</code> is distal unless you use <code>RevoluteMDH</code>. A table copied from one into the other’s matrix gives a wrong robot. In the exam, state “proximal (Craig) DH” at the top of your answer.</p></div>
+</div>
+
+<!-- ================= 7 ================= -->
+<div class="sub" id="w2-why4">
+<h3>7 · Why four parameters are enough, and what a good model needs <span class="pgs"><a class="pg" data-doc="w02-lec" data-page="42">pp. 42–44</a></span></h3>
+<div class="layer derive"><span class="tag">Argument</span>
+<p>A general rigid-body pose needs 6 numbers (3 rotation, 3 translation). DH spends 2 of them on rules about where frames go: in proximal DH, x<sub>i</sub> must be perpendicular to z<sub>i+1</sub> and must intersect it. Each rule removes one freedom, so 6 − 2 = 4 (<a class="pg" data-doc="w02-lec" data-page="43">p.43</a>). The price: a link frame need not lie on the physical link.</p>
+<p>A kinematic model should be (<a class="pg" data-doc="w02-lec" data-page="44">p.44</a>): <b>complete</b> (it can describe any geometry of successive joints), <b>continuous</b> (small geometry change gives a small parameter change; DH fails this when two axes become nearly parallel, because the common normal jumps), and <b>minimal</b> (no redundant parameters).</p>
+</div>
+<div class="angle">A 2–4 mark “explain” question: state 6 − 2 = 4 and name the two constraints. Then add one limitation: DH is not continuous for nearly parallel axes, and frames may sit off the link.</div>
+</div>
+
+<!-- ================= 8 ================= -->
+<div class="sub" id="w2-urdf">
+<h3>8 · URDF <span class="pgs"><a class="pg" data-doc="w02-lec" data-page="45">pp. 45–47</a></span></h3>
+<div class="layer picture"><span class="tag">Picture</span>
+<p>URDF (Unified Robot Description Format) is XML that lists <code>&lt;link&gt;</code>s and <code>&lt;joint&gt;</code>s. Each joint names a parent and child link, an <code>origin</code> (a fixed transform, i.e. constant ETS steps) and an <code>axis</code> (the joint variable’s axis). It can also carry visual geometry. The slide’s planar robot (<a class="pg" data-doc="w02-lec" data-page="46">p.46</a>) is the ETS \(R_z(q_1)\,t_x(1)\,R_z(q_2)\,t_x(1)\): joint q2’s origin is xyz = “1 0 0” and the fixed joint to “end” adds another \(t_x(1)\).</p>
+</div>
+<div class="angle">Low exam weight. Be able to read a URDF snippet as an ETS: origin → constant translations and rotations, axis → which \(R\) the joint is.</div>
+</div>
+
+<!-- ================= guided problems ================= -->
+<h3 id="w2-problems">Guided problems: solve on paper first</h3>
+
+<div class="gp" data-topic="w02">
+  <div class="head"><b>P2.1 · Furuta pendulum position</b><span class="chip calc">calculate</span><span class="chip derive">derive</span><span class="marks" data-id="w02-p1" data-topic="w02"></span></div>
+  <p>For the Furuta pendulum with L<sub>0</sub> = 0.5 m, L<sub>1</sub> = 0.4 m, L<sub>2</sub> = 0.3 m, θ<sub>1</sub> = 60°, θ<sub>2</sub> = 45°, find the tip position in {B}.</p>
+  <details class="hint"><summary>Hint 1: what to write</summary><p>The ETS from base to tip: \(t_z(L_0)R_z(\theta_1)t_x(L_1)R_x(\theta_2)t_z(-L_2)\). The final \(R_y(\pi)\) does not move the origin.</p></details>
+  <details class="hint"><summary>Hint 2: the governing equation</summary><p>Position = \(t_z(L_0)\) + \(R_z(\theta_1)\big([L_1,0,0]^\top + R_x(\theta_2)[0,0,-L_2]^\top\big)\).</p></details>
+  <details class="hint"><summary>Hint 3: first substitution</summary><p>\(R_x(45^\circ)[0,0,-0.3]^\top = [0,\;0.2121,\;-0.2121]^\top\).</p></details>
+  <div class="ansrow"><label>x<input data-ans="0.0163" data-tol="0.0006" data-label="x" inputmode="decimal" aria-label="x in metres"></label><label>y<input data-ans="0.4525" data-tol="0.0006" data-label="y" inputmode="decimal" aria-label="y in metres"></label><label>z<input data-ans="0.2879" data-tol="0.0006" data-label="z" inputmode="decimal" aria-label="z in metres"
+    data-wrong='[{"v":0.7121,"msg":"you added L2 cos θ2 instead of subtracting: the pendulum hangs down (tz(−L2))."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p>Arm-local vector to the tip: \([0.4,\;0,\;0] + R_x(45^\circ)[0,0,-0.3] = [0.4,\;0.2121,\;-0.2121]\).</p>
+  <p>Rotate by \(R_z(60^\circ)\): \(x = 0.4(0.5) - 0.2121(0.8660) = 0.0163\), \(y = 0.4(0.8660) + 0.2121(0.5) = 0.4525\). Add the post: \(z = 0.5 - 0.2121 = 0.2879\) m.</p>
+  <p>Common wrong answer: using \(+L_2\) gives z = 0.7121, a pendulum pointing up.</p></details>
+  <p class="blank">Close everything and write the Furuta ETS and its position formula from scratch in 4 minutes.</p>
+</div>
+
+<div class="gp" data-topic="w02">
+  <div class="head"><b>P2.2 · Two frames (notebook Question 3)</b><span class="chip derive">derive</span><span class="chip spot">spot the error</span><span class="marks" data-id="w02-p2" data-topic="w02"></span></div>
+  <p>In the notebook figure, {B}’s origin is reached from {A} by 5 along y<sub>A</sub>, 3 along x<sub>A</sub> and 2 up z<sub>A</sub>. x<sub>B</sub> points down (−z<sub>A</sub>) and z<sub>B</sub> points along +y<sub>A</sub>. Find \({}^A\mathbf T_B\) and give an ETS for it.</p>
+  <details class="hint"><summary>Hint 1</summary><p>The columns of \({}^A\mathbf R_B\) are B’s axes in A. You know two of them; the third is \(\mathbf y_B = \mathbf z_B\times\mathbf x_B\).</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>\(\mathbf y_B = \hat y_A \times(-\hat z_A) = -\hat x_A\).</p></details>
+  <details class="hint"><summary>Hint 3</summary><p>Find a rotation that sends x to −z first (\(R_y(90^\circ)\) does), then fix z about the new x.</p></details>
+  <details class="sol"><summary>Full solution</summary>
+  \[ {}^A\mathbf T_B=\begin{bmatrix}0&-1&0&3\\0&0&1&5\\-1&0&0&2\\0&0&0&1\end{bmatrix},\qquad \text{ETS: } t_x(3)\,t_y(5)\,t_z(2)\,R_y(90^\circ)\,R_x(-90^\circ) \]
+  <p>Check: \(R_y(90^\circ)\) takes x to −z ✓. Its new x-axis is −z<sub>A</sub>; rotating −90° about it carries the current z (= +x<sub>A</sub>) to +y<sub>A</sub> ✓. Determinant +1 ✓. <span class="chk">checked</span></p>
+  <p><b>Spot the error:</b> a filled-in copy of this notebook answers <code>ty(5) tx(3) Ry(90°) Rx(90°)</code>. It misses the 2 up z<sub>A</sub>, and \(R_x(+90^\circ)\) makes z<sub>B</sub> point along −y<sub>A</sub>.</p></details>
+</div>
+
+<div class="gp" data-topic="w02">
+  <div class="head"><b>P2.3 · Panda ETS (notebook Questions 1–2)</b><span class="chip derive">derive</span><span class="chip calc">calculate</span><span class="marks" data-id="w02-p3" data-topic="w02"></span></div>
+  <p>Using the Panda schematic (0.333, 0.316, 0.384, 0.0825, 0.088, 0.107 m), write the ETS from base to flange. What is the flange position at q = 0?</p>
+  <details class="hint"><summary>Hint 1</summary><p>Each DH row in the table of section 5 is \(R_x(\alpha_{i-1})\,t_x(a_{i-1})\,R_z(q_i)\,t_z(d_i)\). Drop the zero terms.</p></details>
+  <details class="hint"><summary>Hint 2</summary><p>At q = 0 the column is straight up: 0.333 + 0.316 + 0.384 = 1.033, then the wrist turns back down by 0.107.</p></details>
+  <div class="ansrow"><label>x<input data-ans="0.088" data-tol="0.0006" data-label="x" inputmode="decimal" aria-label="flange x"></label><label>z<input data-ans="0.926" data-tol="0.0006" data-label="z" inputmode="decimal" aria-label="flange z" data-wrong='[{"v":1.14,"msg":"the last 0.107 points down at q = 0 (z7 points down after the two +90° twists)."}]'></label><button type="button" class="btn small check">Check</button></div>
+  <div class="fb" aria-live="polite"></div>
+  <details class="sol"><summary>Full solution</summary>
+  <p class="mono" style="font-size:.85rem">tz(0.333) Rz(q1) Rx(−90°) Rz(q2) Rx(90°) tz(0.316) Rz(q3) Rx(90°) tx(0.0825) Rz(q4) Rx(−90°) tx(−0.0825) tz(0.384) Rz(q5) Rx(90°) Rz(q6) Rx(90°) tx(0.088) Rz(q7) tz(0.107)</p>
+  <p>At q = 0: x = 0.0825 − 0.0825 + 0.088 = 0.088 m; z = 0.333 + 0.316 + 0.384 − 0.107 = 0.926 m; y = 0. <span class="chk">checked against roboticstoolbox</span></p>
+  <p>Note: the filled-in notebook cell uses only Rx joints after the first. That is not the Panda, since its joints alternate between “about the link” and “across the link”.</p></details>
+</div>
+
+<div class="gp" data-topic="w02">
+  <div class="head"><b>P2.4 · PUMA 560 by ETS (notebook Question 5)</b><span class="chip derive">derive</span><span class="chip explain">explain</span><span class="marks" data-id="w02-p4" data-topic="w02"></span></div>
+  <p>Write an ETS from base to wrist for the PUMA 560 (choose your own lengths, no offsets). How do you handle joints whose axes meet at one point?</p>
+  <details class="hint"><summary>Hint 1</summary><p>Home pose: upper arm and forearm vertical. Waist about z; shoulder and elbow about a horizontal axis (take y); wrist roll about the forearm (z), bend (y), swivel (z).</p></details>
+  <details class="sol"><summary>Full solution</summary>
+  <p>\(t_z(L_b)\,R_z(q_1)\,R_y(q_2)\,t_z(L_u)\,R_y(q_3)\,t_z(L_f)\,R_z(q_4)\,R_y(q_5)\,R_z(q_6)\), e.g. L<sub>b</sub> = 1.0, L<sub>u</sub> = 0.5, L<sub>f</sub> = 0.3 m. Home position is (0, 0, 1.8) m. <span class="chk">checked</span></p>
+  <p><b>Coincident joints:</b> where axes intersect there is <i>no translation</i> between consecutive rotations. Waist and shoulder meet at one point (\(R_z R_y\) back to back), and the three wrist axes meet at the wrist centre (\(R_zR_yR_z\)). This is a spherical wrist. Its centre does not move when q4–q6 change <span class="chk">checked</span>, which is what makes PUMA IK solvable in closed form (W3).</p>
+  <p>Try it in the 3D explorer above (“PUMA-like arm”).</p></details>
+</div>
+
+<div class="gp" data-topic="w02">
+  <div class="head"><b>P2.5 · Why are 4 DH parameters enough?</b><span class="chip explain">explain</span><span class="marks" data-id="w02-p5" data-topic="w02"></span></div>
+  <p>A pose between two rigid bodies needs six numbers. Explain in 3 sentences why DH uses four, and give one weakness.</p>
+  <details class="sol"><summary>Model answer</summary><p>DH restricts where frames go: in proximal DH, x<sub>i</sub> is perpendicular to z<sub>i+1</sub> and intersects it. These two constraints remove two of the six freedoms, leaving a, α, d, θ. Weakness: for nearly parallel axes the common normal is ill-defined, so tiny geometry changes cause large parameter jumps (not continuous). Frames may also lie off the physical link.</p></details>
+</div>
+
+<div class="gp" data-topic="w02">
+  <div class="head"><b>P2.6 · Workspace by sampling (notebook Question 6)</b><span class="chip explain">explain</span><span class="chip sketch">sketch</span><span class="marks" data-id="w02-p6" data-topic="w02"></span></div>
+  <p>Describe how to plot a manipulator’s workspace from its FK, and sketch the Furuta pendulum’s workspace (no joint limits).</p>
+  <details class="sol"><summary>Model answer</summary><p>Sample joint vectors uniformly within the joint limits, push each through FK, and plot the tool positions as a point cloud. For the Furuta pendulum, the tip lies on a circle of radius L<sub>2</sub> centred at the arm’s end. That circle lies in the plane <i>perpendicular to the arm</i>, not in the vertical plane through the post. From the FK, \(x^2+y^2 = L_1^2 + L_2^2\sin^2\theta_2\) and \(z - L_0 = -L_2\cos\theta_2\), so \(\rho^2 + (z-L_0)^2 = L_1^2 + L_2^2\) where ρ is the horizontal distance from the post. Every tip position is the same distance \(\sqrt{L_1^2+L_2^2}\) from the top of the post. The workspace is a <b>band of a sphere</b> of that radius, centred at (0, 0, L<sub>0</sub>), between heights \(L_0 \pm L_2\). It is a surface, not a solid, because the arm has only two joints. For the example lengths: radius 0.5 m, heights 0.2 m to 0.8 m. <span class="chk">checked</span></p>
+  <p>Common wrong answer: a torus. A torus would need the pendulum to swing in the radial plane.</p></details>
+</div>
+
+<h3>Mini-quiz</h3>
+<div class="gp" data-topic="w02"><div class="head"><b>Q1</b><span class="chip explain">concept</span><span class="marks" data-id="w02-q1" data-topic="w02"></span></div>
+<p>What is the third column of \({}^A\mathbf R_B\), physically?</p><details class="sol"><summary>Answer</summary><p>The unit z-axis of {B} expressed in {A}’s coordinates.</p></details></div>
+<div class="gp" data-topic="w02"><div class="head"><b>Q2</b><span class="chip calc">calculate</span><span class="marks" data-id="w02-q2" data-topic="w02"></span></div>
+<p>\({}^A\mathbf T_B = R_x(90^\circ)\,t_z(1)\). Where is B’s origin in A?</p><details class="sol"><summary>Answer</summary><p>\(R_x(90^\circ)[0,0,1]^\top = (0,-1,0)\). The translation is along the rotated z, which now points along −y<sub>A</sub>.</p></details></div>
+<div class="gp" data-topic="w02"><div class="head"><b>Q3</b><span class="chip spot">spot the error</span><span class="marks" data-id="w02-q3" data-topic="w02"></span></div>
+<p>A student writes the proximal link transform as \(R_z(\theta_i)\,t_z(d_i)\,t_x(a_{i-1})\,R_x(\alpha_{i-1})\). What is wrong?</p><details class="sol"><summary>Answer</summary><p>That is the distal order with proximal subscripts. Proximal is \(R_x(\alpha_{i-1})\,t_x(a_{i-1})\,R_z(\theta_i)\,t_z(d_i)\): twist and slide along the old x first, then rotate and slide along the new z.</p></details></div>
+
+<div class="box" data-reading="w02"></div>

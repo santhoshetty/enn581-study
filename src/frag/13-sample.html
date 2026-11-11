@@ -1,0 +1,198 @@
+<p class="eyebrow">Week 13 · Revision lecture · the only sample of the exam’s style</p>
+<h2>The ten sample questions, solved as full-mark answers</h2>
+<p class="lead">The lecturer: “You will not get a question that you cannot solve using what has been taught” (<a class="pg" data-doc="w13-lec" data-page="3">p.3</a>). These ten questions are the template. Each answer below is laid out the way a full-mark script should look. Do each one on paper first, then compare.</p>
+
+<div class="box notes-box">
+  <div class="title">Week 13 Revision deck<small>23 slides · questions with the lecturer’s handwritten hints</small></div>
+  <div class="acts">
+    <button type="button" class="btn primary" data-view="w13-lec">📖 View here</button>
+    <button type="button" class="btn" data-dl="notes/w13-lec.pdf" data-name="ENN581 W13 Revision.pdf">⬇ Download PDF</button>
+    <a class="btn" href="notes/w13-lec.pdf" target="_blank" rel="noopener">Open in new tab ↗</a>
+  </div>
+</div>
+
+<div class="box exam-box">
+  <span class="tag">How to write every answer (method marks)</span>
+  <ol>
+    <li><b>Draw and define.</b> Frames, axes, positive directions of angles, assumptions (“no joint limits”, “point masses”, “rest-to-rest”).</li>
+    <li><b>State the general tool</b> before you use it: the ETS, the cosine rule, Euler–Lagrange, G–K, the cubic boundary conditions.</li>
+    <li><b>Substitute and simplify</b> one step per line. Keep symbols until the end, then numbers with units.</li>
+    <li><b>Box the result.</b> List every solution branch.</li>
+    <li><b>Sanity-check</b> at a simple pose or limit (θ = 0, t = 0, symmetric case) and say that you did.</li>
+  </ol>
+  <p>Time: 2 hours. Marks per question are not published; split your time in proportion to the marks printed on the paper. Read the whole paper first and leave about 10 minutes to check. <span class="added">advice</span></p>
+</div>
+
+<!-- Q1 -->
+<div class="sub" id="sq1">
+<h3>Q1 · Forward kinematics of the RRR arm <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="4">pp. 4–5</a></span></h3>
+<p><i>“Write down the transformation matrix relating the tool frame {T} to the station frame {S} for the following RRR manipulator. Indicate intermediate frames.”</i></p>
+<div class="layer recipe"><span class="tag">Model answer</span>
+<p><b>Frames.</b> {S} on the base with z<sub>S</sub> up along joint 1. {1} = {S} turned by θ<sub>1</sub> about z<sub>S</sub>. {2} at the shoulder, a height L<sub>1</sub>+L<sub>2</sub> above {S}, with y<sub>2</sub> along joint 2’s axis. {3} at the elbow, a distance L<sub>3</sub> along the upper arm. {T} at the tip, L<sub>4</sub> further on, with y<sub>T</sub> up and x<sub>T</sub> along the forearm when all angles are zero (as drawn).</p>
+<p><b>ETS</b> (lecturer’s answer, <a class="pg" data-doc="w13-lec" data-page="4">p.4</a>). The joint-2 and joint-3 arrows rotate the arm upwards, which is negative about +y, hence the minus signs:</p>
+\[ {}^S\mathbf T_T = R_z(\theta_1)\;t_z(L_1+L_2)\;R_y(-\theta_2)\;t_x(L_3)\;R_y(-\theta_3)\;t_x(L_4)\;R_x(90^\circ) \]
+<p><b>Intermediate transforms</b> (one per joint, so each frame is “indicated”), with \(c_i=\cos\theta_i\), \(s_i=\sin\theta_i\):</p>
+\[ {}^S\mathbf T_1=\begin{bmatrix}c_1&-s_1&0&0\\s_1&c_1&0&0\\0&0&1&0\\0&0&0&1\end{bmatrix},\quad {}^1\mathbf T_2=\begin{bmatrix}c_2&0&-s_2&0\\0&1&0&0\\s_2&0&c_2&L_1{+}L_2\\0&0&0&1\end{bmatrix} \]
+\[ {}^2\mathbf T_3=\begin{bmatrix}c_3&0&-s_3&L_3\\0&1&0&0\\s_3&0&c_3&0\\0&0&0&1\end{bmatrix},\quad {}^3\mathbf T_T=\begin{bmatrix}1&0&0&L_4\\0&0&-1&0\\0&1&0&0\\0&0&0&1\end{bmatrix} \]
+<p><b>Product</b> \( {}^S\mathbf T_T={}^S\mathbf T_1\,{}^1\mathbf T_2\,{}^2\mathbf T_3\,{}^3\mathbf T_T \), with \(c_{23}=\cos(\theta_2+\theta_3)\) and \(r = L_3c_2+L_4c_{23}\):</p>
+\[ {}^S\mathbf T_T=\begin{bmatrix} c_1c_{23} & -c_1s_{23} & s_1 & c_1\,r\\ s_1c_{23} & -s_1s_{23} & -c_1 & s_1\,r\\ s_{23} & c_{23} & 0 & L_1+L_2+L_3s_2+L_4s_{23}\\ 0&0&0&1\end{bmatrix} \]
+<p><b>Check</b> at θ = 0: position (L<sub>3</sub>+L<sub>4</sub>, 0, L<sub>1</sub>+L<sub>2</sub>); x<sub>T</sub> = x<sub>S</sub>, y<sub>T</sub> = z<sub>S</sub>, z<sub>T</sub> = −y<sub>S</sub>, matching the figure. ✓ <span class="chk">checked symbolically, including the four-factor product</span></p>
+</div>
+<div class="worked"><span class="tag">Numbers to test yourself</span><p>L = (0.6, 0.5, 0.4, 0.3) m, θ = (30°, 20°, 40°):</p>
+\[ {}^S\mathbf T_T=\begin{bmatrix}0.4330&-0.7500&0.5000&0.4554\\0.2500&-0.4330&-0.8660&0.2629\\0.8660&0.5000&0&1.4966\\0&0&0&1\end{bmatrix} \]<p><span class="chk">checked</span></p></div>
+<div class="widget" data-w3d="chain" data-presets="w13rrr" id="sq-chain">
+  <div class="wh"><b>Q1 arm in 3D</b><span class="eyebrow">same ETS · L = 0.6, 0.5, 0.4, 0.3 m</span></div>
+  <div class="wbody"><div class="stage"><button type="button" class="btn small reset">Reset view</button><span class="legend">x red · y green · z blue</span></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> set θ = (30°, 20°, 40°) and compare with the matrix above. Set θ<sub>2</sub> = 90°: the upper arm points straight up, as \(R_y(-\theta_2)\) predicts.</div>
+</div>
+<div class="angle">Ways to lose marks: \(R_y(+\theta_2)\) (the arm would dip when θ<sub>2</sub> grows); dropping the final \(R_x(90^\circ)\) (position right, orientation wrong); writing only the product without the intermediate frames that the question explicitly asks for.</div>
+</div>
+
+<!-- Q2 -->
+<div class="sub" id="sq2">
+<h3>Q2 · Sketch the workspace <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="6">p. 6</a></span></h3>
+<p><i>“Sketch the workspace of the manipulator. Assume no limit on joint angles, ignore collisions.”</i></p>
+<div class="layer recipe"><span class="tag">Model answer</span>
+<p>Joints 2 and 3 form a planar 2R arm (links L<sub>3</sub>, L<sub>4</sub>) in a vertical plane through z<sub>S</sub>, pivoting at the shoulder point O = (0, 0, L<sub>1</sub>+L<sub>2</sub>). By the cosine rule its tip is at distance \(\rho=\sqrt{L_3^2+L_4^2+2L_3L_4\cos\theta_3}\) from O. With θ<sub>3</sub> free, ρ takes every value from |L<sub>3</sub> − L<sub>4</sub>| to L<sub>3</sub> + L<sub>4</sub>. With θ<sub>2</sub> free, the tip sweeps a full annulus in that plane. Joint 1 spins that plane about z<sub>S</sub>, which passes through the annulus’s centre O.</p>
+<p><b>Workspace = a hollow sphere (spherical shell) centred on the shoulder O, outer radius L<sub>3</sub>+L<sub>4</sub>, inner radius |L<sub>3</sub>−L<sub>4</sub>|.</b> L<sub>1</sub> and L<sub>2</sub> only lift its centre.</p>
+<p><b>Sketch:</b> side view, an annulus about O (the lecturer’s “donut”, <a class="pg" data-doc="w13-lec" data-page="6">p.6</a>); top view, a disc of radius L<sub>3</sub>+L<sub>4</sub>. Label both radii and the height of O. The figure shows L<sub>3</sub> &gt; L<sub>4</sub>, so the hole exists. If L<sub>3</sub> = L<sub>4</sub>, the shell becomes a solid ball.</p>
+</div>
+<figure class="svg"><svg viewBox="0 0 520 250" role="img" aria-label="Side and top views of the workspace: spherical shell about the shoulder">
+  <g font-family="IBM Plex Mono, monospace" font-size="12">
+  <text x="20" y="18" fill="var(--muted)">side view (x–z plane)</text>
+  <line x1="20" y1="230" x2="250" y2="230" stroke="var(--muted)"/><line x1="130" y1="232" x2="130" y2="30" stroke="var(--axz)" stroke-dasharray="4 3"/>
+  <circle cx="130" cy="120" r="98" fill="color-mix(in srgb, var(--accent) 22%, transparent)" stroke="var(--accent)" stroke-width="2"/>
+  <circle cx="130" cy="120" r="14" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/>
+  <circle cx="130" cy="120" r="3" fill="var(--ink)"/><text x="136" y="116" fill="var(--ink)">O</text>
+  <line x1="130" y1="120" x2="228" y2="120" stroke="var(--ink)"/><text x="160" y="136" fill="var(--ink)">L3+L4</text>
+  <line x1="130" y1="232" x2="130" y2="232" stroke="var(--ink)"/><text x="138" y="200" fill="var(--muted)">height L1+L2</text>
+  <text x="290" y="18" fill="var(--muted)">top view (x–y plane)</text>
+  <circle cx="400" cy="125" r="98" fill="color-mix(in srgb, var(--accent) 22%, transparent)" stroke="var(--accent)" stroke-width="2"/>
+  <circle cx="400" cy="125" r="3" fill="var(--ink)"/><line x1="400" y1="125" x2="498" y2="125" stroke="var(--ink)"/><text x="420" y="118" fill="var(--ink)">L3+L4</text>
+  </g></svg><figcaption>Drawn for L<sub>3</sub> = 0.4 m, L<sub>4</sub> = 0.3 m (inner radius 0.1 m, outer 0.7 m) at the same scale in both views. The top view is a full disc because points inside the hole’s cross-section are reached at other heights.</figcaption></figure>
+<div class="widget" data-w3d="ik13" data-ws="1" id="sq-ik">
+  <div class="wh"><b>Q2–Q3 in 3D: workspace cloud and IK branches</b><span class="eyebrow">2,500 random joint samples · IK checked by FK</span></div>
+  <div class="wbody"><div class="stage"><button type="button" class="btn small reset">Reset view</button><span class="legend">orange = target · blue dots = reachable tip positions</span></div><div class="side"></div></div>
+  <div class="try"><b>Try:</b> the cloud is a shell, not a doughnut. Move z down until the target is more than 0.7 m from the shoulder: “out of reach”. Then switch between the four branches and see four genuinely different arm poses reach the same point.</div>
+</div>
+<div class="angle">Sketch questions are marked on the shape, the labelled dimensions and the reasoning. Write the one-line cosine-rule argument; do not just draw.</div>
+</div>
+
+<!-- Q3 -->
+<div class="sub" id="sq3">
+<h3>Q3 · Derive the inverse kinematics <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="7">p. 7</a></span></h3>
+<p><i>“You are given the position of the end effector (x<sub>T</sub>, y<sub>T</sub>, z<sub>T</sub>).”</i></p>
+<div class="layer recipe"><span class="tag">Model answer (top-down view, then side-on view, as the lecturer sketches)</span>
+<p><b>From Q1:</b> \(x = c_1 r,\; y = s_1 r,\; z = L_1+L_2+L_3s_2+L_4s_{23}\) with \(r = L_3c_2+L_4c_{23}\).</p>
+<p><b>Top-down → θ<sub>1</sub>.</b> \(\theta_1=\operatorname{atan2}(y,x)\) with \(r=+\sqrt{x^2+y^2}\) (arm faces the point). Second branch: \(\theta_1+\pi\) with \(r=-\sqrt{x^2+y^2}\) (arm reaches back over the top). Use atan2, not tan⁻¹(y/x) as written on the slide, so the quadrant is right.</p>
+<p><b>Side-on → planar 2R problem.</b> Let \(z' = z-(L_1+L_2)\). Then \(r = L_3c_2+L_4c_{23}\) and \(z' = L_3s_2+L_4s_{23}\). Square and add (cosine rule):</p>
+\[ \cos\theta_3 = \frac{r^2+z'^2-L_3^2-L_4^2}{2L_3L_4},\qquad \theta_3=\operatorname{atan2}\!\left(\pm\sqrt{1-\cos^2\theta_3},\,\cos\theta_3\right) \]
+\[ \theta_2 = \operatorname{atan2}(z',\,r)-\operatorname{atan2}\!\left(L_4\sin\theta_3,\;L_3+L_4\cos\theta_3\right) \]
+<p><b>Solutions:</b> 2 (shoulder) × 2 (elbow) = <b>4</b> for an interior point. <b>No solution</b> if \(|\cos\theta_3|>1\) (point outside the Q2 shell). On the shell’s surface the elbow branches merge. <b>Infinitely many θ<sub>1</sub></b> when x = y = 0 (point on the base axis).</p>
+</div>
+<div class="worked"><span class="tag">Numbers to test yourself</span>
+<p>L = (0.6, 0.5, 0.4, 0.3) m, P = (0.4554, 0.2629, 1.4966) m (the Q1 pose). The four solutions (θ<sub>1</sub>, θ<sub>2</sub>, θ<sub>3</sub>) in degrees: (30, 20, 40), (30, 54.047, −40), (−150, 125.953, 40), (−150, 160, −40). Each reproduces P through FK. <span class="chk">checked; 200 random poses also round-trip</span></p>
+<div class="ansrow"><label>θ<sub>2</sub> for θ<sub>1</sub> = 30°, θ<sub>3</sub> &lt; 0 (deg)<input data-ans="54.047" data-tol="0.05" data-label="θ2" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div></div>
+<div class="angle">The marks are for the method (cosine rule, atan2, both branches, the existence condition), not just the formula. State the number of solutions explicitly.</div>
+</div>
+
+<!-- Q4 -->
+<div class="sub" id="sq4">
+<h3>Q4 · Derive the equations of motion <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="8">p. 8</a></span></h3>
+<p><i>“Mass, moments of inertia and positions of centre of mass are given.”</i> The lecturer’s plan (<a class="pg" data-doc="w13-lec" data-page="8">p.8</a>): FK frames → velocities → kinetic energy, and heights → potential energy; then \(\mathcal L = \sum(KE-PE)\) and \(Q_i=\frac{d}{dt}\frac{\partial\mathcal L}{\partial\dot q_i}-\frac{\partial\mathcal L}{\partial q_i}\).</p>
+<div class="layer recipe"><span class="tag">Model answer</span>
+<p><b>Model.</b> Link 1 (vertical column) turns about z<sub>S</sub> with inertia I<sub>1</sub>; its centre of mass is on the axis, so it has no translational KE and constant PE. Link 2 (upper arm): mass m<sub>2</sub>, COM at distance l<sub>2</sub> from the shoulder, inertia I<sub>2</sub> about its COM for rotation perpendicular to the link (slender link). Link 3 (forearm): m<sub>3</sub>, COM at l<sub>3</sub> from the elbow, inertia I<sub>3</sub>. The lecturer’s red dots (m<sub>2</sub> at the elbow, m<sub>3</sub> at the tool) are the special case l<sub>2</sub> = L<sub>3</sub>, l<sub>3</sub> = L<sub>4</sub>, I<sub>2</sub> = I<sub>3</sub> = 0.</p>
+<p><b>COM positions</b> (from Q1’s FK): with \(\rho_2 = l_2c_2\) and \(\rho_3 = L_3c_2+l_3c_{23}\) the horizontal distances from the axis, the COMs are at heights \(h_2 = L_1{+}L_2{+}l_2s_2\) and \(h_3 = L_1{+}L_2{+}L_3s_2{+}l_3s_{23}\), and azimuth θ<sub>1</sub>.</p>
+<p><b>Velocities.</b> A point at horizontal distance ρ and height h on a plane spinning at \(\dot\theta_1\): \(v^2=\dot\rho^2+\dot h^2+\rho^2\dot\theta_1^2\).</p>
+<p><b>Kinetic energy</b> (translational + rotational; link 2 spins at \(\dot\theta_2\) in its plane and its perpendicular-axis inertia about the vertical is \(I_2c_2^2\)):</p>
+\[ KE=\tfrac12\Big[I_1+m_2\rho_2^2+m_3\rho_3^2+I_2c_2^2+I_3c_{23}^2\Big]\dot\theta_1^2+\tfrac12(m_2l_2^2+I_2)\dot\theta_2^2+\tfrac12 m_3\big[L_3^2\dot\theta_2^2+l_3^2(\dot\theta_2{+}\dot\theta_3)^2+2L_3l_3c_3\dot\theta_2(\dot\theta_2{+}\dot\theta_3)\big]+\tfrac12 I_3(\dot\theta_2{+}\dot\theta_3)^2 \]
+\[ PE = m_2g\,h_2 + m_3g\,h_3 \]
+<p><b>Result</b>, \(\boldsymbol\tau=\mathbf M(\boldsymbol\theta)\ddot{\boldsymbol\theta}+\mathbf V(\boldsymbol\theta,\dot{\boldsymbol\theta})+\mathbf G(\boldsymbol\theta)\):</p>
+\[ \mathbf M=\begin{bmatrix} I_1+m_2\rho_2^2+m_3\rho_3^2+I_2c_2^2+I_3c_{23}^2 & 0 & 0\\ 0 & m_2l_2^2+I_2+m_3(L_3^2+l_3^2+2L_3l_3c_3)+I_3 & m_3(l_3^2+L_3l_3c_3)+I_3\\ 0 & m_3(l_3^2+L_3l_3c_3)+I_3 & m_3l_3^2+I_3\end{bmatrix} \]
+\[ \mathbf G=\begin{bmatrix}0\\ g\big[(m_2l_2+m_3L_3)c_2+m_3l_3c_{23}\big]\\ g\,m_3l_3c_{23}\end{bmatrix} \]
+\[ \begin{aligned} V_1&=-2\dot\theta_1\Big[m_2\rho_2l_2s_2\dot\theta_2+m_3\rho_3\big(L_3s_2\dot\theta_2+l_3s_{23}(\dot\theta_2{+}\dot\theta_3)\big)+I_2c_2s_2\dot\theta_2+I_3c_{23}s_{23}(\dot\theta_2{+}\dot\theta_3)\Big]\\ V_2&=\dot\theta_1^2\big[m_2\rho_2l_2s_2+m_3\rho_3(L_3s_2+l_3s_{23})+I_2c_2s_2+I_3c_{23}s_{23}\big]-m_3L_3l_3s_3\big(2\dot\theta_2\dot\theta_3+\dot\theta_3^2\big)\\ V_3&=\dot\theta_1^2\big[m_3\rho_3l_3s_{23}+I_3c_{23}s_{23}\big]+m_3L_3l_3s_3\,\dot\theta_2^2\end{aligned} \]
+<p><span class="chk">checked: Lagrange in sympy; M symmetric positive-definite; Ṁ − 2C skew-symmetric; V = C(θ, θ̇)θ̇; energy conserved to 2×10⁻⁹ J over a 3 s free swing</span></p>
+<p><b>Reading it physically:</b> spinning about the base (\(\dot\theta_1^2\) terms in V<sub>2</sub>, V<sub>3</sub>) flings the arm outwards: centrifugal. \(\dot\theta_1\dot\theta_2\) terms in V<sub>1</sub> are Coriolis: raising the arm while spinning changes the inertia about the axis, so joint 1 must push. Gravity loads only joints 2 and 3, and is largest with the arm horizontal (c = 1).</p>
+</div>
+<div class="angle">An exam version will usually be smaller (point masses, or 2 joints). The <b>steps</b> carry the marks: positions → velocities → KE, PE → \(\mathcal L\) → the derivative for each joint → collect M, V, G. If time runs short, give M and G correctly and set up V.</div>
+</div>
+
+<!-- Q5 -->
+<div class="sub" id="sq5">
+<h3>Q5 · Parallel robot (four-bar) inverse kinematics <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="9">pp. 9–11</a></span></h3>
+<p><i>Given the position of K on the output link and the link’s orientation φ (or \({}^S\mathbf R_2\)); known L<sub>0</sub>, L<sub>1</sub>, L<sub>2</sub> = a + b, L<sub>3</sub>. Determine θ<sub>1</sub>, φ<sub>1</sub>, φ<sub>2</sub>, φ<sub>3</sub>.</i></p>
+<div class="layer recipe"><span class="tag">Model answer: start from what is given (p.10)</span>
+<p><b>Left chain</b> ({S} → A → K):</p>
+\[ x=L_1\cos\theta_1+a\cos(\theta_1+\varphi_2),\quad y=L_1\sin\theta_1+a\sin(\theta_1+\varphi_2),\quad \theta_1+\varphi_2=\phi\;(\text{mod }2\pi) \]
+<p>Substitute \(\theta_1+\varphi_2=\phi\): the A-end of the coupler is \(A = K - a(\cos\phi,\sin\phi)\), so</p>
+\[ \theta_1=\operatorname{atan2}(y-a\sin\phi,\;x-a\cos\phi),\qquad \varphi_2=\phi-\theta_1\;(+2\pi\text{ to keep it positive}) \]
+<p><b>Right chain</b> ({D} at (L<sub>0</sub>, 0) → B → K). The B-end of the coupler is \(B = K + b(\cos\phi,\sin\phi)\), and \(B = (L_0+L_3\cos\varphi_1,\;L_3\sin\varphi_1)\):</p>
+\[ \varphi_1=\operatorname{atan2}(y+b\sin\phi,\;x+b\cos\phi-L_0),\qquad \varphi_3=\phi+\pi-\varphi_1\;(\text{mod }2\pi) \]
+<p>The last relation is what the slide’s own position equations need: \(x = L_0+L_3\cos\varphi_1+b\cos(\varphi_1+\varphi_3)\) requires \(\varphi_1+\varphi_3=\phi+\pi\), because K lies from B back along the coupler. <b>Consistency check:</b> \(|B-D|\) must equal L<sub>3</sub>; given K and φ over-specify a 1-DoF linkage.</p>
+</div>
+<div class="box warn-box"><span class="tag">Slides vs maths</span><p>Slide 11 prints “φ<sub>1</sub> − φ = φ<sub>3</sub> − π”, i.e. φ<sub>3</sub> = φ<sub>1</sub> − φ + π. With the slide’s own position equation this is only true when φ<sub>1</sub> = φ (mod π). Use φ<sub>3</sub> = φ + π − φ<sub>1</sub>, or state your angle convention clearly if you measure φ<sub>3</sub> the other way. <span class="chk">checked numerically: the printed relation misses K, ours hits it</span></p></div>
+<div class="worked"><span class="tag">Numbers to test yourself</span><p>L<sub>0</sub> = 1.0, L<sub>1</sub> = 0.5, L<sub>3</sub> = 0.6, a = 0.2, b = 0.25 m (L<sub>2</sub> = 0.45). Given K = (0.3710, 0.4678) m and φ = −0.600°: θ<sub>1</sub> = 70.000°, φ<sub>2</sub> = 289.400° (≡ −70.600°), φ<sub>1</sub> = 129.175°, φ<sub>3</sub> = 50.225°. <span class="chk">checked</span></p>
+<div class="ansrow"><label>φ<sub>1</sub> (deg)<input data-ans="129.175" data-tol="0.05" data-label="φ1" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div></div>
+<div class="angle">Parallel-robot IK is easier than serial IK here: each leg is solved separately from the platform pose, and every unknown comes straight from one atan2. The forward problem (given θ<sub>1</sub>, find φ) is the hard one, since it needs circle intersection with two assembly modes (W4).</div>
+</div>
+
+<!-- Q6 + Q7 -->
+<div class="sub" id="sq6">
+<h3>Q6 · Mobility of the planar parallel manipulator <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="12">pp. 12–13</a></span></h3>
+<div class="layer recipe"><span class="tag">Model answer</span>
+<p>Grübler–Kutzbach: \(M=D(N-J-1)+\sum_{i=1}^{J}F_i\). Planar, so D = 3. <b>Count links</b> (ground counts as one): ground 1 + platform 1 + 3 legs × 2 bodies (the two halves of each prismatic pair) = <b>N = 8</b>. <b>Count joints:</b> 3 legs × (R, P, R) = <b>J = 9</b>, each 1 DoF, so ΣF = 9.</p>
+\[ M = 3(8-9-1)+9 = 3 \]
+<p>Three DoF: the platform can be placed anywhere in the plane (x, y, rotation), driven by the three prismatic actuators.</p></div>
+<div class="angle">The usual slip is forgetting that the ground is a link, or counting a prismatic joint’s two halves as one link. Number the links on the figure as the lecturer does (<a class="pg" data-doc="w13-lec" data-page="12">p.12</a>).</div>
+</div>
+<div class="sub" id="sq7">
+<h3>Q7 · Mobility of the delta mechanism <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="14">pp. 14–17</a></span></h3>
+<div class="layer recipe"><span class="tag">Model answer</span>
+<p>3D, so D = 6. Links: base 1 + 3 upper arms + 6 parallelogram rods + moving platform 1 = <b>N = 11</b>. Joints: 3 R (actuated) + 3 legs × 4 S = <b>J = 15</b>. ΣF = 3 × (1 + 4 × 3) = 39.</p>
+\[ M = 6(11-15-1)+39 = 9 \quad\text{(plain G–K)} \]
+<p>9 is wrong for a delta robot, which has 3 translational DoF. The extended equation (<a class="pg" data-doc="w13-lec" data-page="16">p.16</a>) adds over-constraints and removes local mobilities: \(M=D(N-J-1)+\sum F_i+R_C-R_M\). Each of the 6 rods with a spherical joint at both ends can spin about its own axis without moving anything else, so <b>R<sub>M</sub> = 6</b>; here R<sub>C</sub> = 0.</p>
+\[ M = 6(11-15-1)+39+0-6 = 3 \]
+<p>Definitions (<a class="pg" data-doc="w13-lec" data-page="16">p.16</a>): R<sub>C</sub> = number of over-constraints = \(\sum F_i-\sum_k u_k\) where u<sub>k</sub> are the unique DoFs of each closed loop k; R<sub>M</sub> = local DoF that do not move the output.</p></div>
+<div class="angle">Explain-type marks: say <i>why</i> plain G–K over-counts (the rods’ idle spin) and why the true answer is 3 (pure translation of the platform).</div>
+</div>
+
+<!-- Q8 -->
+<div class="sub" id="sq8">
+<h3>Q8 · Two cubics joined at a via point with continuous acceleration <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="18">p. 18</a></span></h3>
+<div class="layer recipe"><span class="tag">Model answer</span>
+<p><b>Set-up</b> (lecturer’s, p.18): segment 1 \(\theta_1(t)=a_{10}+a_{11}t+a_{12}t^2+a_{13}t^3\) for 0 ≤ t ≤ t<sub>f1</sub>; segment 2 \(\theta_2(t)=a_{20}+a_{21}t+a_{22}t^2+a_{23}t^3\) for 0 ≤ t ≤ t<sub>f2</sub>, each with its own clock. Start and finish at rest (standard assumption; state it).</p>
+<p><b>Eight conditions for eight unknowns:</b> θ<sub>1</sub>(0) = θ<sub>0</sub>; \(\dot\theta_1(0)\) = 0; θ<sub>1</sub>(t<sub>f1</sub>) = θ<sub>v</sub>; θ<sub>2</sub>(0) = θ<sub>v</sub>; θ<sub>2</sub>(t<sub>f2</sub>) = θ<sub>g</sub>; \(\dot\theta_2(t_{f2})\) = 0; \(\dot\theta_1(t_{f1})=\dot\theta_2(0)\); \(\ddot\theta_1(t_{f1})=\ddot\theta_2(0)\).</p>
+<p><b>Solution</b> for equal durations t<sub>f1</sub> = t<sub>f2</sub> = t<sub>f</sub>:</p>
+\[ \begin{aligned} a_{10}&=\theta_0, & a_{11}&=0, & a_{12}&=\frac{12\theta_v-3\theta_g-9\theta_0}{4t_f^2}, & a_{13}&=\frac{-8\theta_v+3\theta_g+5\theta_0}{4t_f^3},\\ a_{20}&=\theta_v, & a_{21}&=\frac{3\theta_g-3\theta_0}{4t_f}, & a_{22}&=\frac{-12\theta_v+6\theta_g+6\theta_0}{4t_f^2}, & a_{23}&=\frac{8\theta_v-5\theta_g-3\theta_0}{4t_f^3}\end{aligned} \]
+<p><span class="chk">checked: sympy solves the 8×8 system and matches</span> The via velocity \(a_{21}=3(\theta_g-\theta_0)/(4t_f)\) does not depend on θ<sub>v</sub>.</p></div>
+<div class="worked"><span class="tag">Numbers</span><p>θ<sub>0</sub> = 10°, θ<sub>v</sub> = 40°, θ<sub>g</sub> = 20°, t<sub>f</sub> = 1 s: segment 1: 10 + 0t + 82.5t² − 52.5t³; segment 2: 40 + 7.5t − 75t² + 47.5t³ (degrees, seconds). Check: θ<sub>1</sub>(1) = 40 ✓, θ<sub>2</sub>(1) = 20 ✓. <span class="chk">checked</span></p>
+<div class="ansrow"><label>a<sub>22</sub> (°/s²)<input data-ans="-75" data-tol="0.01" data-label="a22" inputmode="decimal"></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div></div>
+<div class="angle">Write the eight conditions as a list; most of the marks are there. Solve by substitution: the first two give a<sub>10</sub> and a<sub>11</sub>, condition 4 gives a<sub>20</sub>, leaving 5 equations in 5 unknowns.</div>
+</div>
+
+<!-- Q9 -->
+<div class="sub" id="sq9">
+<h3>Q9 · Cubic for a prismatic joint <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="19">p. 19</a></span></h3>
+<p><i>Initially at rest at d = 0.02 m, to rest at d = 0.15 m in 0.8 s.</i></p>
+<div class="layer recipe"><span class="tag">Model answer</span>
+<p>Rest-to-rest cubic: \(a_0=d_0,\;a_1=0,\;a_2=\frac{3(d_f-d_0)}{t_f^2},\;a_3=-\frac{2(d_f-d_0)}{t_f^3}\). With Δd = 0.13 m and t<sub>f</sub> = 0.8 s:</p>
+\[ a_0=0.02\ \text{m},\quad a_1=0,\quad a_2=\frac{0.39}{0.64}=0.609375\ \text{m/s}^2,\quad a_3=-\frac{0.26}{0.512}=-0.5078125\ \text{m/s}^3 \]
+<p><b>Check:</b> d(0.8) = 0.02 + 0.609375(0.64) − 0.5078125(0.512) = 0.15 ✓; \(\dot d(0.8)\) = 2(0.609375)(0.8) − 3(0.5078125)(0.64) = 0 ✓. Peak speed 1.5 Δd/t<sub>f</sub> = 0.24375 m/s at t = 0.4 s; acceleration ±1.21875 m/s² at the ends. <span class="chk">checked</span></p>
+<div class="ansrow"><label>a<sub>2</sub><input data-ans="0.609375" data-tol="0.0005" data-label="a2" inputmode="decimal"></label><label>a<sub>3</sub><input data-ans="-0.5078125" data-tol="0.0005" data-label="a3" inputmode="decimal" data-wrong='[{"v":-0.8125,"msg":"you divided by tf² instead of tf³."}]'></label><button type="button" class="btn small check">Check</button></div><div class="fb" aria-live="polite"></div></div>
+</div>
+
+<!-- Q10 -->
+<div class="sub" id="sq10">
+<h3>Q10 · Three-wheel omnidirectional robot <span class="pgs"><a class="pg" data-doc="w13-lec" data-page="20">pp. 20–21</a></span></h3>
+<p><i>Rollers perpendicular to each wheel’s driving direction; equilateral triangle, centre-to-wheel distance d. Relate \(\dot\varphi_1,\dot\varphi_2,\dot\varphi_3\) to the chassis velocity \((u, v, \dot\theta)\).</i></p>
+<div class="layer recipe"><span class="tag">Model answer</span>
+<p><b>Generalised model</b> (<a class="pg" data-doc="w13-lec" data-page="21">p.21</a>), wheel radius r, wheel at \(({}^Cx_{W_i},{}^Cy_{W_i})\), drive direction at angle β<sub>i</sub> from the chassis x-axis, roller angle γ<sub>i</sub>:</p>
+\[ \dot\varphi_i=\begin{bmatrix}\tfrac1{r} & \tfrac{\tan\gamma_i}{r}\end{bmatrix}\begin{bmatrix}\cos\beta_i&\sin\beta_i\\-\sin\beta_i&\cos\beta_i\end{bmatrix}\begin{bmatrix}1&0&-{}^Cy_{W_i}\\0&1&{}^Cx_{W_i}\end{bmatrix}\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix} \]
+<p>Rollers perpendicular to the drive direction means γ<sub>i</sub> = 0, so \(r\dot\varphi_i=\cos\beta_i\,(u-{}^Cy_{W_i}\dot\theta)+\sin\beta_i\,(v+{}^Cx_{W_i}\dot\theta)\). This is the contact-point velocity projected on the drive direction.</p>
+<p><b>Geometry:</b> W<sub>1</sub> at (0, d), W<sub>2</sub> at (√3d/2, −d/2), W<sub>3</sub> at (−√3d/2, −d/2). Take each drive direction tangent to the circle, clockwise as seen from above: β<sub>1</sub> = 0°, β<sub>2</sub> = −120°, β<sub>3</sub> = +120°. State this choice on your script.</p>
+\[ \begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\\\dot\varphi_3\end{bmatrix}=\frac1r\begin{bmatrix}1&0&-d\\-\tfrac12&-\tfrac{\sqrt3}{2}&-d\\-\tfrac12&\tfrac{\sqrt3}{2}&-d\end{bmatrix}\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix},\qquad \begin{bmatrix}u\\v\\\dot\theta\end{bmatrix}=r\begin{bmatrix}\tfrac23&-\tfrac13&-\tfrac13\\0&-\tfrac{\sqrt3}{3}&\tfrac{\sqrt3}{3}\\-\tfrac1{3d}&-\tfrac1{3d}&-\tfrac1{3d}\end{bmatrix}\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\\\dot\varphi_3\end{bmatrix} \]
+<p>det = 3√3 d/2 ≠ 0, so every chassis velocity is achievable: the robot is <b>holonomic / omnidirectional</b>. Global frame: \([\dot x,\dot y]^\top = R(\theta)[u,v]^\top\). <span class="chk">checked: generalised model = rigid-body projection for every wheel; inverse verified</span></p>
+<p>If you choose counter-clockwise drive directions instead, every −d becomes +d. The physics is the same; only the sign convention of \(\dot\varphi\) changes.</p></div>
+<div class="worked"><span class="tag">Numbers</span><p>d = 0.10 m, r = 0.05 m, pure forward motion u = 0.2 m/s: \(\dot\varphi = (4.0,\,-2.0,\,-2.0)\) rad/s. The front wheel’s drive direction is exactly x, so it carries all of u. Each rear wheel’s drive direction is 120° from x, so it sees −½u, and the rest of its contact velocity is taken by its free rollers, which roll sideways without resistance. <span class="chk">checked</span></p></div>
+<div class="angle">Two marks most people miss: say why γ = 0 (rollers ⊥ drive), and say what the invertible matrix means (holonomic). Define β<sub>i</sub> on the figure before writing numbers.</div>
+</div>

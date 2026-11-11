@@ -1,0 +1,596 @@
+{
+ "w01": {
+  "craig": [
+   {
+    "ref": "Ch 1 Introduction: 1.1 Background; 1.2 The Mechanics and Control of Mechanical Manipulators; 1.3 Notation",
+    "src": "suggested"
+   },
+   {
+    "ref": "Ch 8 Manipulator-Mechanism Design: 8.3 Kinematic Configuration; 8.4 Quantitative Measures of Workspace Attributes; 8.5 Redundant and Closed-Chain Structures. Grubler's formula is not a contents heading in Craig, so treat Craig as background only for W1",
+    "src": "suggested"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 2 Configuration Space: 2.1 Degrees of Freedom of a Rigid Body; 2.2 Degrees of Freedom of a Robot (2.2.1 Robot Joints, 2.2.2 Grubler's Formula); 2.3 Configuration Space Topology and Representation; 2.4 Configuration and Velocity Constraints; 2.5 Task Space and Workspace (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 2.2 Degrees of Freedom of a Robot",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-2-degrees-of-freedom-of-a-robot/"
+   },
+   {
+    "ref": "Video lecture: 2.1 Degrees of Freedom of a Rigid Body",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-1-degrees-of-freedom-of-a-rigid-body/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 7 Robot Arm Kinematics (joint types and serial-link structure only; Corke has no Grubler-style mobility counting) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/iii-robot-manipulators/7-robot-arm-kinematics/"
+   },
+   {
+    "ref": "Robot Academy masterclass: Robotic arms and forward kinematics (lessons: Types of robots; Task and Configuration space)",
+    "url": "https://robotacademy.net.au/masterclass/robotic-arms-and-forward-kinematics/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   }
+  ],
+  "other": [
+   {
+    "ref": "LaValle, Planning Algorithms, Ch 4 The Configuration Space: 4.2 Defining the Configuration Space (free online)",
+    "url": "https://lavalle.pl/planning/ch4.pdf"
+   }
+  ],
+  "free_notes": [
+   {
+    "title": "NPTEL (IISc, Ghosal) Robotics: Advanced Concepts and Analysis, Module 2: Elements of robots (joints, links, actuators, sensors)",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module2/lecture.pdf",
+    "why": "Joint types and link structure in lecture-slide form. Notation is not confirmed to match Craig."
+   },
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 3: Kinematics of serial robots (includes the Grubler-Kutzbach criterion)",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module3/lecture.pdf",
+    "why": "Mobility counting with Grubler-Kutzbach and its failure for over-constrained mechanisms. Notation not confirmed to match Craig."
+   }
+  ]
+ },
+ "w02": {
+  "craig": [
+   {
+    "ref": "Ch 3 Manipulator Kinematics: 3.1 Introduction; 3.2 Link Description; 3.3 Link-Connection Description; 3.4 Convention for Affixing Frames to Links; 3.5 Manipulator Kinematics; 3.6 Actuator Space, Joint Space, and Cartesian Space; 3.7 Examples: Kinematics of Two Industrial Robots; 3.8 Frames with Standard Names; 3.9 Where Is the Tool?",
+    "src": "unit"
+   },
+   {
+    "ref": "Ch 2 Spatial Descriptions and Transformations: 2.2 Descriptions: Positions, Orientations, and Frames; 2.3 Mappings: Changing Descriptions from Frame to Frame; 2.4 Operators: Translations, Rotations, and Transformations; 2.6 Transformation Arithmetic; 2.7 Transform Equations",
+    "src": "suggested"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 3 Rigid-Body Motions: 3.2.1 Rotation Matrices; 3.3.1 Homogeneous Transformation Matrices. Ch 4 Forward Kinematics: 4.1 Product of Exponentials Formula. Note Modern Robotics uses product of exponentials, not Denavit-Hartenberg, so use it for transforms and the FK idea only (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 3.3.1 Homogeneous Transformation Matrices",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/"
+   },
+   {
+    "ref": "Video lecture: Forward kinematics example",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/forward-kinematics-example/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 2 Representing Position and Orientation, then Ch 7 Robot Arm Kinematics (forward kinematics; Corke builds FK from elementary transforms, with DH as one option) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/iii-robot-manipulators/7-robot-arm-kinematics/"
+   },
+   {
+    "ref": "Robot Academy masterclass: Robotic arms and forward kinematics (includes Denavit-Hartenberg notation and Base and tool transforms lessons)",
+    "url": "https://robotacademy.net.au/masterclass/robotic-arms-and-forward-kinematics/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   }
+  ],
+  "other": [
+   {
+    "ref": "LaValle, Planning Algorithms, Ch 3 Geometric Representations and Transformations (chapter only; section titles not checked)",
+    "url": "https://lavalle.pl/planning/ch3.pdf"
+   }
+  ],
+  "free_notes": [
+   {
+    "title": "Stanford CS223A (Khatib) handout 2: Kinematics-1 (spatial descriptions, rotations, homogeneous transforms)",
+    "url": "https://see.stanford.edu/materials/aiircs223a/handout2_Kinematics-1.pdf",
+    "why": "Slide handout from the Stanford course on which Craig's book is based; same transform ideas as Craig Ch 2."
+   },
+   {
+    "title": "Stanford CS223A handout 3: Kinematics-2 (link description, D-H parameters, frame attachment)",
+    "url": "https://see.stanford.edu/materials/aiircs223a/handout3_Kinematics-2.pdf",
+    "why": "Short slide handout on link parameters (alpha, a, d, theta) and frame attachment; compare its link subscripts against Craig Sec 3.4 before relying on it."
+   }
+  ]
+ },
+ "w03": {
+  "craig": [
+   {
+    "ref": "Ch 4 Inverse Manipulator Kinematics: 4.1 Introduction; 4.2 Solvability; 4.3 The Notion of Manipulator Subspace When n < 6; 4.4 Algebraic vs. Geometric; 4.5 Algebraic Solution by Reduction to Polynomial; 4.6 Pieper's Solution When Three Axes Intersect; 4.7 Examples of Inverse Manipulator Kinematics; 4.8 The Standard Frames; 4.9 Solve-ing a Manipulator; 4.10 Repeatability and Accuracy",
+    "src": "suggested"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 6 Inverse Kinematics: 6.1 Analytic Inverse Kinematics (6.1.1 6R PUMA-Type Arm, 6.1.2 Stanford-Type Arms); 6.2 Numerical Inverse Kinematics (6.2.1 Newton-Raphson Method, 6.2.2 Numerical Inverse Kinematics Algorithm); 6.3 Inverse Velocity Kinematics (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: Inverse kinematics of open chains (chapter overview)",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/inverse-kinematics-of-open-chains/"
+   },
+   {
+    "ref": "Video lecture: 6.2 Numerical Inverse Kinematics, part 1 of 2",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/6-2-numerical-inverse-kinematics-part-1-of-2/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 7 Robot Arm Kinematics (inverse kinematics, closed-form and numerical) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/iii-robot-manipulators/7-robot-arm-kinematics/"
+   },
+   {
+    "ref": "Robot Academy masterclass: Inverse Kinematics and Robot Motion (13 lessons: 2-joint geometry and algebra, 3D arms, configuration change, numerical IK, reachability and singularity, redundant robots)",
+    "url": "https://robotacademy.net.au/masterclass/inverse-kinematics-and-robot-motion/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   }
+  ],
+  "other": [],
+  "free_notes": [
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 3: Kinematics of serial robots",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module3/lecture.pdf",
+    "why": "Slide-form coverage of forward and inverse kinematics of serial robots. Notation not confirmed to match Craig."
+   },
+   {
+    "title": "MIT OCW 2.12 Introduction to Robotics (Fall 2005) lecture notes",
+    "url": "https://ocw.mit.edu/courses/2-12-introduction-to-robotics-fall-2005/pages/lecture-notes/",
+    "why": "Free university lecture notes including inverse kinematics. Asada's notation differs from Craig's, so use it for the method only."
+   }
+  ]
+ },
+ "w04": {
+  "craig": [
+   {
+    "ref": "Ch 8 Manipulator-Mechanism Design: 8.5 Redundant and Closed-Chain Structures (Craig treats closed chains only briefly); 8.3 Kinematic Configuration",
+    "src": "suggested"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 7 Kinematics of Closed Chains: 7.1 Inverse and Forward Kinematics (7.1.1 3xRPR Planar Parallel Mechanism, 7.1.2 Stewart-Gough Platform, 7.1.3 General Parallel Mechanisms); 7.2 Differential Kinematics; 7.3 Singularities. Also Ch 2 sec 2.2.2 Grubler's Formula for mobility (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: Kinematics of closed chains (chapter 7 overview)",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/kinematics-of-closed-chains/"
+   },
+   {
+    "ref": "Video lecture: 2.2 Degrees of Freedom of a Robot (Grubler's formula)",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-2-degrees-of-freedom-of-a-robot/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 7 Robot Arm Kinematics (serial arms only; no dedicated parallel-manipulator coverage found) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/iii-robot-manipulators/7-robot-arm-kinematics/"
+   }
+  ],
+  "other": [
+   {
+    "ref": "LaValle, Planning Algorithms, Ch 4 The Configuration Space: 4.4 Closed Kinematic Chains (free online)",
+    "url": "https://lavalle.pl/planning/ch4.pdf"
+   }
+  ],
+  "free_notes": [
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 4: Kinematics of parallel robots",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module4/lecture.pdf",
+    "why": "Loop-closure equations, direct and inverse kinematics of parallel manipulators, mobility, Stewart platform. Notation not confirmed to match Craig."
+   }
+  ]
+ },
+ "w05": {
+  "craig": [
+   {
+    "ref": "Ch 7 Trajectory Generation: 7.1 Introduction; 7.2 General Considerations in Path Description and Generation; 7.3 Joint-Space Schemes; 7.4 Cartesian-Space Schemes; 7.5 Geometric Problems with Cartesian Paths; 7.6 Path Generation at Run Time; 7.8 Planning Paths When Using the Dynamic Model; 7.9 Collision-Free Path Planning",
+    "src": "unit"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 9 Trajectory Generation: 9.1 Definitions; 9.2 Point-to-Point Trajectories (9.2.1 Straight-Line Paths, 9.2.2 Time Scaling a Straight-Line Path); 9.3 Polynomial Via Point Trajectories; 9.4 Time-Optimal Time Scaling (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 9.1 and 9.2 Point-to-Point Trajectories, part 1 of 2",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-1-of-2/"
+   },
+   {
+    "ref": "Video lecture: 9.3 Polynomial Via Point Trajectories",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-3-polynomial-via-point-trajectories/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 3 Time and Motion (trajectories and interpolation of pose) and Ch 7 Robot Arm Kinematics (joint-space and Cartesian motion) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/i-fundamentals/3-time-motion/"
+   },
+   {
+    "ref": "Robot Academy masterclass: Paths and Trajectories (1D polynomial, trapezoidal, via points, multi-dimensional, interpolating rotation and pose in 3D)",
+    "url": "https://robotacademy.net.au/masterclass/paths-and-trajectories/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   }
+  ],
+  "other": [],
+  "free_notes": [
+   {
+    "title": "Stanford CS223A handout 6: Trajectory Planning",
+    "url": "https://see.stanford.edu/materials/aiircs223a/handout6_Trajectory.pdf",
+    "why": "Four-page slide handout on joint-space versus Cartesian paths and cubic polynomials, from the Stanford course based on Craig."
+   },
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 7: Motion planning and control",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module7/lecture.pdf",
+    "why": "Longer slide deck including trajectory generation. Notation not confirmed to match Craig."
+   }
+  ]
+ },
+ "w06": {
+  "craig": [
+   {
+    "ref": "Ch 5 Jacobians: Velocities and Static Forces: 5.2 Notation for Time-Varying Position and Orientation; 5.3 Linear and Rotational Velocity of Rigid Bodies; 5.6 Velocity \"Propagation\" from Link to Link; 5.7 Jacobians; 5.8 Singularities; 5.9 Static Forces in Manipulators; 5.10 Jacobians in the Force Domain; 5.11 Cartesian Transformation of Velocities and Static Forces",
+    "src": "unit"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 5 Velocity Kinematics and Statics: 5.1 Manipulator Jacobian (5.1.1 Space Jacobian, 5.1.2 Body Jacobian); 5.2 Statics of Open Chains; 5.3 Singularity Analysis; 5.4 Manipulability (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 5.1.1 Space Jacobian",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-1-1-space-jacobian/"
+   },
+   {
+    "ref": "Video lecture: 5.2 Statics of Open Chains",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-2-statics-of-open-chains/"
+   },
+   {
+    "ref": "Video lecture: 5.3 Singularities",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-3-singularities/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 8 Velocity Relationships (Jacobian, singularity, manipulability, resolved-rate motion, force transformation) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/iii-robot-manipulators/8-velocity-relationships/"
+   },
+   {
+    "ref": "Robot Academy masterclass: Velocity kinematics in 2D",
+    "url": "https://robotacademy.net.au/masterclass/velocity-kinematics-in-2d/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   },
+   {
+    "ref": "Robot Academy masterclass: Velocity kinematics in 3D (includes Velocity Ellipsoid in 3D and Manipulability)",
+    "url": "https://robotacademy.net.au/masterclass/velocity-kinematics-in-3d/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   }
+  ],
+  "other": [],
+  "free_notes": [
+   {
+    "title": "Stanford CS223A handout 4: Jacobian (velocity propagation, singularities, velocity-force duality)",
+    "url": "https://see.stanford.edu/materials/aiircs223a/handout4_Jacobian.pdf",
+    "why": "18-page slide handout in the Craig-based Stanford course; covers statics and singularities."
+   },
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 5: Velocity and static analysis of manipulators",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module5/lecture.pdf",
+    "why": "Long slide deck on Jacobians and statics. Notation not confirmed to match Craig."
+   }
+  ]
+ },
+ "w07": {
+  "craig": [
+   {
+    "ref": "Ch 6 Manipulator Dynamics: 6.2 Acceleration of a Rigid Body; 6.3 Mass Distribution; 6.4 Newton's Equation, Euler's Equation; 6.5 Iterative Newton-Euler Dynamic Formulation; 6.6 Iterative vs. Closed Form; 6.7 An Example of Closed-Form Dynamic Equations; 6.8 The Structure of a Manipulator's Dynamic Equations; 6.9 Lagrangian Formulation of Manipulator Dynamics; 6.10 Formulating Manipulator Dynamics in Cartesian Space",
+    "src": "unit"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 8 Dynamics of Open Chains: 8.1 Lagrangian Formulation (8.1.3 Understanding the Mass Matrix); 8.3 Newton-Euler Inverse Dynamics; 8.4 Dynamic Equations in Closed Form; 8.5 Forward Dynamics of Open Chains; 8.6 Dynamics in the Task Space; 8.9 Actuation, Gearing, and Friction (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 8.1 Lagrangian Formulation of Dynamics, part 1 of 2",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/chapter-8-1-lagrangian-formulation-of-dynamics-part-1-of-2/"
+   },
+   {
+    "ref": "Video lecture: 8.3 Newton-Euler Inverse Dynamics",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-3-newton-euler-inverse-dynamics/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 9 Dynamics and Control (rigid-body dynamics of the arm: gravity, inertia and velocity coupling, forward dynamics) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/iii-robot-manipulators/9-dynamics-and-control/"
+   },
+   {
+    "ref": "Robot Academy masterclass: Rigid Body Dynamics (lessons: Forces Acting On Robot Links; Gravity and Payload; Inertia and Acceleration Coupling; Velocity Coupling; Forward Dynamics)",
+    "url": "https://robotacademy.net.au/masterclass/rigid-body-dynamics/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   }
+  ],
+  "other": [],
+  "free_notes": [
+   {
+    "title": "Stanford CS223A handout 7: Dynamics (Newton-Euler, Lagrange equations)",
+    "url": "https://see.stanford.edu/materials/aiircs223a/handout7_Dynamics.pdf",
+    "why": "Slide handout from the Craig-based Stanford course; covers Newton-Euler and Lagrange equations."
+   },
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 6: Dynamics of serial and parallel robots",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module6/lecture.pdf",
+    "why": "Slide deck on serial and parallel robot dynamics. Notation not confirmed to match Craig."
+   }
+  ]
+ },
+ "w08": {
+  "craig": [
+   {
+    "ref": "Ch 9 Linear Control of Manipulators: 9.2 Feedback and Closed-Loop Control; 9.3 Second-Order Linear Systems; 9.4 Control of Second-Order Systems; 9.5 Control-Law Partitioning; 9.6 Trajectory-Following Control; 9.7 Disturbance Rejection; 9.8 Continuous vs. Discrete Time Control; 9.9 Modeling and Control of a Single Joint; 9.10 Architecture of an Industrial-Robot Controller",
+    "src": "unit"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 11 Robot Control: 11.1 Control System Overview; 11.2 Error Dynamics (11.2.2 Linear Error Dynamics); 11.3 Motion Control with Velocity Inputs; 11.4 Motion Control with Torque or Force Inputs (11.4.1 Motion Control of a Single Joint) (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 11.2.2.2 Second-Order Error Dynamics",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-2-2-2-second-order-error-dynamics/"
+   },
+   {
+    "ref": "Video lecture: 11.4 Motion Control with Torque or Force Inputs, part 1 of 3",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-1-of-3/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 9 Dynamics and Control (independent joint control, PID, feedforward) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/iii-robot-manipulators/9-dynamics-and-control/"
+   },
+   {
+    "ref": "Robot Academy masterclass: Rigid Body Dynamics (lessons: Joint Control with Disturbances; Advanced Joint Control Strategies)",
+    "url": "https://robotacademy.net.au/masterclass/rigid-body-dynamics/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   }
+  ],
+  "other": [],
+  "free_notes": [
+   {
+    "title": "Stanford CS223A handout 8: Control (PD control, control partitioning, disturbance rejection, PID)",
+    "url": "https://see.stanford.edu/materials/aiircs223a/handout8_Control.pdf",
+    "why": "14-page slide handout; its control-partitioning and gain-selection pages parallel Craig Ch 9."
+   },
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 7: Motion planning and control",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module7/lecture.pdf",
+    "why": "Slide deck including PD/PID joint control. Notation not confirmed to match Craig."
+   }
+  ]
+ },
+ "w09": {
+  "craig": [
+   {
+    "ref": "Ch 10 Nonlinear Control of Manipulators: 10.2 Nonlinear and Time-Varying Systems; 10.4 The Control Problem for Manipulators; 10.5 Practical Considerations; 10.7 Lyapunov Stability Analysis; 10.8 Cartesian-Based Control Systems",
+    "src": "unit"
+   },
+   {
+    "ref": "Ch 11 Force Control of Manipulators: 11.3 A Framework for Control in Partially Constrained Tasks; 11.4 The Hybrid Position/Force Control Problem; 11.5 Force Control of a Mass-Spring System; 11.6 The Hybrid Position/Force Control Scheme",
+    "src": "unit"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 11 Robot Control: 11.4.2 Motion Control of a Multi-joint Robot (computed torque); 11.4.3 Task-Space Motion Control; 11.5 Force Control; 11.6 Hybrid Motion-Force Control (11.6.1 Natural and Artificial Constraints); 11.7 Impedance Control (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 11.4 Motion Control with Torque or Force Inputs, part 3 of 3",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-3-of-3/"
+   },
+   {
+    "ref": "Video lecture: 11.5 Force Control",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-5-force-control/"
+   },
+   {
+    "ref": "Video lecture: 11.6 Hybrid Motion-Force Control",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-6-hybrid-motion-force-control/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 9 Dynamics and Control (computed-torque and task-space control; Corke does not treat hybrid force control in depth) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/iii-robot-manipulators/9-dynamics-and-control/"
+   },
+   {
+    "ref": "Robot Academy masterclass: Rigid Body Dynamics (lesson: Advanced Joint Control Strategies)",
+    "url": "https://robotacademy.net.au/masterclass/rigid-body-dynamics/",
+    "check": "page loaded via WebFetch; plain curl returns 403 (site bot protection)"
+   }
+  ],
+  "other": [],
+  "free_notes": [
+   {
+    "title": "Stanford CS223A handout 8: Control (joint-space dynamic control, task-oriented control, force control)",
+    "url": "https://see.stanford.edu/materials/aiircs223a/handout8_Control.pdf",
+    "why": "Covers nonlinear decoupling, operational-space control and compliance/force control in slide form, from the Craig-based Stanford course."
+   },
+   {
+    "title": "Stanford Engineering Everywhere CS223A course page (lecture videos 13-16: control, task-oriented control, compliance and force control)",
+    "url": "https://see.stanford.edu/Course/CS223A",
+    "why": "Video lectures and transcripts by Khatib to go with the handout."
+   }
+  ]
+ },
+ "w10": {
+  "craig": [
+   {
+    "ref": "Not covered: Craig is about manipulators. No wheeled-robot chapter exists in the 4th-edition contents.",
+    "src": "suggested"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 13 Wheeled Mobile Robots: 13.1 Types of Wheeled Mobile Robots; 13.2 Omnidirectional Wheeled Mobile Robots (13.2.1 Modeling); 13.3 Nonholonomic Wheeled Mobile Robots (13.3.1 Modeling, 13.3.2 Controllability); 13.4 Odometry (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 13.3.1 Modeling of Nonholonomic Wheeled Mobile Robots",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/"
+   },
+   {
+    "ref": "Video lecture: 13.4 Odometry",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 4 Mobile Robots (vehicle kinematics: bicycle/car-like and unicycle models, driving to a point, a line and a pose) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/ii-mobile-robotics/4-mobile-robots/"
+   }
+  ],
+  "other": [
+   {
+    "ref": "Siegwart, Nourbakhsh and Scaramuzza, Introduction to Autonomous Mobile Robots (2nd ed., MIT Press 2011), Ch 3 Mobile Robot Kinematics: 3.1 Introduction; 3.2 Kinematic Models and Constraints (3.2.1 Representing robot position, 3.2.2 Forward kinematic models, 3.2.3 Wheel kinematic constraints, 3.2.4 Robot kinematic constraints, 3.2.5 Examples); 3.3 Mobile Robot Maneuverability (degree of mobility, degree of steerability); 3.4 Mobile Robot Workspace; 3.5 Beyond Basic Kinematics; 3.6 Motion Control (Kinematic Control). From unit book.txt. Not free; QUT library"
+   }
+  ],
+  "free_notes": [
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 9: Modeling and analysis of wheeled mobile robots",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module9/lecture.pdf",
+    "why": "Wheeled mobile robots on flat terrain: wheel types and their modelling, kinematics. Not Craig notation (Craig has no mobile-robot content)."
+   }
+  ]
+ },
+ "w11": {
+  "craig": [
+   {
+    "ref": "Not covered: no wheeled-robot dynamics in Craig. Ch 6 sec 6.8 The Structure of a Manipulator's Dynamic Equations and sec 6.9 Lagrangian Formulation of Manipulator Dynamics are the closest background for deriving a Lagrangian model",
+    "src": "suggested"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 13 Wheeled Mobile Robots: 13.3.1 Modeling; 13.3.2 Controllability; 13.3.4 Feedback Control; 13.2.3 Feedback Control (omnidirectional). For constrained (Pfaffian) dynamics see Ch 8 sec 8.7 Constrained Dynamics. Lynch-Park Ch 13 is mostly kinematic (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 13.3.4 Feedback Control for Nonholonomic Mobile Robots",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-4-feedback-control-for-nonholonomic-mobile-robots/"
+   },
+   {
+    "ref": "Video lecture: 8.7 Constrained Dynamics",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-7-constrained-dynamics/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 4 Mobile Robots (vehicle models and control; kinematic, little dynamics) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/ii-mobile-robotics/4-mobile-robots/"
+   }
+  ],
+  "other": [
+   {
+    "ref": "Siegwart, Nourbakhsh and Scaramuzza, Introduction to Autonomous Mobile Robots (2nd ed.), Ch 3 Mobile Robot Kinematics: 3.2.3 Wheel kinematic constraints; 3.3 Mobile Robot Maneuverability; 3.6 Motion Control (Kinematic Control). From unit book.txt. Note this chapter is kinematics only; it has no dynamics section. Not free; QUT library"
+   }
+  ],
+  "free_notes": [
+   {
+    "title": "NPTEL (IISc, Ghosal) Module 9: Modeling and analysis of wheeled mobile robots (includes kinematics and dynamics of wheeled robots)",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/112108093/module9/lecture.pdf",
+    "why": "The only free source found that covers wheeled-robot dynamics in slide form. Not Craig notation."
+   }
+  ]
+ },
+ "w12": {
+  "craig": [
+   {
+    "ref": "Ch 7 Trajectory Generation: 7.9 Collision-Free Path Planning (short; Craig is not the main reference for W12)",
+    "src": "suggested"
+   }
+  ],
+  "lynch_park": [
+   {
+    "ref": "Ch 10 Motion Planning: 10.1 Overview of Motion Planning; 10.2 Foundations (10.2.1 Configuration Space Obstacles, 10.2.3 Graphs and Trees, 10.2.4 Graph Search); 10.3 Complete Path Planners; 10.4 Grid Methods; 10.5 Sampling Methods (10.5.1 The RRT Algorithm, 10.5.2 The PRM Algorithm); 10.6 Virtual Potential Fields (free preprint PDF, Dec 2019 updated first edition; section numbers from its contents page, the 2017 print may differ slightly)",
+    "url": "https://hades.mech.northwestern.edu/images/2/25/MR-v2.pdf"
+   },
+   {
+    "ref": "Video lecture: 10.1 Overview of Motion Planning",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/10-1-overview-of-motion-planning/"
+   },
+   {
+    "ref": "Video lecture: 10.5 Sampling Methods for Motion Planning, part 1 of 2",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/10-5-sampling-methods-for-motion-planning-part-1-of-2/"
+   },
+   {
+    "ref": "Video lecture: 10.6 Virtual Potential Fields",
+    "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/10-6-virtual-potential-fields/"
+   }
+  ],
+  "corke": [
+   {
+    "ref": "Ch 5 Navigation (graph-based planning, roadmaps, sampling-based planners, potential-field style navigation) (3rd ed., Python, Springer 2023; QUT library access; section numbers not confirmed, chapter only)",
+    "url": "https://petercorke.com/rvc3p/ii-mobile-robotics/5-navigation/"
+   }
+  ],
+  "other": [
+   {
+    "ref": "LaValle, Planning Algorithms (free online), Ch 2 Discrete Planning: 2.2 Searching for Feasible Plans; 2.3 Discrete Optimal Planning (Dijkstra, A*). From unit book.txt",
+    "url": "https://lavalle.pl/planning/ch2.pdf"
+   },
+   {
+    "ref": "LaValle Ch 4 The Configuration Space: 4.3 Configuration Space Obstacles",
+    "url": "https://lavalle.pl/planning/ch4.pdf"
+   },
+   {
+    "ref": "LaValle Ch 5 Sampling-Based Motion Planning: 5.3 Collision Detection; 5.4 Incremental Sampling and Searching (5.4.3 Randomized Potential Fields); 5.5 Rapidly Exploring Dense Trees; 5.6 Roadmap Methods for Multiple Queries",
+    "url": "https://lavalle.pl/planning/ch5.pdf"
+   },
+   {
+    "ref": "LaValle Ch 6 Combinatorial Motion Planning: 6.2 Polygonal Obstacle Regions (vertical cell decomposition, shortest-path roadmaps)",
+    "url": "https://lavalle.pl/planning/ch6.pdf"
+   },
+   {
+    "ref": "LaValle Ch 8 Feedback Motion Planning: 8.2 Discrete State Spaces (feedback plans as navigation functions)",
+    "url": "https://lavalle.pl/planning/ch8.pdf"
+   },
+   {
+    "ref": "LaValle book home page (all chapters)",
+    "url": "https://lavalle.pl/planning/"
+   }
+  ],
+  "free_notes": [
+   {
+    "title": "Hauser, Robotic Systems (UIUC): Geometric Motion Planning",
+    "url": "https://motion.cs.illinois.edu/RoboticSystems/GeometricMotionPlanning.html",
+    "why": "Free web text on C-space obstacles, roadmaps and cell decomposition. Not Craig notation."
+   },
+   {
+    "title": "Hauser, Robotic Systems (UIUC): Motion Planning in Higher Dimensions",
+    "url": "https://motion.cs.illinois.edu/RoboticSystems/MotionPlanningHigherDimensions.html",
+    "why": "Free web text on PRM, RRT and sampling-based planners."
+   }
+  ]
+ }
+}

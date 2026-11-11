@@ -1,0 +1,449 @@
+{
+ "w01": [
+  {
+   "id": "zI64DyaRUvQ",
+   "title": "Modern Robotics, Chapter 2.2:  Degrees of Freedom of a Robot",
+   "channel": "Northwestern Robotics",
+   "seconds": 343,
+   "embeddable": true,
+   "kind": "core",
+   "why": "MR 2.2: counts DoF of robots and mechanisms with the Grübler formula and joint types; maps to the DoF/mobility lecture."
+  },
+  {
+   "id": "Hhr5BIkEOTU",
+   "title": "Degrees of Freedom of a Robot: Grübler's Criterion with Examples",
+   "channel": "Frame by Frame Robotics",
+   "seconds": 447,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Worked Grübler mobility examples for robots, covering joint DoF and counting links; reinforces the mobility formula."
+  },
+  {
+   "id": "6C-gi-JO4wk",
+   "title": "Mobility of Planar Mechanisms – Degrees of Freedom using Kutzbach Criterion",
+   "channel": "Brian Bernard",
+   "seconds": 679,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Kutzbach criterion on planar mechanisms with several worked examples (higher pairs, loops)."
+  },
+  {
+   "id": "Eujvqg-3J-0",
+   "title": "Robot Manipulator Types | Robotic Systems",
+   "channel": "Leopoldo Armesto",
+   "seconds": 712,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Serial manipulator types (Cartesian, SCARA, articulated) and their workspaces; covers serial vs parallel and workspace shape."
+  }
+ ],
+ "w02": [
+  {
+   "id": "vlb3P7arbkU",
+   "title": "Modern Robotics, Chapter 3.3.1:  Homogeneous Transformation Matrices",
+   "channel": "Northwestern Robotics",
+   "seconds": 382,
+   "embeddable": true,
+   "kind": "core",
+   "why": "MR 3.3.1: homogeneous transformation matrices as rotation plus translation, composition and inverse."
+  },
+  {
+   "id": "zmaUbNrbjzY",
+   "title": "Robotics DH Parameters (Modified vs Standard, Derivation, Transformation Matrix)",
+   "channel": "Kevin Wood | Robotics & AI",
+   "seconds": 512,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Modified (proximal, Craig) vs standard DH: frame placement, parameters and the link transform matrix."
+  },
+  {
+   "id": "lOQm7gUseJU",
+   "title": "Robotics Forward Kinematics (Transformations and Intuition)",
+   "channel": "Kevin Wood | Robotics & AI",
+   "seconds": 391,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Forward kinematics as chained transformations, building intuition for the elementary-transform sequence."
+  },
+  {
+   "id": "ItoDugEiTro",
+   "title": "S7 - Forward Kinematics: Modified DH Parameters",
+   "channel": "Prof. Ashish Singla",
+   "seconds": 1293,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Forward kinematics with modified DH parameters, worked in detail (long lecture-style video)."
+  }
+ ],
+ "w03": [
+  {
+   "id": "gDBM6UlxhCc",
+   "title": "Inverse Kinematics in Robotics: 2-Link Arm Solved Example (Elbow Up/Down, atan2)",
+   "channel": "Frame by Frame Robotics",
+   "seconds": 467,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Planar 2-link inverse kinematics solved with atan2, elbow-up and elbow-down (multiple solutions)."
+  },
+  {
+   "id": "hEQ1p2WffmA",
+   "title": "Closed-form Inverse Kinematics for Robots with a Spherical Wrist | Robotic Systems",
+   "channel": "Leopoldo Armesto",
+   "seconds": 567,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Closed-form IK for arms with a spherical wrist: decoupling into position (first 3 joints) and orientation (wrist)."
+  },
+  {
+   "id": "jyQyusoxlW8",
+   "title": "Inverse Kinematics of Planar, Two-Link Robots",
+   "channel": "High Water Studio",
+   "seconds": 918,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Geometric and algebraic derivation of 2-link planar IK with reachability discussion."
+  },
+  {
+   "id": "D93iQVoSScQ",
+   "title": "Inverse Kinematics of Articulated Manipulator",
+   "channel": "Angela Sodemann",
+   "seconds": 809,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "IK of a 3-DoF articulated arm by geometry, showing the position sub-problem of the decoupling approach."
+  }
+ ],
+ "w04": [
+  {
+   "id": "wybp1_htA7k",
+   "title": "Robotics 2 U1 (Kinematics) S6 (Parallel Manipulators) P1 (Introduction)",
+   "channel": "Angela Sodemann",
+   "seconds": 401,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Introduction to parallel manipulators (serial vs parallel, examples such as Stewart platform and delta)."
+  },
+  {
+   "id": "5wCK6XGC3ig",
+   "title": "Modern Robotics, Chapter 7:  Kinematics of Closed Chains",
+   "channel": "Northwestern Robotics",
+   "seconds": 514,
+   "embeddable": true,
+   "kind": "core",
+   "why": "MR Ch 7: kinematics of closed chains, including loop constraints and Stewart platform / delta style mechanisms."
+  },
+  {
+   "id": "qsNODAUBbQE",
+   "title": "Grashof's Law in a Four-Bar Linkage (Concise and Quick!)",
+   "channel": "mecademie",
+   "seconds": 347,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Grashof condition and motion types of the four-bar linkage."
+  },
+  {
+   "id": "x7tkStus80U",
+   "title": "Robotics 2 U1 (Kinematics) S6 (Parallel Manipulators) P2 (Inverse Kinematics)",
+   "channel": "Angela Sodemann",
+   "seconds": 789,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Inverse kinematics of parallel manipulators (leg-length style solutions, easy IK vs hard FK)."
+  }
+ ],
+ "w05": [
+  {
+   "id": "-CuMfZcft7I",
+   "title": "Robotics Joint Space Trajectory (Cubic & Quintic Polynomial)",
+   "channel": "Kevin Wood | Robotics & AI",
+   "seconds": 282,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Joint-space trajectories with cubic and quintic polynomials from boundary conditions."
+  },
+  {
+   "id": "-djAWt2lQ0c",
+   "title": "Trajectory planning, Part 3: Linear functions with parabolic blends",
+   "channel": "Mechanical Engineering-Learn faster",
+   "seconds": 472,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Linear segments with parabolic blends (LSPB): constant velocity middle with parabolic ends."
+  },
+  {
+   "id": "TXHM9xsRUkA",
+   "title": "Trajectory Planning and Generation | Cubic Polynomials | Parabolic Blends | Robotics",
+   "channel": "ThatsEngineering",
+   "seconds": 1314,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Longer lecture on cubic polynomials, via points and parabolic blends with worked numbers."
+  },
+  {
+   "id": "KGBFtnpPKvo",
+   "title": "Joint Space and Cartesian Space Trajectory Planning",
+   "channel": "Karthika A",
+   "seconds": 520,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Joint-space versus Cartesian-space trajectory planning and when each is used."
+  }
+ ],
+ "w06": [
+  {
+   "id": "Wud3aCXiSm8",
+   "title": "Velocity Kinematics & Jacobian Matrix | Robotics 101",
+   "channel": "Engineering Simplified",
+   "seconds": 546,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Velocity kinematics and the manipulator Jacobian, mapping joint rates to end-effector velocity."
+  },
+  {
+   "id": "vjJgTvnQpBs",
+   "title": "Modern Robotics, Chapter 5.3:  Singularities",
+   "channel": "Northwestern Robotics",
+   "seconds": 397,
+   "embeddable": true,
+   "kind": "core",
+   "why": "MR 5.3: singularities as rank loss of the Jacobian and loss of a direction of motion."
+  },
+  {
+   "id": "TT0tllWGrMY",
+   "title": "Forces & Torques of a robot | Robotics 101",
+   "channel": "Engineering Simplified",
+   "seconds": 494,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Statics of a manipulator: tau = J^T F, forces and torques at joints and end effector."
+  },
+  {
+   "id": "8VSrYDi_cs0",
+   "title": "Modern Robotics, Chapter 5.4:  Manipulability",
+   "channel": "Northwestern Robotics",
+   "seconds": 344,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "MR 5.4: manipulability ellipsoid and what its shape/volume says about nearness to singularity."
+  }
+ ],
+ "w07": [
+  {
+   "id": "1U6y_68CjeY",
+   "title": "Modern Robotics, Chapter 8.1:  Lagrangian Formulation of Dynamics (Part 1 of 2)",
+   "channel": "Northwestern Robotics",
+   "seconds": 402,
+   "embeddable": true,
+   "kind": "core",
+   "why": "MR 8.1: Euler-Lagrange formulation of manipulator dynamics, energy and generalised forces."
+  },
+  {
+   "id": "DwbU3M2CEG8",
+   "title": "Robotics Newton Euler Manipulator Dynamics (Equation of Motion, Mass Matrix, Coriolis, Gravity)",
+   "channel": "Kevin Wood | Robotics & AI",
+   "seconds": 713,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Newton-Euler manipulator dynamics yielding the inertia, Coriolis and gravity terms."
+  },
+  {
+   "id": "4GDu-FPxUSU",
+   "title": "Robotics Lagrangian Manipulator Dynamics (Equation of Motion, Mass Matrix, Coriolis, Gravity)",
+   "channel": "Kevin Wood | Robotics & AI",
+   "seconds": 299,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Short Lagrangian derivation of equation of motion with mass matrix, Coriolis and gravity for an arm."
+  },
+  {
+   "id": "5IKSaKE5gjs",
+   "title": "Robot Dynamics, Part 2: Lagrangian Formulation",
+   "channel": "Mechanical Engineering-Learn faster",
+   "seconds": 937,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Longer Lagrangian formulation walkthrough for robot dynamics with worked derivation."
+  }
+ ],
+ "w08": [
+  {
+   "id": "UR0hOmjaHp0",
+   "title": "PID Control - A brief introduction",
+   "channel": "Brian Douglas",
+   "seconds": 464,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Brian Douglas: what P, I and D terms do in a feedback loop, the basis of joint PID control."
+  },
+  {
+   "id": "pzRTyxf31fw",
+   "title": "Intro to Control - 9.3 Second Order System: Damping & Natural Frequency",
+   "channel": "Engineering with Prof. Kim",
+   "seconds": 598,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Second-order systems: damping ratio, natural frequency, under/critical/over-damped step responses."
+  },
+  {
+   "id": "USH75nuHV6w",
+   "title": "The Step Response | Control Systems in Practice",
+   "channel": "MATLAB",
+   "seconds": 896,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "MATLAB Control Systems in Practice: step response metrics (overshoot, rise and settling time)."
+  },
+  {
+   "id": "1TY4tpSnjBg",
+   "title": "Modern Robotics, Chapter 11.2.2:  Linear Error Dynamics",
+   "channel": "Northwestern Robotics",
+   "seconds": 261,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "MR 11.2.2: linear error dynamics, second-order error equation and choice of gains (critical damping)."
+  }
+ ],
+ "w09": [
+  {
+   "id": "T_gWzS5LU8E",
+   "title": "Computed Torque Control",
+   "channel": "Trice of Life™",
+   "seconds": 613,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Computed torque (inverse-dynamics) control: cancel robot dynamics, then PD on the linearised error."
+  },
+  {
+   "id": "UR0GpaaBVKk",
+   "title": "Modern Robotics, Chapter 11.6:  Hybrid Motion-Force Control",
+   "channel": "Northwestern Robotics",
+   "seconds": 327,
+   "embeddable": true,
+   "kind": "core",
+   "why": "MR 11.6: hybrid motion-force control, splitting task directions into force-controlled and position-controlled."
+  },
+  {
+   "id": "MV-xBPP3H2k",
+   "title": "Modern Robotics, Chapter 11.4:  Motion Control with Torque or Force Inputs (Part 3 of 3)",
+   "channel": "Northwestern Robotics",
+   "seconds": 432,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "MR 11.4 part 3: motion control with torque inputs (model-based / computed-torque style control)."
+  },
+  {
+   "id": "M1U629sREiY",
+   "title": "Modern Robotics, Chapter 11.5:  Force Control",
+   "channel": "Northwestern Robotics",
+   "seconds": 165,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "MR 11.5: force control with a stiffness/force loop for contact tasks."
+  }
+ ],
+ "w10": [
+  {
+   "id": "FAJljU9HG9I",
+   "title": "Instantaneous Center of Rotation and Mobile Robot Kinematics",
+   "channel": "DrMattMarshall",
+   "seconds": 505,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Instantaneous centre of rotation and differential-drive kinematics."
+  },
+  {
+   "id": "NcOT9hOsceE",
+   "title": "Modern Robotics, Chapter 13.2:  Omnidirectional Wheeled Mobile Robots (Part 1 of 2)",
+   "channel": "Northwestern Robotics",
+   "seconds": 362,
+   "embeddable": true,
+   "kind": "core",
+   "why": "MR 13.2: omnidirectional (Swedish/mecanum) wheel kinematics and why such bases are holonomic."
+  },
+  {
+   "id": "HqNdBiej23I",
+   "title": "Vehicle Dynamics & Control - 05 Kinematic bicycle model",
+   "channel": "Prof. Georg Schildbach",
+   "seconds": 728,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Kinematic bicycle model for car-like steering, with slip-free rolling assumptions."
+  },
+  {
+   "id": "PAvj6cP6lOM",
+   "title": "Holonomic vs. Nonholonomic Constraints for Robots | Fundamentals of Robotics | Lesson 4",
+   "channel": "Mecharithm - Robotics and Mechatronics",
+   "seconds": 768,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "Holonomic vs non-holonomic constraints, with mobile-robot examples."
+  }
+ ],
+ "w11": [
+  {
+   "id": "dgg06LMmdeo",
+   "title": "Dynamic Analysis of a Two-Wheeled Robot",
+   "channel": "Tomas Medina",
+   "seconds": 250,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Short dynamic analysis of a two-wheeled (differential drive) robot with force/torque balance on the chassis."
+  },
+  {
+   "id": "XG4cODYVbJk",
+   "title": "11 - Modeling of a differential drive robot",
+   "channel": "Duckietown",
+   "seconds": 422,
+   "embeddable": true,
+   "kind": "core",
+   "why": "Models a differential-drive robot (wheel speeds to body motion); kinematic base that the dynamic model builds on."
+  },
+  {
+   "id": "5Fle_HwfM5s",
+   "title": "mod03lec14 - Mobile Robot Dynamics - Part 2",
+   "channel": "NPTEL-NOC IITM",
+   "seconds": 1276,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "NPTEL lecture on mobile robot dynamics (Part 2), covering dynamic equations for wheeled robots."
+  }
+ ],
+ "w12": [
+  {
+   "id": "-L-WgKMFuhE",
+   "title": "A* Pathfinding (E01: algorithm explanation)",
+   "channel": "Sebastian Lague",
+   "seconds": 698,
+   "embeddable": true,
+   "kind": "core",
+   "why": "A* explained: cost-so-far plus heuristic, open/closed sets, relation to Dijkstra on grids."
+  },
+  {
+   "id": "Ob3BIJkQJEw",
+   "title": "RRT, RRT* & Random Trees",
+   "channel": "Aaron Becker",
+   "seconds": 673,
+   "embeddable": true,
+   "kind": "core",
+   "why": "RRT and RRT*: sampling-based tree growth, probabilistic completeness and path improvement."
+  },
+  {
+   "id": "s2qrMwqm4D0",
+   "title": "Modern Robotics, Chapter 10.2:  C-Space Obstacles",
+   "channel": "Northwestern Robotics",
+   "seconds": 283,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "MR 10.2: configuration-space obstacles, turning a workspace planning problem into point planning in C-space."
+  },
+  {
+   "id": "tlFVbHENPCI",
+   "title": "PRM: Probabilistic Roadmap Method in 3D and with 7-DOF robot arm",
+   "channel": "Aaron Becker",
+   "seconds": 805,
+   "embeddable": true,
+   "kind": "deep",
+   "why": "PRM: sample, connect and query roadmap, shown in 3D and with a 7-DoF arm."
+  }
+ ]
+}
