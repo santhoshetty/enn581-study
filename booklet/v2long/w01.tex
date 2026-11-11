@@ -1,0 +1,403 @@
+\week{W1}{Mechanisms, degrees of freedom, mobility, workspace}{1}
+\begin{multicols}{2}
+
+\hd{What W1 asks, and where to look \added}
+W1 is \emph{counting and definitions}: no frames, no matrices. Every number comes from the Gr\"ubler--Kutzbach (G--K) count. Write $\{0\}$ for the ground (link~0).\par
+\textbf{If the question says\ldots}\par
+\lookup{``find the mobility / DoF of this mechanism''}{recipe, p.\,\pageref{w1:gk}}
+\lookup{``how many actuators / motors does it need''}{$M$ (slide p.39); p.\,\pageref{w1:act}}
+\lookup{``planar parallel manipulator'', ``3-RPR''}{W13 Q6, p.\,\pageref{w1:q6}}
+\lookup{``delta'', ``Stewart'', ``spatial parallel''}{p.\,\pageref{w1:spatial}, W13 Q7 p.\,\pageref{w1:q7}}
+\lookup{``G--K gives 0 but it moves'', ``anything odd?''}{p.\,\pageref{w1:odd}}
+\lookup{``fully / under-actuated / redundant''}{p.\,\pageref{w1:act}}
+\lookup{``reachable vs dexterous workspace''}{p.\,\pageref{w1:ws}}
+\lookup{``serial vs parallel; open vs closed''}{p.\,\pageref{w1:chains}}
+\lookup{``name the joint, give its DoF''}{p.\,\pageref{w1:joints}}
+
+\hd{Kinematics and dynamics \pg{18--19}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}X@{}}
+\toprule term & meaning (slide wording)\\\midrule
+\textbf{Kinematics} \pg{18} & study of motion \emph{without} the forces that cause it: only the geometry of motion (Amp\`ere, 1834).\\
+\textbf{Dynamics} \pg{19} & study of the forces required to cause motion: why objects move or do not.\\
+\quad Statics & dynamics of bodies \emph{at rest / in equilibrium} (no acceleration).\\
+\quad Kinetics & dynamics of bodies \emph{under acceleration}.\\\bottomrule
+\end{tabularx}
+\use{definition questions: do not swap ``kinetics'' with ``kinematics''. In this unit: kinematics = W1--W6 (and W10), statics = $\mathbf J^\top$ forces (W6), kinetics = Lagrange / Newton--Euler (W7--W9) \added.}
+
+\hd{Mechanism, kinematic chain, link, joint \pg{21--23}}
+\par\vspace{2pt}{\centering\begin{tikzpicture}\node[inner sep=0] (wonea) {\includegraphics[page=22,trim={182 62 384 200},clip,width=0.42\linewidth]{\notesdir w01-lec.pdf}};
+\fill[white] (wonea.north west) rectangle ($(wonea.north west)+(0.075\linewidth,-0.022\linewidth)$);\end{tikzpicture}\par}
+{\centering\sffamily\scriptsize\color{slate}[W01 lec p.\,22] --- a kinematic chain: base, links (three bars), joints (four pins), end effector (gripper)\par}\vspace{2pt}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.22\linewidth}X@{}}
+\toprule term & meaning\\\midrule
+\textbf{Mechanism} \pg{21} & ``a mechanical system that transfers/modifies motion and/or forces from one or more sources to one or more outputs''.\\
+\textbf{Kinematic chain} \pg{22} & ``a system of rigid bodies connected by joints''. A mechanism is a collection of one or more chains connecting the base to the end effector.\\
+\textbf{Link} \pg{23} & a rigid body (a bar, a platform, a cylinder or a rod).\\
+\textbf{Joint} & a connection that allows \emph{relative} motion between two links.\\
+\textbf{Base} & the link rigidly fixed to the ground: link~0.\\
+\textbf{End effector} & the link that interacts with the world (gripper, tool).\\\bottomrule
+\end{tabularx}
+
+\hd{Serial vs parallel, open vs closed chains \pg{24--26}}
+\label{w1:chains}
+\slidefig[0.97\linewidth]{w01-lec}{24}{38 81 29 135}{left: serial arm; centre: closed-chain gripper linkage; right: ABB FlexPicker, a parallel (delta) robot}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule & \textbf{Open / serial} & \textbf{Closed / parallel}\\\midrule
+Definition \pg{25} & chain that is \emph{not} closed; \emph{serial} if every link except the first and last connects to two other links & chain that forms a closed loop; \emph{parallel}: end effector joined to the base by several chains \added\\
+Loops $\ell$ \added & 0 & $\ge1$\\
+Count & $N=J+1$, so $M=\sum F_i$ & $N-J-1<0$ (loops remove DoF)\\
+Examples & industrial arm, PUMA, SCARA & four-bar, gripper linkage, delta, Stewart\\
+Actuators \pg{26} & on the joints, so the motors ride on the arm & can sit on the base: lighter moving parts\\
+Load \pg{26} & one chain carries all & several legs share: larger load (mechanical advantage)\\
+Motion \pg{26} & -- & interesting motion paths (Strandbeest, Cyber Tiger)\\
+Trade-off \added & big workspace, easy FK & small workspace, easy IK, harder FK (W4)\\\bottomrule
+\end{tabularx}
+\textit{Examples:} a 6-joint arm: open and serial. A four-bar: closed and \emph{not} serial (no ``first'' or ``last'' link). Two fingers on one palm: open but not serial \added. Why a delta for fast pick-and-place: base-mounted motors, light rods, shared load.\par
+\begin{trap}
+``Parallel'' and ``closed'' overlap but are not synonyms: a four-bar is closed and not a parallel \emph{robot}. The slides define only open, closed and serial (p.25); ``parallel'' is shown by pictures (p.24).
+\end{trap}
+
+\hd{Degrees of freedom of a rigid body \pg{27--33}}
+\premise[DoF of a body]{a body or point and the space it moves in (plane or 3D); link geometry is known}{the number of independent parameters that fix its configuration}
+\begin{fbx}[Degrees of freedom (DoF) \pg{27}]
+DoF $=$ the number of independent parameters that define the configuration of a mechanism.
+\begin{symbols}
+$D$ & DoF of a free rigid body: $D=3$ in a plane, $D=6$ in 3D & --\\
+\end{symbols}
+\use{DoF does not depend on the link lengths (notebook): we assume the geometry is known and ask how many numbers fix the pose.}
+\end{fbx}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.26\linewidth}cX@{}}
+\toprule system \pg{28--33} & DoF & parameters\\\midrule
+point in 2D \pg{28--29} & 2 & $x,y$ (a point has no orientation)\\
+pendulum in 2D \pg{30--31} & 1 & angle $\theta$ about the pivot ($x,y$ are tied: $x^2+y^2=L^2$)\\
+rigid body in 2D (nb Q1) & 3 & $x,y,\theta$\\
+rigid body in 3D \pg{32--33} & 6 & $x,y,z$ and rotations about $x,y,z$\\\bottomrule
+\end{tabularx}
+\begin{deriv}[why 3 and 6 \added]
+\emph{Plane.} A body is fixed by two of its points, $2\times2=4$ coordinates, but their distance is fixed: $4-1=3$. \emph{Space.} Three non-collinear points, $3\times3=9$ coordinates, with three fixed distances: $9-3=6$. Each independent rigid constraint removes one DoF. \emph{Pendulum:} the point $(x,y)$ has 2 coordinates and one constraint $x^2+y^2=L^2$: $2-1=1$.
+\end{deriv}
+\begin{trap}
+A rigid body in 2D has 3 DoF, a \emph{point} only 2. Joint DoF $F$ is not the mechanism's mobility $M$.
+\end{trap}
+
+\hd{Joint types and the constraints they add \pg{34--36}}
+\label{w1:joints}
+\slidefig[0.78\linewidth]{w01-lec}{34}{192 97 48 43}{the six joints on slide 34 (top row R, P, H; bottom row C, U, S)}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.27\linewidth}ccccX@{}}
+\toprule joint \pg{34} & sym. & $F$ & cuts 3D & cuts 2D & what it allows\\\midrule
+Revolute (pin, hinge) & R & 1 & 5 & 2 & one rotation\\
+Prismatic (slider) & P & 1 & 5 & 2 & one translation\\
+Helical (screw) & H & 1 & 5 & -- & rotation and translation tied by the pitch\\
+Cylindrical & C & 2 & 4 & -- & rotation about and translation along one axis\\
+Universal & U & 2 & 4 & -- & two perpendicular rotations\\
+Spherical (ball) & S & 3 & 3 & -- & three rotations about a point\\\bottomrule
+\end{tabularx}
+\textit{Added:} a planar joint E (3 DoF in 3D) is not on the slides. ``Cuts'' $=D-F$ is the number of relative freedoms the joint removes (added columns). Planar mechanisms in this unit use only R and P ($F=1$, cuts 2).
+\begin{fbx}[Constraints removed by a joint \pg{35}]
+\[\text{constraints removed}=D-F\]
+\begin{symbols}
+$D$ & freedoms of one free body: 3 (plane), 6 (3D) & --\\
+$F$ & DoF the joint allows between its two links & --\\
+\end{symbols}
+\use{start with the links free (each $D$), then every joint takes away $D-F$.}
+\end{fbx}
+\slidefig[0.4\linewidth]{w01-lec}{36}{288 76 288 243}{two planar rigid bodies joined by a revolute joint: 4 DoF}
+\textbf{Example \pg{36}.} Free: $3+3=6$ DoF, coordinates $(x_1,y_1,\theta_1,x_2,y_2,\theta_2)$. The pin forces one point of body~1 to coincide with one point of body~2: two equations ($x$ and $y$). $6-2=4$ DoF: body~1 free (3) plus only the rotation of body~2 (1). \chk\par
+The same pin on a pendulum: the mass is a point (2 DoF); the revolute joint cuts it to 1.
+
+\hd{Controllable vs total DoF; actuation \pg{37--38}}
+\label{w1:act}
+\premise[actuation]{the number of actuators and the mobility $M$ (total DoF)}{fully actuated, under-actuated or redundant; and how many actuators are needed}
+A DoF is \textbf{controllable} if an actuator drives it (a motor on the joint); an unactuated DoF is uncontrollable \pg{37}.\par
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.38\linewidth}X@{}}
+\toprule controllable vs total \pg{37} & name\\\midrule
+controllable $=$ total & \textbf{fully actuated}\\
+controllable $<$ total & \textbf{under-actuated}: fewer actuators than joints. Low cost, simpler design, lower weight \pg{38}\\
+controllable $>$ total & \textbf{redundant} (slide wording)\\\bottomrule
+\end{tabularx}
+\begin{slideerr}[redundant]
+Slide 37 says ``controllable $>$ total $\Rightarrow$ redundant'', yet notebook cell 8 calls a 7-DoF arm redundant (7 motors, 7 DoF: equal, so ``fully actuated'' by the slide's rule). The standard meaning \added is \emph{kinematic redundancy}: more joint DoF than the task needs ($7>6$ for a 3D pose; $3>2$ for a planar 3R placing a point). In an answer state which meaning you use.
+\end{slideerr}
+\begin{tabularx}{\linewidth}{@{}Xccl@{}}
+\toprule example & motors & $M$ & name\\\midrule
+6R arm \added & 6 & 6 & fully actuated\\
+same arm, 4 motors & 4 & 6 & under-actuated\\
+planar 3-RPR, 3 prismatic motors & 3 & 3 & fully actuated\\
+planar 4-RPR, 4 prismatic motors \added & 4 & 3 & redundant (slide wording)\\
+Stewart, 6 linear motors & 6 & 6 & fully actuated\\
+delta, 3 base motors & 3 & 3 (not 9) & fully actuated\\\bottomrule
+\end{tabularx}
+\begin{trap}
+Using the plain G--K value 9 for a delta would make it ``under-actuated''; its real mobility is 3 (p.\,\pageref{w1:spatial}). \chk
+\end{trap}
+
+\hd{Mobility: the Gr\"ubler--Kutzbach equation \pg{39--41}}
+\premise[mobility]{a drawing of the mechanism: every link (ground included), every joint with its type, and whether the motion is planar or spatial}{the mobility $M$ (= DoF = the minimum number of actuators \pg{39})}
+\begin{fbx}[G--K, first form \pg{40}]
+\[M_{3D}=6(N-1)-5P_1-4P_2-3P_3-2P_4-P_5,\qquad M_{2D}=3(N-1)-2P_1-P_2\]
+\begin{symbols}
+$M$ & mobility (DoF) of the mechanism & --\\
+$N$ & number of links, \emph{including} the grounded link & --\\
+$P_i$ & number of joints (link pairs) with $i$ DoF & --\\
+\end{symbols}
+\use{quick count when every joint is R or P (planar: $P_1$ only). The coefficient of $P_i$ is $D-i$, the constraints one such joint removes.}
+\end{fbx}
+\begin{fbx}[G--K, second form \pg{41}: used in W13 Q6, Q7]
+\[M=D\,(N-J-1)+\sum_{i=1}^{J}F_i=D(N-1)-DJ+\sum_{i=1}^{J}F_i\]
+\begin{symbols}
+$M$ & mobility / DoF of the mechanism & --\\
+$D$ & 3 for a planar mechanism, 6 for a spatial one & --\\
+$N$ & number of links, ground included & --\\
+$J$ & number of joints & --\\
+$F_i$ & DoF of joint $i$ ($F=1$ for R, P, H; 2 for C, U; 3 for S) & --\\
+\end{symbols}
+\use{the general form: needs one $F_i$ per joint, so it handles C, U, S. Equivalent to the textbook form $M=m(N-1-J)+\sum f_i$ (Lynch \& Park, ch.\,2) \added.}
+\end{fbx}
+\begin{deriv}[of form 2 and its link to form 1 \pg{41}]
+The $N-1$ moving links are free: $D(N-1)$ freedoms. Each joint removes the $D$ relative freedoms and gives back the $F_i$ it allows, so it nets $-(D-F_i)$:
+\[M=D(N-1)-\sum_{i=1}^{J}(D-F_i)=D(N-1)-DJ+\sum_{i=1}^{J}F_i=D(N-J-1)+\sum F_i.\]
+Group the joints by their DoF $i$: $\sum_i(D-F_i)=\sum_i(D-i)P_i$, which is form~1 ($D-i=5,4,3,2,1$ in 3D; $2,1$ in 2D). \chk
+\end{deriv}
+\begin{deriv}[loop view: $M=\sum F_i-D\,\ell$ \added]
+Let $\ell=J-N+1$ be the number of independent loops ($\ell=0$ for an open chain). Then $N-J-1=-\ell$ and
+\[M=\sum_{i=1}^{J}F_i-D\,\ell.\]
+Each loop removes $D$. Serial: $M=\sum F_i$. Four-bar: $4-3\cdot1=1$. 3-RPR: $9-3\cdot2=3$. Stewart: $36-6\cdot5=6$. \chk
+\end{deriv}
+\begin{recipe}[Mobility count (W13 Q6, Q7)]
+\label{w1:gk}
+\begin{enumerate}
+\item \textbf{$D$:} all joint axes perpendicular to the page $\Rightarrow D=3$. Any S, U, C, or ``still 3D'' $\Rightarrow D=6$.
+\item \textbf{Links:} number them, \textbf{ground $=0$} (all ground pivots are \emph{one} link). Between two joints in series there is one link: so an R--P--R leg has two links (cylinder, rod).
+\item \textbf{Joints:} list each with its $F$; get $J$ and $\sum F_i$.
+\item Write $M=D(N-J-1)+\sum F_i$, substitute, show the line. Cross-check with form~1 (planar).
+\item \textbf{Check:} $M\ge1$ for a machine; for a serial chain $M=\sum F_i$; if $M\le0$ ask whether constraints are dependent (p.\,\pageref{w1:odd}).
+\end{enumerate}
+\end{recipe}
+
+\hd{Worked examples from the slides \pg{42--47}}
+\sh{Planar serial manipulator RPR \pg{42--43}}
+\slidefig[0.42\linewidth]{w01-lec}{42}{86 130 557 178}{planar serial RPR: links 0 to 3, joints R, P, R}
+\begin{worked}[RPR, $D=3$ planar]
+\begin{tabular}{@{}ll@{}}
+links & 0 ground, 1 (to the cylinder), 2 (rod), 3 (tool link): $N=4$\\
+joints & J1 R, J2 P, J3 R: all $F=1$, $J=3$, $P_1=3$, $P_2=0$
+\end{tabular}\par
+Form 1: $M=3(4-1)-2\cdot3-1\cdot0=3$.\quad Form 2: $M=3(4-3-1)+(1+1+1)=3$. \chk\par
+Serial: $M=\sum F_i=3$: three motors set the tip $(x,y)$ and its angle.
+\end{worked}
+\columnbreak
+\sh{Planar four-bar \pg{44--45}}
+\slidefig[0.42\linewidth]{w01-lec}{44}{58 130 614 146}{planar closed kinematic chain: four-bar, links 0 to 3, four R}
+\begin{worked}[four-bar, $D=3$]
+\begin{tabular}{@{}ll@{}}
+links & 0 ground (drawn twice, still \textbf{one} link), 1 crank, 2 coupler, 3 rocker: $N=4$\\
+joints & four R: $J=4$, $P_1=4$, $P_2=0$
+\end{tabular}\par
+Form 1: $M=3(4-1)-2\cdot4-1\cdot0=1$.\quad Form 2: $M=3(4-4-1)+4=1$. \chk\par
+Not 3: the loop gives 8 constraints on $3\cdot3=9$ freedoms. One motor on the crank drives it.
+\end{worked}
+\sh{Planar parallel manipulator, 3-RPR \pg{46--47}; W13 Q6}
+\slidefig[0.55\linewidth]{w01-lec}{46}{67 119 470 162}{planar parallel manipulator: triangular platform on three R--P--R legs}
+\begin{worked}[3-RPR, $D=3$]
+\begin{tabular}{@{}ll@{}}
+links & ground, platform, and per leg cylinder + rod: $N=1+1+3\cdot2=8$\\
+joints & per leg R, P, R: $J=9$, all $F=1$, $P_1=9$, $P_2=0$
+\end{tabular}\par
+Form 1: $M=3(8-1)-2\cdot9-1\cdot0=3$.\quad Form 2: $M=3(8-9-1)+9=3$. \chk\par
+Three motors (one prismatic joint per leg) place the platform's $x$, $y$ and angle.
+\end{worked}
+
+\columnbreak
+\hd{Spatial mechanisms: Stewart platform \pg{48}, delta (W13 Q7)}
+\label{w1:spatial}
+\slidefig[0.8\linewidth]{w01-lec}{48}{115 162 230 162}{Stewart platform (left) and one leg: ground--U--P--S--platform (right). Slide asks ``what is the mobility of this system?''}
+\begin{worked}[Stewart platform, $D=6$ \added: the slide gives no answer]
+\begin{tabular}{@{}ll@{}}
+links & ground, platform, per leg cylinder + rod: $N=1+1+6\cdot2=14$\\
+joints & per leg U ($F=2$), P (1), S (3): $J=18$, $\sum F_i=6(2+1+3)=36$
+\end{tabular}\par
+\[M=6(14-18-1)+36=-30+36=6.\]
+Six DoF, six actuators: fully actuated. \chk\ One leg alone ($N=4$, $J=3$): $6(4-3-1)+6=6$, because a serial chain has $M=\sum F_i$; that is the leg's DoF, not the platform's. Six SPS legs would give $12$: each leg can spin about its own axis; the U at the base blocks that spin. \chk
+\end{worked}
+\slidefig[0.42\linewidth]{w13-lec}{15}{38 124 557 135}{W13 p.15: delta mechanism: base B, one R per leg, two parallelogram rods per leg with S at each end, moving platform M}
+\begin{fbx}[Extended G--K (W13 p.16; full treatment in W4)]
+\[M=D(N-J-1)+\sum_{i=1}^{J}F_i+R_C-R_M\]
+\begin{symbols}
+$R_C$ & number of over-constraints: $R_C=\sum_{i=1}^{J}F_i-\sum_{k=1}^{L}u_k$ where $u_k$ are the unique DoFs of closed loop $k$ (as printed on the slide) & --\\
+$R_M$ & local mobility: DoF that do not move the output & --\\
+\end{symbols}
+\use{plain G--K over-counts when parts can move without effect (spinning rods) and under-counts when constraints repeat (p.\,\pageref{w1:odd}).}
+\end{fbx}
+\begin{worked}[delta mechanism, W13 Q7]
+$D=6$ (``the mechanism is still 3D despite this depiction'', p.14). Links: base, platform, per leg 1 upper arm + 2 rods: $N=2+3\cdot3=11$. Joints: per leg 1 R + 4 S: $J=3\cdot5=15$; $\sum F_i=3(1+4\cdot3)=39$.
+\[M=6(11-15-1)+39=\mathbf 9\quad(\text{plain}),\qquad M=9+R_C-R_M=9+0-6=\mathbf 3.\]
+$R_M=6$: each of the six rods has a ball joint at both ends and can spin about its own axis without moving anything else. The platform really translates in $x,y,z$ with 3 motors. \chk\par
+\textit{Write both:} plain 9, then ``subtract the six rod spins: 3''. If the question quotes only the plain equation, 9 is what it asks for.
+\end{worked}
+
+\hd{Where G--K fails \pg{49--51}}
+\label{w1:odd}
+\slidefig[0.55\linewidth]{w01-lec}{49}{58 205 499 146}{slide 49: a body hung by three equal parallel legs, R at each end. G--K gives 0, ``but the system can move: it has 1 degree of freedom!''}
+\begin{worked}[the slide's system, $D=3$]
+\begin{tabular}{@{}ll@{}}
+links & ground, three legs, body: $N=5$\\
+joints & six R: $J=6$, $P_1=6$, $P_2=0$
+\end{tabular}\par
+$M=3(5-1)-2\cdot6-1\cdot0=\mathbf 0$\quad(form 2: $3(5-6-1)+6=0$).\par
+But the body moves on a circular arc without turning: \textbf{1 DoF}. Delete one middle leg: $N=4$, $J=4$, $M=3(4-1)-2\cdot4=1$ (a parallelogram four-bar). \chk
+\end{worked}
+\textbf{Why (slide p.49):} G--K ``assumes that the constraints on motion are independent''. One middle link can be removed without changing what the mechanism does: it is \emph{redundant} and should not be counted.
+\begin{deriv}[why the count is 0: the closure equations \added]
+Unknowns: three leg angles and the body's $x,y,\theta$: 6. Each leg ties the body to the ground: 2 equations, 6 in all. G--K treats all 6 as independent: $6-6=0$. For equal, parallel legs spaced like the ground pivots, the third leg's two equations repeat what the first two already say: the constraint Jacobian has rank 5, not 6, so $6-5=1$ free motion. With unequal legs (16 random closed assemblies tested) the rank is 6: the body locks and 0 is right. G--K sees only $N,J,F_i$, never the lengths, so it cannot tell the two cases apart. \chk
+\end{deriv}
+\begin{recipe}[``Did you notice anything odd?'' (nb Q4, Q5)]
+\begin{enumerate}
+\item Do the count and show it: $M=0$.
+\item State what you see: the mechanism moves (1 DoF).
+\item Reason (slide words): G--K assumes the constraints are independent; one leg is redundant.
+\item Fix: remove one leg, recount: $N=4$, $J=4$, $M=1$.
+\item Caveat: it relies on equal, parallel legs; with unequal legs it locks.
+\end{enumerate}
+\end{recipe}
+\slidefig[0.28\linewidth]{w01-lec}{51}{115 205 672 167}{Hoberman mechanism (p.51): 24 links, 36 revolute joints}
+\textbf{Hoberman \pg{51}:} the slide only states ``24 links and 36 revolute joints''. Counting one link as the frame \added: $3(24-36-1)+36=-3$ ($D=3$), $6(24-36-1)+36=-42$ ($D=6$). Both are negative, yet it expands and contracts. \chk
+\begin{trap}
+False: ``$M=0$ (or $M<0$) means it cannot move'' and ``G--K always gives the true DoF''. It is exact only for independent constraints; it can under-count (p.49) or over-count (delta spins).
+\end{trap}
+
+\hd{Workspace: reachable and dexterous \pg{52--57}}
+\label{w1:ws}
+\premise[workspace]{link lengths and joint limits of the arm}{the region the end effector can reach (reachable) and the region it can reach in every orientation (dexterous)}
+Two factors set the workspace \pg{52}: (1) the \textbf{geometry} (link lengths); (2) the \textbf{constraints on the joints} (limits on angle or stroke).
+\begin{fbx}[Reachable and dexterous workspace \pg{57}]
+\[W_{\text{Dexterous}}\subseteq W_{\text{Reachable}}\qquad(W_R\supseteq W_D)\]
+\begin{symbols}
+$W_R$ & reachable workspace: points the end effector reaches in \emph{one} orientation & m (region)\\
+$W_D$ & dexterous workspace: points reached in \emph{all} possible orientations & m (region)\\
+\end{symbols}
+\use{answer ``$W_R\supseteq W_D$'' (nb Q7). $W_R\subseteq W_D$ is backwards; the strict $\subset$ or $\supset$ are traps: the sets can be equal (both empty).}
+\end{fbx}
+\begin{fbx}[Planar 2R and 3R reach \added]
+\[2\mathrm R:\ |L_1-L_2|\le r\le L_1+L_2\qquad 3\mathrm R\ (\text{equal links }L):\ W_R:\ r\le3L,\quad W_D:\ r\le L\]
+\begin{symbols}
+$r$ & distance of the tool from the base axis & m\\
+$L_1,L_2,L$ & link lengths & m\\
+\end{symbols}
+\use{2R: fully folded to fully stretched. $L=(0.5,0.3)$: annulus $0.2\le r\le0.8$ m. 3R with $L=0.3$ m: $W_R$ disc $0.9$ m, $W_D$ disc $0.3$ m. \chk}
+\end{fbx}
+\begin{deriv}[3R, equal links: why $W_D$ is the disc $r\le L$ \added]
+Wrist point $\mathbf w=\mathbf p-L(\cos\varphi,\sin\varphi)$ for tool angle $\varphi$ at tool point $\mathbf p$. The first two links reach $\mathbf w$ iff $0\le|\mathbf w|\le2L$ (equal links: no hole). Every $\varphi$ must work: the circle of radius $L$ about $\mathbf p$ lies in $|\mathbf w|\le2L$ iff $r+L\le2L$, i.e.\ $r\le L$. Reachable: some $\varphi$ works, $r-L\le2L$, i.e.\ $r\le3L$. \chk
+\end{deriv}
+\begin{recipe}[Describe or sketch a workspace]
+\begin{enumerate}
+\item Centre the sketch on the first joint axis; name the frame.
+\item Fold the arm: smallest tool distance. Stretch it: largest.
+\item Sweep each joint that spins the arm about the centre: annulus $\to$ ring (plane) or shell (3D); a P adds a stroke (thickness/height).
+\item Joint limits cut wedges out of the ring or shell.
+\item State $W_R$ and $W_D$; if the DoF are fewer than the pose (3 planar, 6 spatial), $W_D$ is empty.
+\end{enumerate}
+\end{recipe}
+\textbf{Dexterous is empty} for any 2R arm: 2 DoF cannot set a point \emph{and} an angle. At $(0.5,0.3)$ an $L=(0.5,0.3)$ arm reaches only the tool angles $90^\circ$ and $-28.07^\circ$. \chk
+
+\hd{Robot configurations and their workspaces \pg{53--56}}
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{53}{346 76 38 135}{RRR (PUMA): shell}\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{54}{384 108 38 194}{RRP (SCARA): thick ring}\end{minipage}\\[2pt]
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{55}{394 108 77 113}{RPP (cylindrical): thick-walled sector}\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{56}{365 162 38 162}{PPP (Cartesian): box}\end{minipage}
+\par\smallskip
+{\small\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.08\linewidth}X@{}}
+\toprule arm \pg{53--56} & joints & workspace shape (as drawn; added reading)\\\midrule
+PUMA (Programmable Universal Machine for Assembly) & RRR & thick spherical shell about the shoulder; a wedge is cut out by the waist limit\\
+SCARA (Selective Compliant Articulated Robot for Assembly) & RRP & flat ring from the two vertical-axis R joints, made thick by the vertical stroke; a gap from the limits\\
+cylindrical (PlateCrane EX) & RPP & thick-walled cylinder sector: R gives the angle, one P the height, one P the radius range (inner hole = minimum extension)\\
+Cartesian (Yamaha) & PPP & box whose edges are the three strokes\\
+spherical \added & RRP & thick spherical shell: radius range = stroke of the P\\\bottomrule
+\end{tabularx}}\par
+The slide's PUMA is the three-axis RRR (body, shoulder, elbow). Each of these has $M=6(4-3-1)+3=3$ in 3D: position only. Figures by A.\ Becker et al., ``Robot Manipulator Workspaces'' (as credited on the slides). \chk
+
+\hd{Manipulation problems: what comes next \pg{58--62}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.3\linewidth}Xl@{}}
+\toprule problem \pg{59} & meaning & week\\\midrule
+forward kinematics & joint coordinates $\to$ end-effector pose & W2\\
+inverse kinematics & tool pose $\to$ joint coordinates & W3\\
+velocity kinematics & joint rates $\leftrightarrow$ tool velocity & W6\\
+dynamics & torque to accelerate the tip; force at the tip & W7--W9\\
+trajectory generation & path in joint or tool space & W5\\\bottomrule
+\end{tabularx}
+Pose $=$ position + orientation \pg{60}: 3 + 3 numbers, written as a $4\times4$ homogeneous matrix \pg{62}. Frames \pg{61}: \{B\} base, \{W\} wrist, \{T\} tool, \{S\} station, \{G\} goal, \{C\} camera. A pose has 6 numbers, so a 6-DoF arm is the minimum for arbitrary tool poses \added.
+
+\hd{Simple scenarios: classify, count, actuate \added}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}X@{}}
+\toprule G--K value & reading\\\midrule
+$M\ge1$ & a mechanism, $M$ motors (if constraints are independent)\\
+$M=0$ & a rigid structure, \emph{or} dependent constraints (p.49): check the geometry\\
+$M<0$ & over-constrained, \emph{or} dependent constraints (Hoberman): recount first\\\bottomrule
+\end{tabularx}
+\textbf{Task DoF vs $M$} (``how many actuators does it need?''): let $m$ be the number the task needs: $m=2$ (point in a plane), $3$ (planar pose), $3$ (point in 3D), $6$ (3D pose). $M<m$: cannot do the task (2R cannot set a tool angle). $M=m$: exactly enough, fully actuated. $M>m$: kinematically redundant, $M-m$ spare DoF (7R for a 6-DoF pose).\par
+\textit{Examples (all \chk):} planar 3R positioning a point: $M=3$, $m=2$: one spare DoF. Delta: $M=3$, $m=3$ (translation): 3 motors. 3-RPR: $M=3$, $m=3$ (planar pose): 3 motors. 3-RPS platform ($D=6$, $N=8$, $J=9$, $\sum F=15$): $6(8-9-1)+15=3$.
+
+\hd{Notebook exercises Q1--Q7, solved}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.07\linewidth}X@{}}
+\toprule Q & answer\\\midrule
+1 & Rigid body in 2D: \textbf{3} DoF (two translations, one rotation); a point: 2 (no orientation).\\
+2 & Four-bar: $N=4$, $P_1=4$: $3(4-1)-2\cdot4=1$.\\
+3 & Planar parallel: $N=8$, $P_1=9$: $3(8-1)-2\cdot9=3$.\\
+4 & ``Planar mechanism shown'' (no answer in the notebook; figure assumed the p.49 system): $N=5$, $P_1=6$: $0$.\\
+5 & ``Anything odd?'': the count is 0 but it moves (1 DoF): dependent constraints, p.\,\pageref{w1:odd}.\\
+6 & Workspaces: table of robot configurations (PUMA shell, SCARA ring, cylindrical sector, Cartesian box).\\
+7 & $W_R\supseteq W_D$ (option 3).\\\bottomrule
+\end{tabularx}
+
+\hd{How this is examined: worked solutions}
+\textit{Marks are not published; indicative, about 1 mark per step.} Marks come from: the right $D$; $N$ with the ground; every $F_i$ listed; the substitution shown; the answer; one sentence on why plain G--K and the real DoF may differ.
+
+\begin{examq}[W13 Q6: mobility of a planar parallel manipulator \mk{marks not published}]
+\label{w1:q6}
+\slidefig[0.55\linewidth]{w13-lec}{13}{48 113 480 157}{W13 pp.12--13: the same figure; on p.12 the lecturer numbers the links 1 ground, 2 platform, 3--4 left leg, 5--6 middle leg, 7--8 right leg}
+Find the mobility of the mechanism drawn (planar, three R--P--R legs).
+\solution
+$M=D(N-J-1)+\sum_{i=1}^{J}F_i$ (G--K).\quad Planar, so $D=3$.\\
+Links: 1 ground, 2 platform, and each prismatic joint joins a cylinder to a rod (two links per leg: 3,4; 5,6; 7,8): $N=8$.\\
+Joints: per leg R, P, R: $J=9$, each $F_i=1$, $\sum F_i=9$.
+\[M=3(8-9-1)+9=-6+9=\boxed{3}\qquad\text{(form 1: }3(8-1)-2\cdot9=3\text{)}\]
+Three DoF: platform $x$, $y$ and rotation, driven by the three prismatic actuators. Check: $N=7$ (ground forgotten) would give $0$. \chk
+\end{examq}
+
+\begin{examq}[W13 Q7: mobility of a delta mechanism \mk{marks not published}]
+\label{w1:q7}
+A delta robot has a base, a moving platform and three legs. Each leg: one R at the base driving an upper arm, then two rods forming a parallelogram, each rod with a spherical joint at both ends. Find its mobility with (a) plain G--K, (b) the extended equation, given $R_C=0$, $R_M=6$.
+\solution
+3D, $D=6$. $N=2+3\cdot3=11$ (base, platform, 3 upper arms, 6 rods). $J=3\cdot(1+4)=15$; $\sum F_i=3(1+4\cdot3)=39$.\\
+(a) $M=6(11-15-1)+39=\boxed{9}$.\\
+(b) $M=9+0-6=\boxed{3}$. Six rods can spin about their own axes (S at both ends): $R_M=6$. The platform translates in $x,y,z$; 3 motors. Fully actuated. \chk
+\end{examq}
+
+\begin{examq}[Derive and count a Watt six-bar \mk{marks assumed 6}]
+(a) Derive $M=D(N-J-1)+\sum F_i$. (b) A planar Watt six-bar has 6 links (ground included) and 7 revolute joints: find $M$. (c) Which slip gives $-5$?
+\solution
+(a) $N-1$ moving links, free: $D(N-1)$. Joint $i$ allows $F_i$ relative freedoms, so removes $D-F_i$. $M=D(N-1)-\sum(D-F_i)=D(N-1)-DJ+\sum F_i=D(N-J-1)+\sum F_i$.\\
+(b) $D=3$, $N=6$, $J=7$, $\sum F_i=7$: $M=3(6-7-1)+7=\boxed{1}$. Form 1: $3(6-1)-2\cdot7=1$.\\
+(c) $D=6$ on a planar drawing: $6(6-7-1)+7=-5$. (No ground, $N=5$: $-2$.) \chk
+\end{examq}
+
+\begin{examq}[Odd mechanism and actuation (Mock 1 Q10 style) \mk{marks assumed 4}]
+(a) Define fully actuated, under-actuated, redundant. (b) A body is hung from the ground by three equal parallel links (R at both ends). G--K gives $M=0$ but it moves. Explain.
+\solution
+(a) By the slide: controllable DoF $=$, $<$, $>$ total DoF. Example: 6R arm, 6 motors: fully; 4 motors: under (cheaper, lighter); 4-RPR platform ($M=3$) with 4 motors: ``redundant'' by the slide's wording (kinematic redundancy: 7R arm for a 6-DoF pose; say which).\\
+(b) $N=5$, $J=6$: $M=3(5-1)-2\cdot6=\boxed0$. G--K assumes independent constraints; with equal parallel links the third repeats the others, one leg is redundant. Remove it: $N=4$, $J=4$, $M=\boxed1$ (the true value). \chk
+\end{examq}
+
+\begin{examq}[Workspace of a planar 3R arm \mk{marks assumed 6}]
+A planar 3R arm has $L_1=0.5$, $L_2=0.3$, $L_3=0.2$ m, no joint limits. Find the reachable and dexterous workspaces.
+\solution
+Tool at distance $r$ with direction $\varphi$: wrist $\mathbf w=\mathbf p-L_3(\cos\varphi,\sin\varphi)$ must lie in the 2R annulus $h\le|\mathbf w|\le H$, $h=|L_1-L_2|=0.2$, $H=L_1+L_2=0.8$.\\
+\emph{Reachable} (some $\varphi$): $|\mathbf w|$ ranges over $[\,|r-L_3|,\ r+L_3\,]$; need it to meet $[h,H]$: $r\le H+L_3=\boxed{1.0}$ m, a full disc.\\
+\emph{Dexterous} (every $\varphi$): the whole interval inside $[h,H]$: $r+L_3\le H\Rightarrow r\le0.6$; $|r-L_3|\ge h\Rightarrow r\ge L_3+h=0.4$ (the base point also works). Ring $\boxed{0.4\le r\le0.6}$ m. Sanity: equal links give $h=0$ and the slides' $r\le L$. \chk
+\end{examq}
+
+\begin{examq}[Spot the errors \mk{marks assumed 4}]
+``Four-bar: $D=6$, $N=4$, $J=4$, so $M=-2$: a negative mobility means it cannot be built. Delta, 3 motors: $M=9$, so under-actuated.'' Find the errors.
+\solution
+(1) Planar: $D=3$, $M=3(4-4-1)+4=1$. (2) A negative or zero value does not prove a mechanism cannot move (p.49, Hoberman): it warns of dependent constraints. (3) 9 is the plain value; the delta's real $M=3$ ($R_M=6$), so 3 motors make it fully actuated. \chk
+\end{examq}
+\end{multicols}

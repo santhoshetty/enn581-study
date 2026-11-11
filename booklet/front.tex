@@ -1,12 +1,7 @@
 % ---------- Fast lookup (front matter) ----------
-\bpart{INDEX}{Fast lookup: find the right page in seconds}{1}
+\bpart[INDEX]{START}{Fast lookup: if the question says \dots}{1}
 \begin{multicols}{3}
-{\sffamily\bfseries\Large ENN581 Robot Motion, Control \& Planning}\par
-{\sffamily Revision booklet · written exam, 2 h, any calculator, printed notes only}\par\vspace{3pt}
-{\footnotesize Print at 100\,\% (actual size), A4 landscape, double-sided (flip on the short edge). Every page has a grey tab on its right edge: Index, Recipes, W1–W12, Tables, Derivations, top to bottom. Slide pages are cited as [p.\,N]; things not on the slides are marked [added]. Every number in this booklet was checked by script.}\par\vspace{2pt}
-{\footnotesize\textbf{Colour key.} Boxes: \textcolor{fblue}{\textbf{blue}} formula, \textcolor{rgreen}{\textbf{green}} recipe, \textcolor{tred}{\textbf{red dashed}} trap, \textcolor{wpurple}{\textbf{purple}} worked example, \textcolor{samber}{\textbf{amber}} slide check. Tabs: \textcolor{seckin}{\textbf{blue}} W1–W6 kinematics, \textcolor{secdyn}{\textbf{orange}} W7–W9 dynamics \& control, \textcolor{secmob}{\textbf{teal}} W10–W11 wheeled robots, \textcolor{secplan}{\textbf{purple}} W12 planning, \textcolor{secfront}{\textbf{slate}} reference.}
-
-\hd{If the question says\dots\ go to}
+\hd*{If the question says\dots\ go to}
 \lookup{“transformation matrix”, “indicate frames”, ETS}{p.\,\pageref{r:fk}, \pageref{p:W2}}
 \lookup{“DH table”, “link parameters”}{p.\,\pageref{r:dh}, \pageref{p:W2}}
 \lookup{“sketch the workspace”}{p.\,\pageref{r:ws}, \pageref{p:W3}}
@@ -24,11 +19,18 @@
 \lookup{“holonomic”}{p.\,\pageref{p:W10}}
 \lookup{“dynamics of a mobile robot”}{p.\,\pageref{p:W11}}
 \lookup{“A*”, “Dijkstra”, “PRM”, “RRT”, “C-space”}{p.\,\pageref{r:plan}, \pageref{p:W12}}
-\lookup{trig identities, rotations, inertia of shapes}{p.\,\pageref{p:TABLES}}
-\lookup{a derivation you have forgotten}{p.\,\pageref{p:DERIV}}
+\lookup{“what is given / what to find”}{p.\,\pageref{p:START2}}
+\lookup{“trace a circle / line / square” (joint rates)}{p.\,\pageref{p:W6}}
+\lookup{“drive a circle / rectangle” (wheel speeds)}{p.\,\pageref{p:W10}}
+\lookup{“block diagram”, “model-based”, “servo”}{p.\,\pageref{p:W8}, \pageref{p:W9}}
+\lookup{“BFS”, “DFS”, open/closed list}{p.\,\pageref{p:W12}}
+\lookup{RR, RP, RRP, SCARA, Puma, Panda: tables, ETS}{p.\,\pageref{p:ROBOTS}}
+\lookup{skew matrix, cross product, $s=ut+\frac12at^2$, $\atantwo$}{p.\,\pageref{p:BASICS}}
+\lookup{the W13 sample questions, solved}{p.\,\pageref{p:SAMPLE}}
+\lookup{trig identities, rotations, inertia of shapes}{p.\,\pageref{p:BASICS}}
 
 \columnbreak
-\hd{Answer layout (method marks)}
+\hd*{Answer layout (method marks)}
 \begin{enumerate}
 \item \textbf{Draw and define}: frames, axes, positive angle directions, assumptions (no joint limits; point masses; rest to rest; $\gamma=0$).
 \item \textbf{State the general tool} before using it: ETS, cosine rule, Euler–Lagrange, G–K, boundary conditions.
@@ -36,10 +38,10 @@
 \item \textbf{Box the result}; list \emph{every} branch (IK) or mode (four-bar).
 \item \textbf{Sanity check} at $\theta=0$, $t=0$, or a symmetric case. Write ``check:''.
 \end{enumerate}
-\hd{Time (2 hours)}
+\hd*{Time (2 hours)}
 Read all questions first (5 min). Split time by marks. Leave 10 min to check signs and units. If stuck: write the set-up and the equation you would solve, then move on.
 
-\hd{Ten checks before you hand in}
+\hd*{Ten checks before you hand in}
 \begin{enumerate}
 \item Calculator in \textbf{radians}? Angles labelled ° or rad?
 \item atan2, not $\tan^{-1}(y/x)$ (quadrant).
@@ -54,11 +56,11 @@ Read all questions first (5 min). Split time by marks. Leave 10 min to check sig
 \end{enumerate}
 
 \columnbreak
-\hd{Notation}
+\hd*{Notation}
 \begin{tabular}{@{}p{0.27\linewidth}p{0.66\linewidth}@{}}
 $\tr{A}{B}$ & pose of $\{B\}$ in $\{A\}$; $^A\mathbf P=\tr AB\,{}^B\mathbf P$\\
 $^A\Rm_B$ & columns = B's axes written in A\\
-$R_x,R_y,R_z,t_x,t_y,t_z$ & elementary transforms (ETS)\\
+$R_x,R_y,R_z$,\newline $t_x,t_y,t_z$ & elementary transforms (ETS)\\
 $a_{i-1},\alpha_{i-1},d_i,\theta_i$ & proximal (Craig) DH\\
 $c_i,s_i,c_{ij}$ & $\cos\theta_i$, $\sin\theta_i$, $\cos(\theta_i{+}\theta_j)$\\
 $\mathbf J$ & Jacobian: $\dot{\mathbf x}=\mathbf J\dot{\mathbf q}$; $\boldsymbol\tau=\mathbf J^\top\mathbf F$\\
@@ -71,13 +73,13 @@ $\beta_i,\gamma_i$ & wheel drive angle from $x_C$; roller angle\\
 $g,h,f$ & A*: cost so far, heuristic, $f=g+h$\\
 \end{tabular}
 
-\hd{Elementary rotations}
-\[R_x(\theta)=\begin{bmatrix}1&0&0\\0&c&-s\\0&s&c\end{bmatrix}
+\hd*{Elementary rotations}
+{\small\[R_x(\theta)=\begin{bmatrix}1&0&0\\0&c&-s\\0&s&c\end{bmatrix}
 R_y(\theta)=\begin{bmatrix}c&0&s\\0&1&0\\-s&0&c\end{bmatrix}
-R_z(\theta)=\begin{bmatrix}c&-s&0\\s&c&0\\0&0&1\end{bmatrix}\]
+R_z(\theta)=\begin{bmatrix}c&-s&0\\s&c&0\\0&0&1\end{bmatrix}\]}
 \use{$R_y$'s minus sign is bottom-left. A translation $t_x(a)$ is $\mathbf I$ with $a$ in row 1, column 4.}
 
-\hd{Sample-paper map (W13 revision)}
+\hd*{Sample-paper map (W13 revision): solved in full on p.\,\pageref{p:SAMPLE}}
 \begin{tabular}{@{}lll@{}}
 Q1 FK of RRR (ETS) & W2 & p.\,\pageref{r:fk}\\
 Q2 workspace sketch & W3 & p.\,\pageref{r:ws}\\

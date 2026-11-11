@@ -1,0 +1,188 @@
+% ---------- ROBOTS gallery (condensed) ----------
+% Every symbolic matrix typed after a line  %MAT name  is compared with the sympy-derived matrix by vcheck/v2_robots.py.
+\DeclareRobustCommand{\rbsl}[1]{\mbox{\sffamily\scriptsize\color{slate}[#1]}}
+\newcommand{\rbpg}[1]{#1\,p.\,\pageref{p:#1}}
+\newcommand{\rbp}[1]{\mbox{\sffamily\scriptsize\color{slate}[#1]}}
+\newcommand{\rbcol}{\mathbf 0^\top}
+\newcommand{\rbsm}{\footnotesize\setlength{\arraycolsep}{1.5pt}}
+\newcommand{\rbl}[1]{\par\vspace{0.5pt}{\sffamily\bfseries\footnotesize\color{slate}#1}\ }
+\newcommand{\rbdh}[1]{\rbl{DH}$(a_{i-1},\alpha_{i-1},d_i,\theta_i)$: #1}
+\newcommand{\rbdhr}[2]{$#1\,(#2)$}
+
+\bpart{ROBOTS}{Standard robots: configurations, DH tables, ETS, FK, IK, Jacobian at a glance}{4}
+{\scriptsize\setlength{\tabcolsep}{2.5pt}\renewcommand{\arraystretch}{1.0}
+\noindent\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.125\linewidth}c>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.13\linewidth}@{}}
+\toprule
+Robot (joints) & $n$ & reachable workspace (no joint limits) & IK solutions (position) & singular poses ($\det\mathbf J=0$) & see\\\midrule
+1.\ planar RR & 2 & annulus $|L_1-L_2|\le r\le L_1+L_2$; disc if $L_1=L_2$ & 2 (elbow $\pm q_2$) & $q_2=0,\pi$: $\det\mathbf J_{xy}=L_1L_2\sin q_2$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}\\
+2.\ planar RP (polar) & 2 & annulus $d_{\min}\le r\le d_{\max}$ & 1 (2 if $d_2<0$ allowed) & $d_2=0$: $\det\mathbf J_{xy}=-d_2$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}\\
+3.\ planar PR (rail+rotary) & 2 & stadium: $D\times2L$ rectangle + half-disc of radius $L$ at each end & 2 ($q_2$, $\pi-q_2$) & $q_2=\pm90^\circ$: $\det\mathbf J_{xy}=L_2\cos q_2$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}\\
+4.\ planar RRR & 3 & disc $r\le\sum L_i$ (hole if $2L_{\max}>\sum L_i$); dexterous: $L_3{+}|L_1{-}L_2|\le r\le L_1{+}L_2{-}L_3$ & 2 for $(x,y,\varphi)$; $\infty$ for $(x,y)$ & $q_2=0,\pi$ for $(x,y,\omega_z)$: $\det=L_1L_2\sin q_2$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}\\
+5.\ Cartesian PPP & 3 & box, edges = strokes & 1 & none: $\det\mathbf J_\upsilon=-1$ & \rbpg{W1}\\
+6.\ cylindrical RPP & 3 & hollow cylinder sector: radius $d_{3\min}$..$d_{3\max}$, height = stroke of $d_2$ & 1 (2 if $d_3<0$ allowed) & $d_3=0$: $\det\mathbf J_\upsilon=d_3$ & \rbpg{W1}\\
+7.\ spherical RRP & 3 & shell $d_{3\min}\le\rho\le d_{3\max}$ about $(0,0,H)$ & 2 (4 if $d_3<0$ allowed) & $d_3=0$ or $\sin q_2=0$: $\det\mathbf J_\upsilon=-d_3^2\sin q_2$ & \rbpg{W3}, \rbpg{W6}\\
+8.\ SCARA RRPR (position: RRP) & 4 & flat ring $|a_1-a_2|\le r\le a_1+a_2$ $\times$ stroke of $d_3$ & 2 (elbow); $d_3$, $q_4$ unique & $q_2=0,\pi$: $\det\mathbf J_\upsilon=-a_1a_2\sin q_2$ & \rbpg{W1}, \rbpg{W2}, \rbpg{W3}\\
+9.\ elbow arm RRR (W13 Q1--Q3) & 3 & shell $|L_3-L_4|\le\rho\le L_3+L_4$ about $(0,0,L_1{+}L_2)$ & 4 (shoulder $\times$ elbow) & $\sin\theta_3=0$ or $r=0$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}\\
+10.\ Puma 560 (6R, spherical wrist) & 6 & wrist centre in a spherical shell about the shoulder & up to 8 & elbow $\sin q_3=0$; shoulder ($W$ on waist axis); wrist $\sin q_5=0$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}\\
+11.\ Franka Panda (7R) & 7 & thick sphere about $(0,0,0.333)$, flange distance $0.02$--$0.86$ m (sampled) & $\infty$ (1-D self-motion) & rank $\mathbf J<6$, e.g.\ wrist centre on joint-1 axis & \rbpg{W2}, \rbpg{W3}\\
+12.\ Furuta pendulum (RR in 3D) & 2 & tip on sphere of radius $\sqrt{L_1^2+L_2^2}$ about $(0,0,L_0)$, band $|z-L_0|\le L_2$ & $\le2$ (only if the point is on the sphere) & $\sin\theta_2=0$ & \rbpg{W2}\\
+\bottomrule
+\end{tabularx}}
+
+{\scriptsize\setlength{\tabcolsep}{2.5pt}\renewcommand{\arraystretch}{1.0}
+\noindent\hd{Mobile robots at a glance}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.13\linewidth}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.09\linewidth}ccc>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.12\linewidth}@{}}
+\toprule
+Robot & wheels & holonomic? & $\delta_m$ & $\delta_s$ & $\delta_M$ & ICR (in $\{C\}$) & see\\\midrule
+differential drive & 2 fixed standard (driven, at $\pm a$) + castor & no & 2 & 0 & 2 & on the axle line: $y_{ICR}=u/\dot\theta=a\,\frac{\dot\varphi_1+\dot\varphi_2}{\dot\varphi_2-\dot\varphi_1}$; $v=0$ & \rbpg{W10} (sl.\,43--47, 61)\\
+unicycle model \added & model of a diff.\ drive: inputs $u,\ \omega=\dot\theta$ & no & 2 & 0 & 2 & $R=u/\omega$ on the axle line; $(\dot x,\dot y,\dot\theta)=(u\cos\theta,u\sin\theta,\omega)$ & \rbpg{W10}\\
+bicycle & rear fixed (driven) + front steered wheel at $(L,0)$ & no & 1 & 1 & 2 & rear-axle line at $R=L/\tan\beta$; $\dot\theta=u\tan\beta/L$ & \rbpg{W10} (sl.\,69)\\
+car (Ackermann) & 2 rear fixed + 2 front steered & no & 1 & 1 & 2 & rear-axle line; $\tan\beta_{in}=\frac L{R-t/2}$, $\tan\beta_{out}=\frac L{R+t/2}$ & \rbpg{W10} (sl.\,59--61)\\
+tricycle & 2 rear fixed + 1 front wheel driven and steered at $(b,0)$ & no & 1 & 1 & 2 & rear-axle line, $R=b/\tan\beta_1$; $\dot\varphi_1=\frac1r\sqrt{u^2+b^2\dot\theta^2}$, $\beta_1=\atantwo(b\dot\theta,u)$ & \rbpg{W10} (sl.\,56--58)\\
+3-wheel omni (Swedish triangle) & 3 omni wheels at $120^\circ$, distance $d$ from $C$ & yes & 3 & 0 & 3 & anywhere: $(-v/\dot\theta,\ u/\dot\theta)$ for any $(u,v,\dot\theta)$ & \rbpg{W10} (sl.\,53--54, W13 Q10)\\
+4-wheel mecanum & 4 wheels, roller angles $\gamma_i=\pm45^\circ$ at $(\pm\ell,\pm w)$ & yes & 3 & 0 & 3 & anywhere (rank 3; 4 wheels for 3 unknowns: least squares) & \rbpg{W10} (sl.\,55)\\
+skid steer & 4 standard wheels, left pair and right pair & no (slide model: $v=0$) & 2 (model) & 0 & 2 & as the diff.\ drive; the 4 no-slide rows have rank 2 (also $\dot\theta=0$): turning needs slip & \rbpg{W10} (sl.\,48--52)\\
+\bottomrule
+\end{tabularx}
+\par\smallskip
+\textbf{Rules (W10).} $\delta_M=\delta_m+\delta_s$; $\delta_m=3-\operatorname{rank}\mathbf C_1$ ($\mathbf C_1$ = no-slide rows of the standard wheels); a standard wheel $\Rightarrow$ non-holonomic; no standard wheel (omni, mecanum) $\Rightarrow$ holonomic, $\delta_m=3$ (slide 64). \added}
+
+\begin{multicols}{3}\raggedright
+\noindent{\footnotesize\textbf{Convention (all cards):} DH row $(a_{i-1},\alpha_{i-1},d_i,\theta_i)$, ${}^{i-1}\T_i=\Rm_x(\alpha_{i-1})t_x(a_{i-1})\Rm_z(\theta_i)t_z(d_i)$; ETS read base to tool; $c_{12}=\cos(q_1{+}q_2)$; $z$ up; matrices checked by script. \added}
+
+\begin{fbx}[1. Planar RR \rbp{W2 sl.\,15--16; W3 sl.\,25--31; W6 sl.\,33--39}]
+\rbl{ETS}${}^0\T_E=\Rm_z(q_1)t_x(L_1)\Rm_z(q_2)t_x(L_2)$.
+\rbdh{\rbdhr{1}{0,0,0,q_1}\ \rbdhr{2}{L_1,0,0,q_2}\ \rbdhr{3}{L_2,0,0,0} (3 = tool)}
+\rbl{FK}$\Rm=\Rm_z(q_1{+}q_2)$; position column $\mathbf p=(L_1c_1+L_2c_{12},\ L_1s_1+L_2s_{12},\ 0)$.
+\rbl{IK}
+\[\cos q_2=\tfrac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2},\ \ q_2=\atantwo\big(\pm\sqrt{1-\cos^2q_2},\cos q_2\big)\]
+\[q_1=\atantwo(y,x)-\atantwo(L_2\sin q_2,\ L_1+L_2\cos q_2)\]
+\rbl{J}rows $z,\omega_x,\omega_y$ zero, $\omega_z$ row $(1,1)$; \quad${}^0\mathbf J_{xy}=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}$, $\det=L_1L_2\sin q_2$ (singular: stretched/folded).\\
+Check: $L=(0.4,0.3)$, $\mathbf q=(40^\circ,50^\circ)$: tip $(0.3064,0.5571)$; IK gives also $(82.38^\circ,-50^\circ)$. \chk
+\end{fbx}
+
+\begin{fbx}[2. Planar RP, polar \rbp{W2; W3 sl.\,23--24; W6}]
+\rbl{ETS}${}^0\T_E=\Rm_z(q_1)t_x(d_2)$.
+\rbdh{\rbdhr{1}{0,0,0,q_1{-}90^\circ}\ \rbdhr{2}{0,-90^\circ,d_2,0} (prismatic axis must be $z_2$) plus a constant ${}^2\T_E$ (W2 part)}
+\rbl{FK}$\Rm=\Rm_z(q_1)$; $\mathbf p=d_2(c_1,\ s_1,\ 0)$: polar coordinates.
+\rbl{IK}$d_2=\sqrt{x^2+y^2}$, $q_1=\atantwo(y,x)$; if $d_2<0$ allowed: also $(-d_2,\ q_1+\pi)$.
+\rbl{J}${}^0\mathbf J_{xy}=\begin{bmatrix}-d_2s_1&c_1\\d_2c_1&s_1\end{bmatrix}$, $\det=-d_2$; $\omega_z$ row $(1,0)$, other rows $0$. Singular only at $d_2=0$.\\
+Check: $q_1=35^\circ$, $d_2=0.6$: $(0.4915,0.3441)$; target $(0.3,0.4)$: $d_2=0.5$, $q_1=53.13^\circ$. \chk
+\end{fbx}
+
+\begin{fbx}[3. Planar PR, rail + rotary \rbp{W2; W3; W6}]
+\rbl{ETS}${}^S\T_E=t_x(d_1)\Rm_z(q_2)t_x(L_2)$.
+\rbdh{\rbdhr{1}{0,0,d_1,0}\ \rbdhr{2}{0,90^\circ,0,q_2{+}90^\circ}\ \rbdhr{3}{L_2,0,0,0} with a constant ${}^S\T_0$ (slide along $x_S$ needs $z_0=x_S$; W2 part)}
+\rbl{FK}$\Rm=\Rm_z(q_2)$; $\mathbf p=(d_1+L_2c_2,\ L_2s_2,\ 0)$.
+\rbl{IK}$\sin q_2=y/L_2$, $q_2=\atantwo\big(y,\pm\sqrt{L_2^2-y^2}\big)$, $d_1=x-L_2\cos q_2$ (none if $|y|>L_2$).
+\rbl{J}${}^S\mathbf J_{xy}=\begin{bmatrix}1&-L_2s_2\\0&L_2c_2\end{bmatrix}$, $\det=L_2\cos q_2$; $\omega_z$ row $(0,1)$. Singular at $q_2=\pm90^\circ$.\\
+Check: $d_1=0.3$, $q_2=60^\circ$, $L_2=0.4$: $(0.5,0.3464)$; $L_2=0.5$, target $(0.8,0.3)$: $(0.4,36.87^\circ)$ or $(1.2,143.13^\circ)$. \chk
+\end{fbx}
+
+\begin{fbx}[4. Planar RRR \rbp{W2 sl.\,6--9; W3; W6}]
+\rbl{ETS}${}^0\T_E=\Rm_z(q_1)t_x(L_1)\Rm_z(q_2)t_x(L_2)\Rm_z(q_3)t_x(L_3)$.
+\rbdh{\rbdhr{1}{0,0,0,q_1}\ \rbdhr{2}{L_1,0,0,q_2}\ \rbdhr{3}{L_2,0,0,q_3}\ \rbdhr{4}{L_3,0,0,0}}
+\rbl{FK}$\Rm=\Rm_z(q_E)$, $q_E=q_1{+}q_2{+}q_3$; $\mathbf p=(L_1c_1+L_2c_{12}+L_3c_{123},\ L_1s_1+L_2s_{12}+L_3s_{123},\ 0)$.
+\rbl{IK}pose $(x,y,\varphi)$: $\mathbf p_W=(x-L_3\cos\varphi,\ y-L_3\sin\varphi)$; $(q_1,q_2)$ = RR solution for $\mathbf p_W$ (card 1); $q_3=\varphi-q_1-q_2$. Two solutions; $(x,y)$ only: $\infty$.
+\rbl{J}${}^0\mathbf J_{xy}=\begin{bmatrix}-L_1s_1-L_2s_{12}-L_3s_{123}&-L_2s_{12}-L_3s_{123}&-L_3s_{123}\\L_1c_1+L_2c_{12}+L_3c_{123}&L_2c_{12}+L_3c_{123}&L_3c_{123}\end{bmatrix}$; $\omega_z$ row $(1,1,1)$. Pose block $(x,y,\omega_z)$: $\det=L_1L_2\sin q_2$.\\
+Check: $L=(0.5,0.4,0.2)$, $\mathbf q=(30^\circ,45^\circ,-60^\circ)$: $(0.7297,0.6881)$, $q_E=15^\circ$ (slide). $L=(1.0,0.7,0.3)$, $(1.2,0.9)$, $\varphi=60^\circ$: $\mathbf q=(-3.32,89.09,-25.77)^\circ$ or $(66.06,-89.09,83.02)^\circ$. \chk
+\end{fbx}
+
+\begin{fbx}[5. Cartesian PPP \rbp{W1 sl.\,56}]
+\rbl{ETS}${}^0\T_E=t_z(d_1)t_y(d_2)t_x(d_3)$.
+\rbdh{\rbdhr{1}{0,0,d_1,0}\ \rbdhr{2}{0,-90^\circ,d_2,90^\circ}\ \rbdhr{3}{0,90^\circ,d_3,0}; ${}^0\T_3={}^0\T_E\Rm_y(90^\circ)$}
+%MAT T_ppp
+{\rbsm\[{}^0\T_E=\begin{bmatrix}1&0&0&d_3\\0&1&0&d_2\\0&0&1&d_1\\0&0&0&1\end{bmatrix}\]}
+\rbl{IK}$(d_1,d_2,d_3)=(z,y,x)$: one solution inside the box.
+%MAT J_ppp
+{\rbsm\[{}^0\mathbf J=\begin{bmatrix}0&0&1\\0&1&0\\1&0&0\\0&0&0\\0&0&0\\0&0&0\end{bmatrix},\qquad\det\mathbf J_\upsilon=-1\]}
+Orientation fixed; never singular. $M=6(4-3-1)+3=3$. \chk
+\end{fbx}
+
+\begin{fbx}[6. Cylindrical RPP \rbp{W1 sl.\,55}]
+\rbl{ETS}${}^0\T_E=\Rm_z(q_1)t_z(d_2)t_x(d_3)$.
+\rbdh{\rbdhr{1}{0,0,0,q_1}\ \rbdhr{2}{0,0,d_2,90^\circ}\ \rbdhr{3}{0,90^\circ,d_3,0} with a constant ${}^3\T_E$ (tool $x$ along the slide)}
+%MAT T_cy
+{\rbsm\[{}^0\T_E=\begin{bmatrix}c_1&-s_1&0&d_3c_1\\s_1&c_1&0&d_3s_1\\0&0&1&d_2\\0&0&0&1\end{bmatrix}\]}
+\rbl{IK}$q_1=\atantwo(y,x)$, $d_2=z$, $d_3=\sqrt{x^2+y^2}$ (if $d_3<0$ allowed: $(q_1{+}\pi,d_2,-d_3)$).
+%MAT J_cy
+{\rbsm\[{}^0\mathbf J=\begin{bmatrix}-d_3s_1&0&c_1\\d_3c_1&0&s_1\\0&1&0\\0&0&0\\0&0&0\\1&0&0\end{bmatrix},\qquad\det\mathbf J_\upsilon=d_3\]}
+Singular at $d_3=0$ (tool on the axis; $q_1$ arbitrary). Check: $q_1=40^\circ$, $d_2=0.35$, $d_3=0.5$: $(0.3830,0.3214,0.35)$; $(0.3,0.4,0.6)$: $(53.13^\circ,0.6,0.5)$. \chk
+\end{fbx}
+
+\begin{fbx}[7. Spherical RRP \rbp{W3; W6}]
+\rbl{ETS}${}^0\T_E=\Rm_z(q_1)t_z(H)\Rm_y(q_2)t_z(d_3)$; $q_2$ = tilt of the boom from vertical.
+\rbdh{\rbdhr{1}{0,0,H,q_1}\ \rbdhr{2}{0,-90^\circ,0,q_2}\ \rbdhr{3}{0,90^\circ,d_3,0}}
+%MAT T_sp
+{\rbsm\[{}^0\T_E=\begin{bmatrix}c_1c_2&-s_1&c_1s_2&d_3c_1s_2\\s_1c_2&c_1&s_1s_2&d_3s_1s_2\\-s_2&0&c_2&H+d_3c_2\\0&0&0&1\end{bmatrix}\]}
+\rbl{IK}$q_1=\atantwo(y,x)$, $d_3=\sqrt{r^2+z'^2}$, $q_2=\atantwo(r,z')$, $r=\sqrt{x^2+y^2}$, $z'=z-H$; 2nd: $(q_1{+}\pi,-q_2,d_3)$.
+%MAT J_sp
+{\rbsm\[{}^0\mathbf J=\begin{bmatrix}-d_3s_1s_2&d_3c_1c_2&c_1s_2\\d_3c_1s_2&d_3s_1c_2&s_1s_2\\0&-d_3s_2&c_2\\0&-s_1&0\\0&c_1&0\\1&0&0\end{bmatrix}\]}
+$\det\mathbf J_\upsilon=-d_3^2\sin q_2$: singular if $d_3=0$ or $\sin q_2=0$. Check: $H=0.5$, $(0.3,0.4,0.9)$: $(53.13^\circ,51.34^\circ,0.6403)$ or $(233.13^\circ,-51.34^\circ,0.6403)$; $\det=-0.3202$. \chk
+\end{fbx}
+
+\begin{fbx}[8. SCARA RRPR \rbp{W1 sl.\,54; W2; W3}]
+\rbl{ETS}${}^0\T_E=t_z(H)\Rm_z(q_1)t_x(a_1)\Rm_z(q_2)t_x(a_2)t_z(-d_3)\Rm_z(q_4)$ (tool $z$ up).
+\rbdh{\rbdhr{1}{0,0,H,q_1}\ \rbdhr{2}{a_1,0,0,q_2}\ \rbdhr{3}{a_2,180^\circ,d_3,0}\ \rbdhr{4}{0,180^\circ,0,q_4}}
+%MAT T_sc
+{\rbsm\[{}^0\T_E=\begin{bmatrix}c_{124}&-s_{124}&0&a_1c_1+a_2c_{12}\\s_{124}&c_{124}&0&a_1s_1+a_2s_{12}\\0&0&1&H-d_3\\0&0&0&1\end{bmatrix}\]}
+\rbl{IK}$d_3=H-z$; $(q_1,q_2)$ = RR solution for $(x,y)$ (card 1, $L_i\to a_i$); $q_4=\varphi-q_1-q_2$.
+%MAT J_sc
+{\rbsm\[{}^0\mathbf J=\begin{bmatrix}-a_1s_1-a_2s_{12}&-a_2s_{12}&0&0\\a_1c_1+a_2c_{12}&a_2c_{12}&0&0\\0&0&-1&0\\0&0&0&0\\0&0&0&0\\1&1&0&1\end{bmatrix}\]}
+$\det\mathbf J_\upsilon=-a_1a_2\sin q_2$ (the $-1$: $d_3$ is measured downwards). Check: $H=0.4$, $a=(0.35,0.25)$, $\mathbf q=(40^\circ,-70^\circ,d_3{=}0.12,25^\circ)$: $(0.4846,0.1000,0.28)$, yaw $-5^\circ$. Target $(0.30,0.25,0.28)$, $\varphi=60^\circ$: $(0.83^\circ,100.70^\circ,0.12,-41.53^\circ)$ or $(78.79^\circ,-100.70^\circ,0.12,81.92^\circ)$. \chk
+\end{fbx}
+
+\begin{fbx}[9. Elbow arm RRR \rbp{W13 sl.\,4--5, 7; W2; W3; W6}]
+\rbl{ETS}${}^S\T_T=\Rm_z(\theta_1)t_z(L_1{+}L_2)\Rm_y(-\theta_2)t_x(L_3)\Rm_y(-\theta_3)t_x(L_4)\Rm_x(90^\circ)$.
+\rbdh{\rbdhr{1}{0,0,L_1{+}L_2,\theta_1}\ \rbdhr{2}{0,90^\circ,0,\theta_2}\ \rbdhr{3}{L_3,0,0,\theta_3}\ \rbdhr{4}{L_4,0,0,0}}
+%MAT T_ar
+{\rbsm\[{}^S\T_T=\begin{bmatrix}c_1c_{23}&-c_1s_{23}&s_1&c_1(L_3c_2+L_4c_{23})\\s_1c_{23}&-s_1s_{23}&-c_1&s_1(L_3c_2+L_4c_{23})\\s_{23}&c_{23}&0&L_1+L_2+L_3s_2+L_4s_{23}\\0&0&0&1\end{bmatrix}\]}
+\rbl{IK}4 solutions: $\theta_1=\atantwo(y,x)$ ($r=+\sqrt{x^2+y^2}$) or $\theta_1{+}\pi$ ($r=-\sqrt{\cdot}$); $z'=z-L_1-L_2$
+\[\cos\theta_3=\tfrac{r^2+z'^2-L_3^2-L_4^2}{2L_3L_4},\ \theta_3=\atantwo\big(\pm\sqrt{1-\cos^2\theta_3},\cos\theta_3\big)\]
+\[\theta_2=\atantwo(z',r)-\atantwo(L_4\sin\theta_3,\ L_3+L_4\cos\theta_3)\]
+%MAT J_ar
+{\rbsm\[{}^S\mathbf J=\begin{bmatrix}-s_1(L_3c_2+L_4c_{23})&-c_1(L_3s_2+L_4s_{23})&-c_1L_4s_{23}\\c_1(L_3c_2+L_4c_{23})&-s_1(L_3s_2+L_4s_{23})&-s_1L_4s_{23}\\0&L_3c_2+L_4c_{23}&L_4c_{23}\\0&s_1&s_1\\0&-c_1&-c_1\\1&0&0\end{bmatrix}\]}
+{\rbsm\[\det\mathbf J_\upsilon=-L_3L_4\sin\theta_3\,(L_3c_2+L_4c_{23})\]}
+Singular: $\sin\theta_3=0$ (boundary) or $r=0$ (tool above the base axis). Check: $L=(0.6,0.5,0.4,0.3)$, $\boldsymbol\theta=(30,20,40)^\circ$: $(0.4554,0.2629,1.4966)$; IK also $(30,54.047,-40)$, $(-150,125.953,40)$, $(-150,160,-40)$. \chk
+\end{fbx}
+
+\begin{fbx}[10. Puma 560, 6R spherical wrist \rbp{W2; W3 sl.\,32--38; W6}]
+Axes 4, 5, 6 meet at the wrist centre $W$; tool origin $=W$. \textbf{Zero-offset model} (home pose: arm straight up), $L_b,L_u,L_f$:
+\rbdh{\rbdhr{1}{0,0,L_b,q_1}\ \rbdhr{2}{0,-90^\circ,0,q_2{-}90^\circ}\ \rbdhr{3}{L_u,0,0,q_3{+}90^\circ}\ \rbdhr{4}{0,90^\circ,L_f,q_4}\ \rbdhr{5}{0,-90^\circ,0,q_5}\ \rbdhr{6}{0,90^\circ,0,q_6}}
+{\rbsm\[{}^0\T_E=\begin{bmatrix}{}^0\Rm_3\,{}^3\Rm_6&\mathbf p_W\\\rbcol&1\end{bmatrix},\quad{}^3\Rm_6=\Rm_z(q_4)\Rm_y(q_5)\Rm_z(q_6)\]}
+%MAT R03_pu
+{\rbsm\[{}^0\Rm_3=\Rm_z(q_1)\Rm_y(q_2{+}q_3)=\begin{bmatrix}c_1c_{23}&-s_1&c_1s_{23}\\s_1c_{23}&c_1&s_1s_{23}\\-s_{23}&0&c_{23}\end{bmatrix}\]}
+%MAT pw_pu
+{\rbsm\[\mathbf p_W=\begin{bmatrix}c_1(L_us_2+L_fs_{23})\\s_1(L_us_2+L_fs_{23})\\L_b+L_uc_2+L_fc_{23}\end{bmatrix}\]}
+\rbl{IK}8 branches: $\rho=\pm\sqrt{x_W^2+y_W^2}$, $q_1=\atantwo(y_W,x_W)$ ($\rho>0$) or $+\pi$; $z'=z_W-L_b$; $\cos q_3=\frac{\rho^2+z'^2-L_u^2-L_f^2}{2L_uL_f}$, $q_3=\atantwo(\pm\sqrt{1-\cos^2q_3},\cos q_3)$; $q_2=\atantwo(\rho,z')-\atantwo(L_f\sin q_3,L_u+L_f\cos q_3)$. Wrist: ${}^3\Rm_6=({}^0\Rm_3)^\top{}^0\Rm_E$, $q_5=\atantwo(\pm\sqrt{r_{13}^2+r_{23}^2},r_{33})$, $q_4=\atantwo(\pm r_{23},\pm r_{13})$, $q_6=\atantwo(\pm r_{32},\mp r_{31})$ (same signs together; $q_5=0$: only $q_4{+}q_6$ fixed).
+\rbl{J}$\det\mathbf J=-L_uL_f\sin q_3\,(L_us_2+L_fs_{23})\sin q_5$: elbow, shoulder ($W$ on waist axis), wrist ($\sin q_5=0$, rank 5).\\
+Check: $L=(1.0,0.5,0.3)$, $\mathbf q=(30,20,-40,0,0,0)^\circ$: $\mathbf p_W=(0.0592,0.0342,1.7518)$. \chk
+\par\medskip
+\textbf{Course table} (W3 practical, \texttt{puma560\_fk\_proximal\_dh.py}), $\theta_i=q_i$:
+\rbdh{\rbdhr{1}{0,0,0,q_1}\ \rbdhr{2}{0,-90^\circ,0,q_2}\ \rbdhr{3}{0.4318,0,0.15005,q_3}\ \rbdhr{4}{-0.0203,-90^\circ,0.4318,q_4}\ \rbdhr{5}{0,90^\circ,0,q_5}\ \rbdhr{6}{0,-90^\circ,0,q_6}}
+$\mathbf q=\mathbf 0$: tool at $(0.4115,0.1501,-0.4318)$ pointing down; $\mathbf p_W$ is independent of $q_{4,5,6}$; 8 IK solutions; $W$ in the shell $0.150\le|\mathbf p_W|\le0.877$ m. \chk
+\end{fbx}
+\begin{slideerr}[W3 practical files: two different Puma tables]
+\texttt{puma560\_fk\_proximal\_dh.py} and \texttt{..\_distal\_ets.py} differ: at $\mathbf q=\mathbf 0$ the first gives $(0.4115,0.1501,-0.4318)$ (tool down), the second $(0.4521,-0.1500,0.4318)$; $a_3$ and $\alpha_1$ signs differ. Use the table in the question.
+\end{slideerr}
+
+\begin{fbx}[11. Franka Panda, 7R redundant \rbp{W2; W3 sl.\,40--52}]
+\rbl{ETS}${}^0\T_E=\prod_{i=1}^{7}\Rm_x(\alpha_{i-1})t_x(a_{i-1})\Rm_z(q_i)t_z(d_i)\cdot t_z(0.107)$ (flange).
+\rbdh{\rbdhr{1}{0,0,0.333,q_1}\ \rbdhr{2}{0,-90^\circ,0,q_2}\ \rbdhr{3}{0,90^\circ,0.316,q_3}\ \rbdhr{4}{0.0825,90^\circ,0,q_4}\ \rbdhr{5}{-0.0825,-90^\circ,0.384,q_5}\ \rbdhr{6}{0,90^\circ,0,q_6}\ \rbdhr{7}{0.088,90^\circ,0,q_7}}, then $t_z(0.107)$ (m).
+%MAT T_panda0
+{\rbsm\[{}^0\T_E(\mathbf q=\mathbf 0)=\begin{bmatrix}1&0&0&0.088\\0&-1&0&0\\0&0&-1&0.926\\0&0&0&1\end{bmatrix}\]}
+$6\times7$ Jacobian: column $j$ $=[\mathbf z_j\times(\mathbf p_E-\mathbf o_j);\mathbf z_j]$; $\infty$ IK solutions (self-motion, null space of $\mathbf J$): $\dot{\mathbf q}=\mathbf J^+\boldsymbol\nu+(\mathbf I-\mathbf J^+\mathbf J)\dot{\mathbf q}_0$. Singular (rank 5): $q_2=q_4=0$, or wrist centre on the joint-1 axis. No closed-form IK in the unit. \chk
+\end{fbx}
+
+\begin{fbx}[12. Furuta pendulum, RR in 3D \rbp{W2 sl.\,17--19, 34}]
+\rbl{ETS}${}^B\T_E=t_z(L_0)\Rm_z(\theta_1)t_x(L_1)\Rm_x(\theta_2)t_z(-L_2)\Rm_y(\pi)$.
+\rbdh{\rbdhr{1}{0,0,L_0,q_1{+}90^\circ}\ \rbdhr{2}{0,90^\circ,L_1,q_2}\ \rbdhr{3}{0,90^\circ,L_2,0}; plus ${}^3\T_E=\Rm_z(-90^\circ)$}
+%MAT T_fu
+{\rbsm\[{}^B\T_E=\begin{bmatrix}-c_1&-s_1c_2&-s_1s_2&L_1c_1-L_2s_1s_2\\-s_1&c_1c_2&c_1s_2&L_1s_1+L_2c_1s_2\\0&s_2&-c_2&L_0-L_2c_2\\0&0&0&1\end{bmatrix}\]}
+\rbl{IK}$\cos\theta_2=\frac{L_0-z}{L_2}$, $\theta_2=\atantwo(\pm\sqrt{1-\cos^2\theta_2},\cos\theta_2)$; $\theta_1=\atantwo(y,x)-\atantwo(L_2\sin\theta_2,L_1)$. Reachable only on the sphere $x^2{+}y^2{+}(z{-}L_0)^2=L_1^2{+}L_2^2$.
+%MAT J_fu
+{\rbsm\[{}^B\mathbf J=\begin{bmatrix}-L_1s_1-L_2c_1s_2&-L_2s_1c_2\\L_1c_1-L_2s_1s_2&L_2c_1c_2\\0&L_2s_2\\0&c_1\\0&s_1\\1&0\end{bmatrix}\]}
+Singular iff $\sin\theta_2=0$ (columns parallel). Check: $L=(0.5,0.4,0.3)$, $\boldsymbol\theta=(60^\circ,45^\circ)$: $(0.0163,0.4525,0.2879)$; IK also $(115.88^\circ,-45^\circ)$. \chk
+\end{fbx}
+\end{multicols}
+

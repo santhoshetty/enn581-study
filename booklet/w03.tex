@@ -1,129 +1,282 @@
-\week{W3}{Inverse kinematics}{3}
+\week{W3}{Inverse kinematics and workspace}{3}
 \begin{multicols}{3}
-\hd{The IK problem \pg{7--20}}
-Joint space $\mathcal C$ holds $\mathbf q$ (two R joints: $\mathbb S^1\times\mathbb S^1$). Task space $\mathcal T$ holds the pose $\xi={}^0\T_E$ (or $x,y,z$, roll, pitch, yaw; or position + quaternion) \pg{9}. FK: $\xi=\mathcal K(\mathbf q)$. IK: $\mathbf q=\mathcal K^{-1}(\xi)$ \pg{11}. $\mathcal K$ is many-to-one and nonlinear, so IK has 0, 1, several or infinitely many solutions.\\
-\textbf{Choosing} among solutions \pg{18--19}: closest to the current configuration (smallest joint change; prefer moving small distal joints), or the one that avoids obstacles.\\
-\textbf{Methods} \pg{20}: closed form (algebraic, geometric, polynomial; non-iterative; all solutions) or numerical (iterative; slower; handles long chains; returns a nearby answer when no exact one exists).\\
-A 6-DoF arm has no continuous redundancy for a 6-number pose \pg{33} but has several discrete solutions: PUMA 560 up to \textbf{8} (shoulder L/R $\times$ elbow up/down $\times$ wrist flip) \added.
 
-\hd{Does a solution exist? \pg{12--16}}
-Reachable $W_R$: some orientation. Dexterous $W_D$: all orientations. A full 3D pose needs the \textbf{dexterous} workspace.
-\begin{fbx}[2R reach \pg{15--16}]
-\[|L_1-L_2|\le r\le L_1+L_2\]
-$L=(1.0,0.7)$: annulus $0.3\le r\le1.7$\,m. Joint limits $[0,\pi/2]$ on both: outer edge $q_2=0$ ($1.7$\,m); inner edge $q_2=\pi/2$ ($\sqrt{1+0.49}=1.221$\,m); side edges are $0.7$\,m circles at $q_1=0,\pi/2$.
-\use{“sketch the workspace”: give both radii and why (cosine rule). A 2R arm has no dexterous workspace (orientation is fixed by position).}
-\end{fbx}
-\textit{Ex.:} is $(0,0.2)$ reachable? $\cos q_2=(0.04-1.49)/1.4=-1.036<-1$: no ($0.2<0.3$). \chk
-
-\hd{Planar RP arm \pg{23--24}}
-\[S=\sqrt{x^2+y^2},\qquad q_1=\atantwo(y,x)\]
-Slide writes $\tan^{-1}(y/x)$: use atan2. If $S$ may be negative, $(-S,\,q_1+\pi)$ is a second solution. \textit{Ex.:} $(0.3,0.4)\to S=0.5$, $q_1=53.130^\circ$. \chk
-
-\hd{Planar RR arm, algebraic \pg{25--30}}
-\begin{fbx}[2R inverse kinematics]
-FK: $x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$. Square and add:
-\[\cos q_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2},\quad q_2=\atantwo\!\big(\pm\sqrt{1-\cos^2q_2},\ \cos q_2\big)\]
-\[q_1=\atantwo(y,x)-\atantwo\big(L_2\sin q_2,\ L_1+L_2\cos q_2\big)\]
-\use{two branches (the $\pm$ = elbow) \pg{28}. If $|\cos q_2|>1$ the point is out of reach.}
-\end{fbx}
-Expand compound angles \pg{30}: $x=(L_1{+}L_2c_2)c_1-(L_2s_2)s_1$, $y=(L_2s_2)c_1+(L_1{+}L_2c_2)s_1$: the point is the vector $(L_1{+}L_2c_2,\ L_2s_2)$ rotated by $q_1$. General tool: $A\cos\varphi+B\sin\varphi=C\Rightarrow\varphi=\atantwo(C,\pm\sqrt{A^2{+}B^2{-}C^2})-\atantwo(A,B)$.\\
-\textbf{atan2} \pg{29}: angle of $(x,y)$ in $(-\pi,\pi]$. $\tan^{-1}(y/x)$ gives $45^\circ$ for both $(1,1)$ and $(-1,-1)$; the second is $-135^\circ$. \chk
-\begin{recipe}[IK of any 2-link planar sub-problem (W13 Q3)]
-\label{w3:two}
+\hd{Which recipe, how many solutions, workspace \pg{7--20} \added}
+\begingroup\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.1\linewidth}X@{}}
+\toprule robot (given) & method & \#sol. & reachable workspace $W_R$\\\midrule
+RP $(x,y)$ & polar & 1 (2 if $S<0$) & annulus $S_{\min}\!\le r\!\le S_{\max}$\\
+PR $(x,y)$ & $\sin\theta=y/L$ & 2 & stadium: $D\times2L$ + half-disc $L$ each end\\
+RR $(x,y)$ & cosine rule, $\pm$ & 2 & annulus $|L_1-L_2|\le r\le L_1+L_2$ ($L_1{=}L_2$: disc)\\
+RRR $(x,y,\varphi)$ & wrist point, RR & 2 & disc $r\le\sum L_i$; hole if $2L_{\max}>\sum L_i$\\
+RRR $(x,y)$ only & -- & $\infty$ & (1 DoF spare)\\
+RRP $(x,y,\varphi)$ / 3D & quadratic / polar & 2 & 3D: shell $d_{3\min}\!\le\!\rho\!\le\!d_{3\max}$\\
+RRR 3D $(x,y,z)$ & top, side view & 4 & shell about shoulder, $|L_3{-}L_4|\!\le\!\rho\!\le\!L_3{+}L_4$\\
+6-DoF, sph.\ wrist & wrist centre & 8 & --\\
+general 6R & numerical & $\le16$ & --\\
+\bottomrule
+\end{tabularx}
+\endgroup
+\textbf{Reachable} $W_R$: some orientation. \textbf{Dexterous} $W_D\subseteq W_R$: every orientation (empty for RR, RP, PR, 3D RRR; planar RRR: $L_3+|L_1-L_2|\le r\le L_1+L_2-L_3$). A full pose needs $W_D$, a position only needs $W_R$.
+Boundary: two branches merge, 1 solution ($\sin q_2=0$). Outside: none. Axis through target ($x{=}y{=}0$): $\theta_1$ arbitrary. \textit{Slide numbers:} $L=(1,0.7)$: $0.3\le r\le1.7$; $(0,0.2)$: $\cos q_2=-1.036$, unreachable. \chk\\
+\textit{Planar RRR} $L=(1,0.7,0.3)$: $W_R$ $r\le2.0$; $W_D$ $0.6\le r\le1.4$. \chk
+\slidefig[0.5\linewidth]{w03-lec}{15}{384 62 106 22}{RR, $L=(1,0.7)$, no limits: annulus; $W_D$ empty. With $q_{1,2}\in[0,\pi/2]$ (p.\,16) a crescent with arcs $r=1.7$, $r=1.221$ and two radius-$0.7$ circles}
+\begin{recipe}[Sketch a workspace (W13 Q2) \added]
+\label{w3:wsrecipe}
 \begin{enumerate}
-\item Write FK. Find the shoulder point and the target in the plane (subtract offsets and base height first).
-\item $\cos q_2$ by square-and-add or cosine rule. Check $|\cos q_2|\le1$.
-\item $q_2=\atantwo(\pm\sqrt{1-c_2^2},\,c_2)$: two branches.
-\item $q_1=\atantwo(y,x)-\atantwo(L_2s_2,\,L_1+L_2c_2)$ for each branch.
+\item Name frame and centre (shoulder if joint 1 is a pure spin).
+\item Fold: min distance; stretch: max ($|L_a-L_b|$, $L_a+L_b$).
+\item Spin about an axis through the centre: annulus $\to$ ring (planar) or shell (3D).
+\item Draw two views (side, top), radii and centre height to scale.
+\item State $W_R$, $W_D$, what a limit removes; reason: cosine rule.
+\end{enumerate}
+\end{recipe}
+\textbf{W13 sample Q2} (workspace sketch) and \textbf{Q3} (3D RRR IK): solved on p.\,\pageref{p:SAMPLE}.
+
+\slidefig[0.5\linewidth]{w03-lec}{17}{115 119 115 162}{dashed arm: second configuration, same tool pose (elbow flip)}
+\textbf{Choosing a branch \pg{18--19}:} closest to current $\mathbf q$ (weighted; prefer moving small distal joints), obstacle-free (p.\,19), within joint limits. List all branches \emph{then} apply limits. IK is closed form (algebra/geometry, all solutions) or numerical (iterative, long chains).
+\begin{trap}Giving one branch. List both, then say which you choose and why.\end{trap}
+
+\hd{Closed-form recipe; RP and PR \pg{22--24}}
+\begin{recipe}[Closed-form IK]
+\begin{enumerate}
+\item Sketch, frame $\{0\}$, positive direction of each joint.
+\item Write FK (position, plus orientation if a pose is given).
+\item Isolate joints by geometry/algebra (top and side views; planar 2R triangles).
+\item atan2, keep every $\pm$ branch; state when no solution ($|\cos|>1$) and how many.
 \item Check one branch by FK.
 \end{enumerate}
 \end{recipe}
-\begin{worked}[2R, both elbows]
-$L=(1.0,0.7)$, target $(1.2,0.8)$: $\cos q_2=(1.44+0.64-1-0.49)/1.4=0.421429$, $q_2=\pm65.075^\circ$; $\atantwo(0.8,1.2)=33.690^\circ$.\\
-$q_2=+65.075^\circ$: $q_1=33.690-26.114=\mathbf{7.576^\circ}$.\\
-$q_2=-65.075^\circ$: $q_1=33.690+26.114=\mathbf{59.804^\circ}$.\\
-FK check: $\cos7.576^\circ+0.7\cos72.651^\circ=0.9913+0.2087=1.2000$. \chk
+\premise[RP]{tip $(x,y)$ in $\{0\}$}{$S$, $q_1$}
+\begin{fbx}[RP: polar \pg{24}]
+$x=S\cos q_1,\ y=S\sin q_1\ \Rightarrow\ S=\sqrt{x^2+y^2},\ q_1=\atantwo(y,x)$
+\use{slide writes $\tan^{-1}(y/x)$: use atan2. If $S<0$ allowed: $(-S,q_1+\pi)$.}
+\end{fbx}
+\textit{Ex:} $(0.3,0.4)$: $S=0.5$, $q_1=53.130^\circ$; $(-0.3,0.4)$: $126.870^\circ$ ($\tan^{-1}$ gives $-53.13^\circ$, wrong). \chk\\
+\textbf{PR} (slider $d_1$ along $x_0$, then link $L$ at angle $\theta$): $x=d_1+L\cos\theta$, $y=L\sin\theta$ gives
+$\theta=\atantwo(y,\pm\sqrt{L^2-y^2})$, $d_1=x-L\cos\theta$. None if $|y|>L$. \textit{Ex:} $L=0.5$, $(0.8,0.3)$: $(36.870^\circ,0.4)$ or $(143.130^\circ,1.2\text{ m})$. \chk
+
+\hd{Planar RR: algebraic and geometric \pg{25--31}}
+\premise[RR]{tip $(x,y)$ in $\{0\}$, $L_1,L_2$}{$q_1$ (from $x_0$), $q_2$ (relative to link 1), both anticlockwise}
+\begin{deriv}[$q_2$: square and add \pg{26,28}]
+$x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$. Square, add, use $c_1c_{12}+s_1s_{12}=\cos(q_{12}-q_1)$:
+\[x^2+y^2=L_1^2+L_2^2+2L_1L_2\cos q_2\]
+\end{deriv}
+\begin{fbx}[Planar RR \pg{28,30}]
+\[\cos q_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2},\ \ q_2=\atantwo\big(\pm\sqrt{1-\cos^2q_2},\cos q_2\big)\]
+\[q_1=\atantwo(y,x)-\atantwo(L_2\sin q_2,\ L_1+L_2\cos q_2)\]
+\use{$|\cos q_2|>1$: unreachable. One $q_1$ per $q_2$ branch. General tool \pg{30}: $A\cos\varphi+B\sin\varphi=C\Rightarrow\varphi=\atantwo(C,\pm\sqrt{A^2+B^2-C^2})-\atantwo(A,B)$.}
+\end{fbx}
+\begin{deriv}[$q_1$: rotated vector \pg{30}]
+Expand $c_{12},s_{12}$: $x=k_1c_1-k_2s_1$, $y=k_2c_1+k_1s_1$ with $k_1=L_1+L_2c_2$, $k_2=L_2s_2$. $(x,y)$ is $(k_1,k_2)$ rotated by $q_1$, so polar angles subtract: $\atantwo(y,x)=q_1+\atantwo(k_2,k_1)$.
+\end{deriv}
+\slidefig[0.4\linewidth]{w03-lec}{31}{29 151 653 162}{triangle $OAB$: $O$ base, $A$ elbow, $B$ tip; $\sigma=\atantwo(y,x)$, $\mu$ at $O$}
+\begin{deriv}[geometric: triangle $OAB$ \pg{31}]
+Interior angle at $A$ is $\pi-q_2$. Cosine rule: $x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos(\pi-q_2)$, same as above. Sine rule: $\sin\mu/L_2=\sin q_2/\sqrt{x^2+y^2}$; $q_1=\sigma-\mu$. \added\ $\mu$ has the sign of $q_2$; $\mu=\atantwo(L_2\sin q_2,L_1+L_2\cos q_2)$ gives both branches and equals the algebraic result.
+\end{deriv}
+\begin{twoway}{A. Algebraic}{B. Geometric}
+Needs only FK.\\
+$\cos q_2$ from $x^2+y^2$.\\
+$q_1=\atantwo(y,x)-\atantwo(k_2,k_1)$.\\
+Any chain reducing to $A\cos\varphi+B\sin\varphi=C$.
+\tcblower
+Needs a clean figure.\\
+Interior angle $\pi-q_2$.\\
+$q_1=\sigma-\mu$.\\
+Mirror about $OB$ for the other branch. Full marks if the triangle is drawn and labelled.
+\end{twoway}
+\begin{slideerr}[$\tan^{-1}$ on pp.\,24, 30; W13 p.\,7]
+Slides write $\tan^{-1}(y/x)$ (range $\pm90^\circ$): cannot tell $(1,1)$ from $(-1,-1)$. Use atan2 \pg{29}: $\atantwo(y,x)\in[-\pi,\pi]$, first argument is the sine-like one, $\atantwo(-1,-1)=-135^\circ$; calculator Pol$(x,y)$.
+\end{slideerr}
+\begin{trap}[cosine rule]$x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos q_2$ is wrong (gives the supplement, $114.925^\circ$ below). Spurious root: solving only the $x$-equation gives $-59.804^\circ$, which has $y=-0.8$. \chk\end{trap}
+\begin{worked}[RR, both elbows, IK$\to$FK]
+$L=(1.0,0.7)$, target $(1.2,0.8)$, degrees. $\cos q_2=\dfrac{2.08-1-0.49}{1.4}=0.421429$, $q_2=\pm65.075^\circ$; $\sigma=\atantwo(0.8,1.2)=33.690^\circ$.\\
+$+65.075^\circ$: $\mu=\atantwo(0.6348,1.2950)=26.114^\circ$, $q_1=\mathbf{7.576^\circ}$.\\
+$-65.075^\circ$: $\mu=-26.114^\circ$, $q_1=\mathbf{59.804^\circ}$.\\
+FK ($q_2>0$): $x=\cos7.576^\circ+0.7\cos72.651^\circ=1.2000$ ✓, $y=0.1318+0.6682=0.8000$ ✓. Other: $0.5030+0.6970$, $0.8643-0.0643$ ✓. \chk
 \end{worked}
+\begin{center}
+\begin{tikzpicture}[scale=2.3,>=Latex]
+\draw[->,line width=0.4pt] (-0.1,0)--(1.55,0) node[right,font=\scriptsize]{$x_0$};
+\draw[->,line width=0.4pt] (0,-0.1)--(0,1.05) node[above,font=\scriptsize]{$y_0$};
+\coordinate (O) at (0,0); \coordinate (B) at (1.2,0.8);
+\coordinate (A1) at (0.9913,0.1318); \coordinate (A2) at (0.5030,0.8643);
+\draw[line width=0.5pt,dashed,g3] (O)--(B);
+\draw[line width=1.8pt] (O)--(A1)--(B);
+\draw[line width=1.8pt,densely dashed] (O)--(A2)--(B);
+\fill (O) circle (0.025); \fill (A1) circle (0.025); \fill (A2) circle (0.025); \fill[fill=white,draw=black] (B) circle (0.03);
+\node[font=\scriptsize,anchor=north] at (1.0,-0.07) {$A$, $q_2=+65.075^\circ$}; \draw[line width=0.3pt] (A1)--(1.0,-0.06);
+\node[font=\scriptsize,anchor=south east] at (A2) {$A'$, $q_2=-65.075^\circ$};
+\node[font=\scriptsize,anchor=south west] at (B) {$B=(1.2,0.8)$};
+\node[font=\scriptsize,anchor=north east] at (O) {$O$};
+\draw (0.28,0) arc (0:7.576:0.28); \node[font=\tiny,anchor=west] at (0.28,0.05) {$q_1$};
+\draw (0.52,0) arc (0:33.69:0.52); \node[font=\tiny] at (0.6,0.21) {$\sigma$};
+\end{tikzpicture}
+\end{center}
+\drawncap{both branches reach $B$; solid $(7.576^\circ,65.075^\circ)$, dashed $(59.804^\circ,-65.075^\circ)$.}
 
-\columnbreak
-\hd{Planar RR arm, geometric \pg{31}}
-Triangle $OAB$: $O$ base, $A$ elbow, $B$ tip, $|OB|=\sqrt{x^2+y^2}$. Interior angle at $A$ is $\pi-q_2$.
-\[x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos(\pi-q_2)=L_1^2+L_2^2+2L_1L_2\cos q_2\]
-Sine rule for the angle $\mu$ at $O$: $\sin\mu/L_2=\sin q_2/\sqrt{x^2+y^2}$. With $\sigma=\atantwo(y,x)$, $q_1=\sigma-\mu$. $\mu$ takes the sign of $q_2$, so for $q_2<0$, $q_1=\sigma+|\mu|$. Use $\mu=\atantwo(L_2s_2,\,L_1+L_2c_2)$ and both branches are automatic. \chk\\
-Full marks if the triangle is drawn and labelled. Write “interior angle at elbow $=\pi-q_2$”.
-\begin{trap}
-Cosine rule with the joint angle: $x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos q_2$ gives $\pm114.9^\circ=180^\circ-65.075^\circ$ for the target above (supplement). Slide 36 prints this slip. \chk
-\end{trap}
-
-\hd{Planar RRR with tool angle (nb Q10)}
-\begin{recipe}[3R: position and tool angle $\varphi$]
-\label{w3:rrr}
+\hd{Planar RRR and RRP with tool angle; RRP in 3D \added}
+\premise[RRR]{$(x,y)$, tool angle $\varphi$ from $x_0$; $L_1,L_2,L_3$}{$\theta_{1,2,3}$ (relative)}
+\begin{recipe}[Planar RRR (notebook Q10)]
 \begin{enumerate}
-\item Wrist point $=(x-L_3\cos\varphi,\ y-L_3\sin\varphi)$.
-\item Solve the 2R problem for $\theta_1,\theta_2$ to the wrist point.
-\item $\theta_3=\varphi-\theta_1-\theta_2$.
+\item Wrist point $\mathbf p_W=(x-L_3\cos\varphi,\ y-L_3\sin\varphi)$.
+\item RR to $\mathbf p_W$ (formulas above): 2 branches.
+\item $\theta_3=\varphi-\theta_1-\theta_2$. FK check of $(x,y,\varphi)$.
 \end{enumerate}
 \end{recipe}
-\begin{worked}
-$L=(1.0,0.7,0.3)$, $(x,y)=(1.2,0.9)$, $\varphi=60^\circ$: wrist $(1.0500,0.6402)$; $\theta_2=\pm89.085^\circ$; $\theta_1=-3.319^\circ$ or $66.061^\circ$; $\theta_3=-25.766^\circ$ or $83.024^\circ$. Both reproduce $(1.2,0.9,60^\circ)$. \chk
-\end{worked}
+\textit{Ex:} $L=(1,0.7,0.3)$, $(1.2,0.9)$, $\varphi=60^\circ$: $\mathbf p_W=(1.0500,0.6402)$; $\theta_2=\pm89.085^\circ$; $\theta_1=-3.319^\circ$ or $66.061^\circ$; $\theta_3=-25.766^\circ$ or $83.024^\circ$. Without $\varphi$: $\infty$. \chk\\
+\textbf{RRP planar} (slider direction $\varphi=\theta_1+\theta_2$, $d_3\ge0$): $\mathbf p=L_1(c_1,s_1)+d_3(c_\varphi,s_\varphi)$; $|\mathbf p-d_3\mathbf u|^2=L_1^2$ gives
+\[d_3=p\pm\sqrt{p^2-(x^2+y^2-L_1^2)},\ \ p=xc_\varphi+ys_\varphi\]\[\theta_1=\atantwo(y-d_3s_\varphi,\ x-d_3c_\varphi),\ \ \theta_2=\varphi-\theta_1\]
+\textit{Ex:} $L_1=0.5$, $(0.7,0.4)$, $\varphi=30^\circ$: $p=0.8062$, $d_3=1.3062$ or $0.3062$; $(29.589^\circ,0.411^\circ)$ for $0.3062$. \chk\\
+\textbf{RRP 3D} (height $H$, boom tilted $\theta_2$ from vertical): $\mathbf p=(c_1d_3s_2,\ s_1d_3s_2,\ H+d_3c_2)$ gives
+$\theta_1=\atantwo(y,x)$, $d_3=\sqrt{r^2+z'^2}$, $\theta_2=\atantwo(r,z')$ ($r=\sqrt{x^2+y^2}$, $z'=z-H$); second: $(\theta_1+\pi,-\theta_2,d_3)$. \textit{Ex:} $H=0.5$, $(0.3,0.4,0.9)$: $53.130^\circ$, $d_3=0.6403$, $\theta_2=51.340^\circ$. \chk
 
-\hd{6-DoF arm, spherical wrist \pg{32--38}}
-Last three axes meet at the wrist centre $W$ \pg{34}; joints 4--6 cannot move $W$. Solve $q_1$--$q_3$ from $W$, then $q_4$--$q_6$ from the leftover rotation.
-\begin{recipe}[Decoupled IK (W13 Q3)]
+\hd{3D RRR arm (W13 Q3): top view, side view \pg{W13\,7}}
+\label{w3:q3box}
+\slidefig[0.8\linewidth]{w13-lec}{7}{38 86 10 103}{lecturer's sketch: top view gives $\theta_1$; side view is a planar RR in $(\sqrt{x^2+y^2},z)$}
+\begin{fbx}[IK, four branches]
+FK: $x=c_1r$, $y=s_1r$, $z=L_1+L_2+L_3s_2+L_4s_{23}$, $r=L_3c_2+L_4c_{23}$.
+\[\theta_1=\atantwo(y,x)\ (r>0)\text{ or }\theta_1+\pi\ (r<0)\]\[z'=z-L_1-L_2\]
+\[\cos\theta_3=\frac{r^2+z'^2-L_3^2-L_4^2}{2L_3L_4}\]\[\theta_2=\atantwo(z',r)-\atantwo(L_4\sin\theta_3,\ L_3+L_4\cos\theta_3)\]
+\use{first axis vertical, rest in one plane. $4=2\times2$ solutions; none if $|\cos\theta_3|>1$. $\theta_{2,3}$ positive lifts the arm. Numbers: $L=(0.6,0.5,0.4,0.3)$, $\mathbf p_T=(0.4554,0.2629,1.4966)$ gives $(30,20,40)$, $(30,54.047,-40)$, $(-150,125.953,40)$, $(-150,160,-40)$ degrees; worked on p.\,\pageref{p:SAMPLE}. \chk}
+\end{fbx}
+
+\hd{Six-DoF arm with spherical wrist \pg{32--38}}
+\premise[6-DoF]{pose ${}^0\T_E=\begin{bmatrix}\Rm&\mathbf p_E\\\mathbf 0&1\end{bmatrix}$}{$q_1\dots q_6$}
+Wrist joints rotate about one point $W$, so: \textbf{position of $W\to q_1,q_2,q_3$}; \textbf{orientation $\to q_4,q_5,q_6$} \pg{33--34}.
+\begin{fbx}[Wrist centre \added; no slide formula]
+\[{}^0\mathbf p_W={}^0\mathbf p_E-d_6\,{}^0\Rm_E\,[0\ 0\ 1]^\top\]
+\use{$d_6$ = wrist centre to tool point along $\hat z_E$. Skip if $(x_W,y_W,z_W)$ is given.}
+\end{fbx}
+\slidefig[0.6\linewidth]{w03-lec}{32}{48 130 557 194}{6-DoF arm; last three axes meet at the wrist centre}
+\slidefig[0.7\linewidth]{w03-lec}{36}{77 86 163 221}{step 2: the arm plane, $(r_W,z_W)$, $r_W^2=x_W^2+y_W^2$ (top view, p.\,35: $q_1=\atantwo(y_W,x_W)$)}
+\begin{deriv}[position joints \pg{35--37}]
+$q_1$: arm lies in the vertical plane through $z_0$ and $W$. Triangle joint2--joint3--$W$ (sides $G$, $F$, $\sqrt{r_W^2+(z_W-H)^2}$), interior angle $\pi-q_3$: $r_W^2+(z_W-H)^2=G^2+F^2+2GF\cos q_3$.
+\end{deriv}
+\begin{fbx}[Position joints, signed angles]
+\[q_1=\atantwo(y_W,x_W),\ \ \cos q_3=\frac{r_W^2+(z_W-H)^2-F^2-G^2}{2FG}\]\[q_3=\atantwo\big(\pm\sqrt{1-\cos^2q_3},\cos q_3\big)\]
+\[\sigma=\atantwo(z_W-H,r_W),\ \ \mu=\atantwo(F\sin q_3,\ G+F\cos q_3),\ \ q_2=\sigma-\mu\]
+\use{$H$ joint-2 height; $G$, $F$ link 2, link 3 to $W$. Branches: $q_1+\pi$ (with $r_W\to-r_W$) and $\pm q_3$.}
+\end{fbx}
+\slidefig[0.6\linewidth]{w03-lec}{37}{77 86 163 232}{step 3: $\sigma$ = elevation of the line to $W$, $\mu$ = angle between it and link $G$}
+\begin{slideerr}[pp.\,36--37]
+p.\,36's $\cos(\pi-q_3)$ equals $\cos q_3$ on the right by the cosine rule; p.\,37's $q_2=\sigma+\mu$ holds only for a clockwise elbow bend. Use signed anticlockwise angles as above and fix the sign on your sketch. \chk
+\end{slideerr}
+\begin{worked}[position part]
+$H=0.5$, $G=0.4$, $F=0.3$, $W=(0.4813,0.4039,0.5974)$. $q_1=40^\circ$; $r_W=0.6283$, $z_W-H=0.0974$; $\cos q_3=\dfrac{0.3948+0.0095-0.09-0.16}{0.24}=0.6428$, $q_3=\pm50^\circ$.\\
+$-50^\circ$: $\sigma=8.811^\circ$, $\mu=-21.189^\circ$, $q_2=\mathbf{30.0^\circ}$. $+50^\circ$: $\mu=21.189^\circ$, $q_2=-12.378^\circ$.\\
+$q_1+\pi=220^\circ$: $(q_2,q_3)=(150.0^\circ,50^\circ)$, $(192.378^\circ,-50^\circ)$. 4 position solutions; with wrist flip $4\times2=8$. \chk
+\end{worked}
+\begin{deriv}[wrist \pg{38}]
+${}^3\Rm_6=({}^0\Rm_3)^\top\,{}^0\Rm_6$ (known once $q_{1..3}$ are). For a $z,y,z$ wrist \added: ${}^3\Rm_6=R_z(q_4)R_y(q_5)R_z(q_6)$, so $r_{13}=c_4s_5$, $r_{23}=s_4s_5$, $r_{33}=c_5$, $r_{31}=-s_5c_6$, $r_{32}=s_5s_6$.
+\end{deriv}
+\begin{fbx}[Z--Y--Z wrist angles \added]
+\[q_5=\atantwo\big(\sqrt{r_{13}^2+r_{23}^2},r_{33}\big)\]\[q_4=\atantwo(r_{23},r_{13}),\ \ q_6=\atantwo(r_{32},-r_{31})\]
+\use{$r_{ij}$: row $i$, column $j$ of ${}^3\Rm_6$. Flip: $q_5\to-q_5$, $q_4+\pi$, $q_6+\pi$ (take $-\sqrt\cdot$). $q_5=0$: singular, only $q_4+q_6$ fixed. Other wrist types: derive from the same product.}
+\end{fbx}
+\begin{worked}[wrist angles from ${}^3\Rm_6$]
+${}^3\Rm_6=\begin{bmatrix}0.4963&-0.1684&0.8517\\-0.4014&0.8253&0.3971\\-0.7698&-0.5390&0.3420\end{bmatrix}$: $q_5=\atantwo(0.9397,0.3420)=70^\circ$, $q_4=\atantwo(0.3971,0.8517)=25^\circ$, $q_6=\atantwo(-0.5390,0.7698)=-35^\circ$. Flip $(-155^\circ,-70^\circ,145^\circ)$ gives the same matrix. \chk
+\end{worked}
+\begin{recipe}[Decoupled 6-DoF IK (W13-style)]
 \label{w3:wrist}
 \begin{enumerate}
-\item Wrist centre \added: $\mathbf p_W=\mathbf p_E-d_6\,{}^0\Rm_E[0\ 0\ 1]^\top$.
-\item \textbf{Top view} \pg{35}: $q_1=\atantwo(y_W,x_W)$; second branch $q_1+\pi$.
-\item \textbf{Side view} \pg{36}: shoulder height $H$, upper arm $G$, forearm $F$, $r_W^2=x_W^2+y_W^2$.
-\[\cos q_3=\frac{r_W^2+(z_W-H)^2-F^2-G^2}{2FG},\ \ q_3=\atantwo(\pm\sqrt{1-c_3^2},c_3)\]
-\item \pg{37}: $\sigma=\atantwo(z_W-H,\,r_W)$, $\mu=\atantwo(F\sin q_3,\,G+F\cos q_3)$, $q_2=\sigma-\mu$ (signed, anticlockwise positive).
-\item \textbf{Wrist} \pg{38}: ${}^3\Rm_6=({}^0\Rm_3)^\top\,{}^0\Rm_6$, read $q_4$--$q_6$ as Euler angles.
-\item Count: 2 ($q_1$) $\times$ 2 ($q_3$) $\times$ 2 (wrist flip) $=8$. Check by FK.
+\item ${}^0\mathbf p_W={}^0\mathbf p_E-d_6\,{}^0\Rm_E[0\ 0\ 1]^\top$.
+\item $q_1=\atantwo(y_W,x_W)$ (also $+\pi$).
+\item $\cos q_3$, $\pm q_3$, $q_2=\sigma-\mu$.
+\item ${}^3\Rm_6=({}^0\Rm_3)^\top{}^0\Rm_6$; $q_{4,5,6}$ as Euler angles (both $q_5$ signs).
+\item $2\times2\times2=8$ (PUMA-type). FK check.
 \end{enumerate}
 \end{recipe}
-\begin{fbx}[Z--Y--Z wrist \added]
-${}^3\Rm_6=R_z(q_4)R_y(q_5)R_z(q_6)$:
-\[q_5=\atantwo\big(\sqrt{r_{13}^2+r_{23}^2},\,r_{33}\big)\]\[q_4=\atantwo(r_{23},r_{13}),\quad q_6=\atantwo(r_{32},-r_{31})\]
-\use{other sign of $q_5$ = wrist flip ($q_4$, $q_6$ each change by $\pi$). $q_5=0$: singular, only $q_4+q_6$ is fixed.}
+Closed form needs three neighbouring axes meeting at a point (Pieper) \added, \pg{55--56}; the slides give no PUMA table in W3.
+
+\hd{Numerical IK \pg{40--54}}
+\begin{fbx}[Newton--Raphson \pg{45--52}]
+Goal: minimise $G(\mathbf q)=(x^*-x)^2+(y^*-y)^2$ \pg{41--42}. Scalar root: $q^{k+1}=q^k-G(q^k)/G'(q^k)$, stop when $|G(q^{k+1})-G(q^k)|/|G(q^k)|\le\epsilon$. For IK use the residual \pg{50}:
+\[\mathbf e=\mathbf x^*-\mathcal F(\mathbf q^i),\qquad \mathbf q^{i+1}=\mathbf q^i+\mathbf J^\dagger(\mathbf q^i)\,\mathbf e,\qquad \mathbf J=\partial\mathcal F/\partial\mathbf q\in\R^{m\times n}\]
+\use{$\mathbf J$ in rad. $2\times2$ inverse: $\frac1{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$. Planar 2R: $\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}$, $\det\mathbf J=L_1L_2\sin q_2$.}
 \end{fbx}
-\begin{slideerr}[elbow sign, pp.\,36--37]
-Slide 36 writes $\cos(\pi-q_3)$ on the left; by the cosine rule it equals $+\cos q_3$. Slide 37’s $q_2=\sigma+\mu$ is right only if $q_3$ is a clockwise bend (drawn elbow-up) and $\mu>0$. In the exam define your positive direction on the sketch and keep it; signed anticlockwise angles give the formulas above. \chk
-\end{slideerr}
-
-
-\begin{worked}[wrist-arm position part]
-$H=0.5$, $G=0.4$, $F=0.3$; $W=(0.4813,0.4039,0.5974)$: $q_1=40^\circ$, $r_W=0.6283$, $z_W-H=0.0974$, $\cos q_3=(0.3948+0.0095-0.09-0.16)/0.24=0.6428$, $q_3=\pm50^\circ$.\\
-$q_3=-50^\circ$ (elbow up): $\sigma=8.811^\circ$, $\mu=-21.189^\circ$, $q_2=\mathbf{30.0^\circ}$.\\
-$q_3=+50^\circ$ (elbow down): $q_2=-12.378^\circ$. With $q_1+\pi$ (220$^\circ$): 4 position solutions; $\times2$ wrist flips $=8$. \chk
+\begin{fbx}[Which inverse? \pg{51}]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.3\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}X@{}}
+\toprule shape & $\mathbf J^\dagger$ & meaning\\\midrule
+square $n=m$ & $\mathbf J^{-1}$ & exact\\
+fat $n>m$ & $\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}$ & smallest $\Delta\mathbf q$\\
+tall $n<m$ & $(\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top$ & least squares\\
+\bottomrule
+\end{tabularx}
+\end{fbx}
+\begin{recipe}[One Newton iteration]
+\begin{enumerate}
+\item FK; $\mathbf e=\mathbf x^*-\mathcal F$; stop if $|\mathbf e|\le\epsilon$.
+\item $\mathbf J(\mathbf q^i)$ in full, radians.
+\item $\Delta\mathbf q=\mathbf J^\dagger\mathbf e$; $\mathbf q^{i+1}=\mathbf q^i+\Delta\mathbf q$; confirm $|\mathbf e|$ fell.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[one step, RR]
+$L=(1.0,0.7)$, target $(1.2,0.8)$, $\mathbf q^0=(0.5,0.5)$: FK $=(1.2558,1.0685)$, $\mathbf e=(-0.0558,-0.2685)$. $\mathbf J=\begin{bmatrix}-1.0685&-0.5890\\1.2558&0.3782\end{bmatrix}$, $\det=0.3355$. $\Delta\mathbf q=\frac1{0.3355}\begin{bmatrix}0.3782&0.5890\\-1.2558&-1.0685\end{bmatrix}\mathbf e=(-0.5341,1.0635)$; $\mathbf q^1=(-0.0341,1.5635)$; $|\mathbf e|$: $0.2742\to0.2181$; converges to $(7.576^\circ,65.075^\circ)$ in 5 steps. \chk\\
+Fat: planar RRR, $\mathbf q=(0.3,0.5,0.4)$, $\mathbf e=(0.05,-0.02)$: $\Delta\mathbf q=(0.0186,-0.0740,-0.0437)$, $\mathbf J\Delta\mathbf q=\mathbf e$ ✓. \chk
 \end{worked}
+\begin{trap}$\mathbf J^\top$ for $\mathbf J^{-1}$ is gradient descent (needs a step size). Degrees in $\mathbf J$. For tall $\mathbf J$, $\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}$ is wrong.\end{trap}
+\textbf{Why numerical IK fails (notebook Q4--Q6):} (1) target outside $W_R$ ($(2,0.5)$, $L=(1,0.7)$: stops $0.362$ m short); (2) local minimum, or blow-up at $\det\mathbf J=0$ ($q_2=0$); (3) result depends on the initial guess. \chk\ Closed form: all solutions, fast, hard for long chains; numerical: one solution near the guess, suits long chains \pg{54}.
+\begin{slideerr}[p.\,54]``unique solution a priori'' contradicts pp.\,17, 20; read ``complete set of solutions''.\end{slideerr}
 
-\hd{Numerical IK \pg{40--52}}
-\begin{fbx}[Goal potential and Newton--Raphson]
-$\mathbf q^*=\arg\min_{\mathbf q}\lVert\mathcal K(\mathbf q)\ominus\xi^*\rVert$ \pg{41}. Position only \pg{42}: $G=(x^*-x)^2+(y^*-y)^2$. Scalar NR \pg{45--47}: $q^{k+1}=q^k-G'(q^k)^{-1}G(q^k)$; stop when the relative change $<\varepsilon$.
-\end{fbx}
-\begin{fbx}[Jacobian update \pg{48--52}]
-$\mathbf e=\mathbf x^*-\mathcal F(\mathbf q^i)$, $\mathbf J=\partial\mathcal F/\partial\mathbf q\in\R^{m\times n}$:
-\[\mathbf q^{i+1}=\mathbf q^i+\mathbf J^{\dagger}\mathbf e\]
-\[\mathbf J^\dagger=\begin{cases}\mathbf J^{-1}& n=m\\ \mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}& n>m\text{ “fat”: smallest }\Delta\mathbf q\\ (\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top& n<m\text{ “tall”: least squares}\end{cases}\]
-2R: $\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}$, and for a $2\times2$ matrix $\begin{bmatrix}a&b\\c&d\end{bmatrix}^{-1}=\dfrac1{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$.
-\use{each iteration; invert the $2\times2$ by hand.}
-\end{fbx}
-\begin{worked}[one Newton step]
-2R $(1.0,0.7)$, target $(1.2,0.8)$, $\mathbf q^0=(0.5,0.5)$\,rad. FK $=(1.2558,1.0685)$, $\mathbf e=(-0.0558,-0.2685)$.\\
-$\mathbf J=\begin{bmatrix}-1.0685&-0.5890\\1.2558&0.3782\end{bmatrix}$, $\det\mathbf J=0.3355$.\\
-$\mathbf J^{-1}=\frac1{0.3355}\begin{bmatrix}0.3782&0.5890\\-1.2558&-1.0685\end{bmatrix}$, $\Delta\mathbf q=(-0.5341,\ 1.0635)$.\\
-$\mathbf q^1=(-0.0341,\ 1.5635)$\,rad, $\lVert\mathbf e\rVert$: $0.2742\to0.2181$. Converges to $(7.576^\circ,65.075^\circ)$ in 5 iterations. \chk
-\end{worked}
-\begin{trap}
-Using $\mathbf J^\top$ instead of $\mathbf J^{-1}$ is gradient descent: different direction. Tall $\mathbf J$ with $\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}$ is wrong ($\mathbf J\mathbf J^\top$ singular).
-\end{trap}
-\textbf{Why numerical IK can fail} (name three): target outside the workspace ($G=0$ impossible); local minimum, or divergence near a singular $\mathbf J$; the answer depends on the initial guess. A redundant arm has infinitely many solutions.\\
-\textbf{Closed form exists} \pg{55--56}: any 6-DoF R/P serial chain is solvable, but analytically when three neighbouring axes meet at a point (spherical wrist; Pieper) or three consecutive axes are parallel \added. Slide 54 “unique solution to all positions” means a \emph{complete} set (slides 17, 20 show several).
+\hd{Scenario: corners of a square; edge cases \added}
+\premise[square]{RR, $L=(0.7,0.6)$; corners $(0.5,0.2)$, $(0.9,0.2)$, $(0.9,0.6)$, $(0.5,0.6)$}{$(q_1,q_2)$ per corner, one branch throughout}
+\begingroup\footnotesize
+\begin{tabular}{@{}lccc@{}}\toprule
+corner & $\cos q_2$ & $q_2>0$: $(q_1,q_2)$ & $q_2<0$: $(q_1,q_2)$\\\midrule
+$P_1$ & $-0.6667$ & $(-34.34^\circ,131.81^\circ)$ & $(77.95^\circ,-131.81^\circ)$\\
+$P_2$ & $0.0000$ & $(-28.07^\circ,90.00^\circ)$ & $(53.13^\circ,-90.00^\circ)$\\
+$P_3$ & $0.3810$ & $(2.83^\circ,67.61^\circ)$ & $(64.55^\circ,-67.61^\circ)$\\
+$P_4$ & $-0.2857$ & $(2.79^\circ,106.60^\circ)$ & $(97.60^\circ,-106.60^\circ)$\\\bottomrule
+\end{tabular}
+\endgroup\\
+$r\in[0.538,1.082]\subset[0.1,1.3]$: reachable. $|q_2|\in[67.6^\circ,131.8^\circ]$ never hits $0$ or $180^\circ$, so no singularity and no branch switch; choose by start pose, limits ($q_2\in[0,150^\circ]\Rightarrow q_2>0$) or obstacle. \chk
+\begin{center}
+\begin{tikzpicture}[scale=2.6,>=Latex]
+\draw[line width=0.4pt,g3] (0.5,0.2) rectangle (0.9,0.6);
+\foreach \p/\n/\a in {(0.5,0.2)/1/south east,(0.9,0.2)/2/south west,(0.9,0.6)/3/south west,(0.5,0.6)/4/north west}{\fill \p circle (0.012); \node[font=\scriptsize,anchor=\a] at \p {$P_\n$};}
+\draw[line width=1.6pt] (0,0)--(0.6991,0.0346)--(0.9,0.6);
+\draw[line width=1.6pt,densely dashed] (0,0)--(0.3008,0.6321)--(0.9,0.6);
+\fill (0,0) circle (0.02); \node[font=\scriptsize,anchor=north east] at (0,0) {$O$};
+\node[font=\tiny,anchor=north] at (0.6991,-0.02) {elbow, $q_2>0$};
+\node[font=\tiny,anchor=south] at (0.3008,0.6321) {elbow, $q_2<0$};
+\draw[->,line width=0.4pt] (-0.05,0)--(1.0,0) node[right,font=\scriptsize]{$x_0$};
+\draw[->,line width=0.4pt] (0,-0.05)--(0,0.78) node[above,font=\scriptsize]{$y_0$};
+\end{tikzpicture}
+\end{center}
+\drawncap{arm at $P_3$, both branches.}
+\begingroup\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.34\linewidth}>{\raggedright\arraybackslash}X@{}}
+\toprule RR target & result\\\midrule
+$r>L_1{+}L_2$ or $r<|L_1{-}L_2|$ & $|\cos q_2|>1$: none\\
+$r=L_1+L_2$ & $q_2=0$, 1 solution ($(1,0)\to(0,0)$)\\
+$r=|L_1-L_2|$ & $q_2=\pm180^\circ$, 1 solution\\
+$L_1{=}L_2$, target = base & $q_1$ arbitrary: $\infty$\\
+\bottomrule
+\end{tabularx}
+\endgroup\\
+\emph{Why (explain):} at the boundary the branches coincide and $\det\mathbf J=L_1L_2\sin q_2=0$: a small target move needs a huge joint move; Newton steps blow up there.
 
-\hd{How many solutions? (nb Q12, Q13)}
-Count branch by branch. Notebook 3-DoF arm ($\theta_1$, horizontal $\theta_2$ offset $L_2$, slider $d_3$): $\theta_1$ faces the point or $+\pi$ (2); in the plane $|d_3|=\sqrt{\rho^2-L_2^2}$ gives two $(\theta_2,d_3)$ pairs. Up to 4 if $d_3$ may be negative, 2 if $d_3\ge0$: state the assumption \added. PUMA 560, full pose: up to 8.
-
-\hd{Practical (optional)}
-\texttt{rrp\_ik.py} is really a planar \textbf{2R} (L$_1$=L$_2$=1): analytic IK (both elbows), $2\times2$ Jacobian, Newton--Raphson. $\cos q_2$ is clipped to $[-1,1]$, so an unreachable target silently returns the nearest boundary pose. W3 folder: PUMA 560 FK (proximal DH and distal ETS).
+\begin{examq}[SCARA RRP with tool yaw \mk{marks assumed 6}]
+Column height $H=0.40$, $L_1=0.35$, $L_2=0.25$ m, vertical axes $q_1,q_2,q_4$, slider $d_3$ down. Tool at $(0.30,0.25,0.28)$, yaw $60^\circ$. (a) Derive all branches and the existence condition. (b) Evaluate. (c) How many solutions?
+\solution
+(a) $x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$, $z=H-d_3$, $\varphi=q_1+q_2+q_4$: $d_3=H-z$, RR for $q_1,q_2$, $q_4=\varphi-q_1-q_2$. Exists if $|L_1-L_2|\le r\le L_1+L_2$, $0\le d_3\le$ stroke.\\
+(b) $r=0.3905\in[0.10,0.60]$ ✓. $\cos q_2=\dfrac{0.1525-0.1225-0.0625}{0.175}=-0.1857$, $q_2=\pm100.70^\circ$; $\atantwo(0.25,0.30)=39.806^\circ$.\\
+$+100.70^\circ$: $\mu=\atantwo(0.2457,0.3036)=38.980^\circ$, $q_1=0.826^\circ$, $q_4=-41.53^\circ$.\\
+$-100.70^\circ$: $q_1=78.785^\circ$, $q_4=81.917^\circ$. $d_3=\mathbf{0.12}$ m both.\\
+(c) Two (elbow); $d_3,q_4$ follow; one on the outer boundary, none beyond. FK ✓. \chk
+\end{examq}
+\begin{examq}[Joint limits choose the branch \mk{marks assumed 4}]
+RR, $L_1=0.6$, $L_2=0.45$, $q_2\in[0^\circ,150^\circ]$. Reach $(0.70,-0.30)$: find $(q_1,q_2)$; why is the other solution rejected?
+\solution
+$\cos q_2=\dfrac{0.58-0.36-0.2025}{0.54}=0.03241$, $q_2=\pm88.143^\circ$; $\atantwo(-0.3,0.7)=-23.20^\circ$.\\
+$+88.143^\circ$: $\mu=\atantwo(0.4498,0.6146)=36.20^\circ$, $q_1=-59.40^\circ$. $-88.143^\circ$: $q_1=13.00^\circ$.\\
+Only $q_2=+88.143^\circ$ is in range: \textbf{$(-59.40^\circ,88.14^\circ)$}. List all branches, then apply limits. FK ✓. \chk
+\end{examq}
+\begin{examq}[Spot the errors \mk{marks assumed 4}]
+RR ($L_1=0.5$, $L_2=0.4$), target $(-0.45,0.30)$: ``$\cos q_2=-0.29375$, $q_2=\cos^{-1}(\cdot)=107.08^\circ$; $q_1=\tan^{-1}(y/x)-\atantwo(L_2\sin q_2,L_1+L_2\cos q_2)=-78.68^\circ$. Unique.'' Find the errors; correct $q_1$ for $q_2=+107.08^\circ$.
+\solution
+(1) $\tan^{-1}(0.30/{-0.45})=-33.69^\circ$ loses the quadrant; $\atantwo(0.30,-0.45)=146.31^\circ$. (2) $\cos^{-1}$ gives one sign; $q_2=-107.08^\circ$ also works, not unique. The student's pose reaches $(0.45,-0.30)$.\\
+$\mu=\atantwo(0.4\sin107.08^\circ,0.5+0.4\cos107.08^\circ)=44.99^\circ$: $q_1=\mathbf{101.32^\circ}$; other branch $q_1=191.30^\circ$. FK ✓. \chk
+\end{examq}
 \end{multicols}

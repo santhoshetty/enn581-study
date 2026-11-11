@@ -1,0 +1,13 @@
+\input{preamble}
+\begin{document}
+\newcommand{\maybe}[1]{\IfFileExists{#1.tex}{\input{#1}}{}}
+\maybe{contents}
+\maybe{premises}
+\maybe{front}
+\maybe{recipes}
+\maybe{basics}
+\maybe{robots}
+\maybe{w01}\maybe{w02}\maybe{w03}\maybe{w04}\maybe{w05}\maybe{w06}
+\maybe{w07}\maybe{w08}\maybe{w09}\maybe{w10}\maybe{w11}\maybe{w12}
+\maybe{sample}
+\end{document}

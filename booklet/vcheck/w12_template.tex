@@ -1,0 +1,238 @@
+% W12 booklet part (v3, condensed). GENERATED from vcheck/w12_template.tex by vcheck/v2_w12.py (tables come from the verified script). Edit the template, not this file.
+\week{W12}{Planning: C-space, graph search, sampling-based planners}{12}
+\begin{multicols}{3}
+
+\textbf{Tie-break throughout:} equal priority $\Rightarrow$ alphabetical; grid neighbours up, right, down, left. State your own rule at the top of an answer. Planning \pg{5--9}: given map, kinematics, $\mathbf q_{start},\mathbf q_{goal}$, find a collision-free continuous path or ``none''.
+
+\hd{Configuration space, inflation \pg{12--24}}
+\textbf{Task space} \pg{12}: frame of the task. \textbf{C-space} $\mathcal C$ \pg{14}: generalised coordinates (joint values; $x,y,\theta$); a configuration $\mathbf q$ is a point, the robot is a point there. $\mathcal C_{free}=\{\mathbf q\in\mathcal C\mid\mathbf q\cap\mathcal C_{obs}=\varnothing\}$ \pg{15} (slide writes $\in$; intended $\subset$). Planning = a curve in $\mathcal C_{free}$. Rotary joints wrap ($q\equiv q+2\pi$): RR arm $=$ torus.
+\slidefig[0.85\linewidth]{w12-lec}{19}{163 108 134 146}{2R arm: task space (left), C-space $(\theta_1,\theta_2)$ (right); a point is two C-space points (elbow up/down)}
+\begin{fbx}[C-space image of a point $(x,y)$ \added]
+\begin{gather*}\cos\theta_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2},\ \ \theta_2=\pm\arccos(\cdot)\\ \theta_1=\atantwo(y,x)-\atantwo(L_2\sin\theta_2,L_1+L_2\cos\theta_2)\end{gather*}
+\use{$|\cos\theta_2|>1$: out of reach, no C-space point.}
+\end{fbx}
+\begin{worked}[$L_1=L_2=1$, $P=(1,1)$]
+$\cos\theta_2=0\Rightarrow\theta_2=\pm90^\circ$; $\theta_1=45^\circ\mp45^\circ=0^\circ$ or $90^\circ$: points $(0^\circ,90^\circ)$, $(90^\circ,-90^\circ)$; FK of each gives $(1,1)$. \chk
+\end{worked}
+\textbf{Inflate} \pg{20--24}: disc robot of radius $r$ $\to$ point; obstacle grows by $r$ (Minkowski sum). Corridor width $w$: free width $w-2r<0\Rightarrow$ blocked.
+\begin{fbx}[Grown polygon area \added]
+\[A_{grown}=A+P\,r+\pi r^2\]
+\use{$A$ area, $P$ perimeter of the convex polygon, $r$ robot radius.}
+\end{fbx}
+Triangle $(5,3),(6,3),(5,1)$, $r=0.5$: $A=1$, $P=5.236$, $A_{grown}=1+2.618+0.785=4.403$ m$^2$. \chk
+
+\hd{Roadmap, graph search overview \pg{25--49}}
+\textbf{Visibility graph} \pg{28--36}: join start, goal and vertices whose segment is free; shortest path, hugs corners. \textbf{Voronoi} \pg{37--40}: equidistant from obstacles; max clearance, longer. \textbf{Cells} \pg{41--46}: exact (trapezoids), approximate (uniform grid), adaptive. Practical map: visibility optimum via corner $(8,6)$: $7.906+3.162=11.068$ to the goal-disc centre, $10.068$ to its edge. \chk\par
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.3\linewidth}>{\raggedright\arraybackslash}X@{}}\toprule
+Method \pg{49} & Frontier & Uses\\\midrule
+BFS & queue (FIFO) & number of edges\\
+DFS & stack (LIFO) & nothing (dives)\\
+Dijkstra & priority on $g$ & edge costs $\ge0$\\
+A* & priority on $f=g+h$ & costs + heuristic\\
+PRM, RRT & roadmap / tree & collision checker\\\bottomrule
+\end{tabularx}
+\emph{Frontier} = discovered, not expanded; discovered $\ne$ expanded; path read back through the parent table. \textbf{Grid} \pg{64}: free cell = node; 4-connected (up/right/down/left) or 8-connected (diagonal $\sqrt2$).
+\slidefig[0.9\linewidth]{w12-lec}{59}{19 119 480 181}{the slide graph, start A, goal K; blue $g$ = edge weights, red $h$ (A* slide; none printed at F, K). Shared by samples 1--4}
+
+\hd{BFS and DFS \pg{50--54}}\label{w12:bfs}
+\begin{recipe}[BFS]
+\begin{enumerate}
+\item Queue $=[\text{start}]$, visited $=\{\text{start}\}$.
+\item Pop the \emph{front} $n$; stop if goal.
+\item Each unvisited neighbour $m$ (alphabetical): parent$(m)=n$, push to the \emph{back}, mark visited.
+\item Path = parents from goal back. \textbf{Check:} fewest edges; costs ignored. Time $O(|V|+|E|)$ \pg{65}.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[SAMPLE 1: BFS, A to K]
+Edges: A--B, B--E, A--C, C--F, F--H, H--J, J--K, A--D, D--G, F--G, G--I, I--K. Queue front at left.\par\vspace{1pt}
+\scriptsize\setlength{\tabcolsep}{2pt}
+\begin{tabularx}{\linewidth}{@{}rc>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.2\linewidth}X@{}}\toprule
+step & pop & new (parent) & queue after & visited\\\midrule
+%%GEN:bfs_rows%%
+\bottomrule\end{tabularx}\par\vspace{1pt}
+Parents: %%GEN:bfs_par%%. Path \textbf{A--D--G--I--K}, 4 edges, cost $8+9+7+5=\mathbf{29}$ (fewest edges, not cheapest: 25). \chk
+\end{worked}
+\begin{recipe}[DFS (explicit stack)]
+\begin{enumerate}
+\item Mark visited when \emph{popped}; push neighbours in reverse alphabetical order. Stack $=[\text{start}]$.
+\item Pop the \emph{top}; skip if visited; else mark, record parent (the pusher).
+\item Stop if goal; else push unvisited neighbours. \textbf{Check:} \emph{a} path, not shortest; depth limit \pg{54}.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[SAMPLE 2: DFS, A to K]
+Top of stack at right.\par\vspace{1pt}
+\scriptsize\setlength{\tabcolsep}{2.5pt}
+\begin{tabularx}{\linewidth}{@{}rc>{\raggedright\arraybackslash}p{0.25\linewidth}X@{}}\toprule
+step & pop & action & stack after\\\midrule
+%%GEN:dfs_rows%%
+\bottomrule\end{tabularx}\par\vspace{1pt}
+Parents: %%GEN:dfs_par%%. Path \textbf{A--C--F--G--I--K}, cost $6+5+3+7+5=\mathbf{26}$ (not 25, not fewest edges). \chk
+\end{worked}
+\begin{trap}
+Queue for DFS (that is BFS); visited-on-push changes DFS order; ``DFS is complete'' (not on infinite/deep graphs). Equal edge costs $\Rightarrow$ BFS = Dijkstra (unit costs: A--D--G--I--K, cost %%GEN:unit_cost%%). \chk
+\end{trap}
+
+\hd{Dijkstra \pg{55--58}}\label{w12:dij}
+\begin{fbx}[Relaxation \pg{56}]
+\[\text{if }g(n)+d(n,m)<g(m):\ \ g(m)\leftarrow g(n)+d(n,m),\ \ \text{parent}(m)\leftarrow n\]
+\use{$g$ = cheapest known cost start$\to$node ($\infty$ if unreached); $n$ = unexpanded node with smallest $g$; $m$ its neighbour. Weights $\ge0$.}
+\end{fbx}
+\begin{recipe}[Dijkstra]
+\begin{enumerate}
+\item $g(\text{start})=0$, others $\infty$. 2. Expand smallest-$g$ unexpanded $n$ (alphabetical ties).
+\item Relax each non-expanded neighbour (strict $<$); never change an expanded node.
+\item \textbf{Stop when the goal is expanded}, not discovered. \textbf{Check:} $g(\text{goal})=$ sum of path edges; expansions in non-decreasing $g$.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[SAMPLE 3: Dijkstra, A to K]
+Row = table after expanding the node (its $g$ in brackets); cell $g$/parent; \textbf{bold} = expanded; \underline{underline} = changed; -- = $\infty$.\par\vspace{1pt}
+\scriptsize\setlength{\tabcolsep}{1pt}
+\begin{tabularx}{\linewidth}{@{}rl*{11}{>{\centering\arraybackslash}X}@{}}\toprule
+\# & expand & A&B&C&D&E&F&G&H&I&J&K\\\midrule
+%%GEN:dij_rows%%
+\bottomrule\end{tabularx}\par\vspace{1pt}
+Order A, C, D, B, F, G, H, E, I, J, K (11 expansions). K first discovered at 26 (via I), improves to 25 (via J): stopping at discovery is wrong. Path \textbf{A--C--F--H--J--K}, cost $6+5+7+4+3=\mathbf{25}$. \chk
+\end{worked}
+
+\hd{A* \pg{59--62}}\label{w12:astar}
+\begin{fbx}[A* priority \pg{59}]
+\begin{gather*}f(n)=g(n)+h(n)\\ \text{admissible: }h(n)\le d(n,\text{goal})\ \forall n\\ \text{consistent: }h(n)\le d(n,m)+h(m)\ \forall\text{ adjacent }n,m\end{gather*}
+\use{$h$ = optimistic cost to go. Dijkstra with priority $g\to g+h$. Admissible $\Rightarrow$ optimal; consistent $\Rightarrow$ admissible, popped $f$ non-decreasing. $h=0$ is Dijkstra.}
+\end{fbx}
+\begin{recipe}[A*]
+\begin{enumerate}
+\item Write $h$ at each node; check admissible and consistent (every edge, both directions).
+\item Pop smallest $f$ (ties: smaller $h$, then alphabetical). Relax neighbours; $f(m)=g(m)+h(m)$ uses the \emph{child's} $h$.
+\item Stop when the goal is popped. \textbf{Check:} $f(\text{goal})=g(\text{goal})=$ path cost.
+\end{enumerate}
+\end{recipe}
+\begin{slideerr}[pp.\,56--60]
+Slide prints no $h$ at F, K (a stray blue 9 above F): we use $h(\text{K})=0$, $h(\text{F})=9$; any $h(\text{F})\in[0,13]$ gives the same order and cost. Slide tables pp.\,57, 60 are blank (fills are ours). Slide asks for admissible and consistent; its $h$ is not consistent.
+\end{slideerr}
+\begin{worked}[SAMPLE 4a: A*, A to K]
+Open list: node $g{+}h{=}f$ (parent), sorted by $f$.\par\vspace{1pt}
+\scriptsize\setlength{\tabcolsep}{1.5pt}
+\begin{tabularx}{\linewidth}{@{}rcccc>{\raggedright\arraybackslash}X@{}}\toprule
+\# & expand & $g$ & $h$ & $f$ & open list after expanding\\\midrule
+%%GEN:astar_rows%%
+\bottomrule\end{tabularx}\par\vspace{1pt}
+Order A B D C F G I H J K (10 expansions; E discovered, never expanded). Path A--C--F--H--J--K, cost \textbf{25} $=f(\text{K})$. Popped $f$ drops twice: signature of inconsistent $h$. \chk
+\end{worked}
+\begin{worked}[SAMPLE 4b: admissible? consistent?]
+True $d(n,\text{K})$ from backwards Dijkstra.\par\vspace{1pt}
+\scriptsize\setlength{\tabcolsep}{2pt}
+\begin{tabularx}{\linewidth}{@{}c*{4}{>{\centering\arraybackslash}X}@{}}\toprule
+node & $h$ & $d(n,\text{K})$ & $d-h$ & $h\le d$?\\\midrule
+%%GEN:adm_rows%%
+\bottomrule\end{tabularx}\par\vspace{1pt}
+All $h\le d$: \textbf{admissible} (tight at H, K). Edges, $h(n)\le w+h(m)$ both ways:\par\vspace{1pt}
+\begin{tabularx}{\linewidth}{@{}lXX@{}}\toprule
+edge ($w$) & first direction & second direction\\\midrule
+%%GEN:cons_rows%%
+\bottomrule\end{tabularx}\par\vspace{1pt}
+Fails: C$\to$F ($17>5+9$), H$\to$J ($7>4+2$): \textbf{not consistent} (no $h(\text{F})$ repairs it). A* still optimal since admissible. \chk
+\end{worked}
+\begin{trap}
+$f$ with the parent's $h$; testing consistency one way only; ``admissible means $h<d$'' (it is $\le$); overestimating $h$ (e.g.\ $h(\text{F})=30$) breaks optimality: A--D--G--I--K, cost 29. Manhattan on an 8-connected grid overestimates (offset $(7,5)$: $12>5\sqrt2+2=9.071$); use Euclidean ($8.602$). \chk
+\end{trap}
+
+\hd{Grid sample, dimensionality \pg{63--65}}
+\premise[SAMPLE 5]{5$\times$5 grid, dark = obstacle, 4-connected, unit moves, S $=(0,0)$ top-left, G $=(4,4)$, cells (row,col)}{BFS and A* ($h=$ Manhattan) expansions and path}
+\begin{center}
+\scalebox{0.85}{%%GEN:grid_bfs%%}\hspace{3mm}\scalebox{0.85}{%%GEN:grid_astar%%}
+\end{center}
+\drawncap{expansion order; small number = $f$; shaded = the 10-move path. Order up, right, down, left}
+BFS expands $%%GEN:grid_n%%$ of %%GEN:grid_free%% free cells; A* $%%GEN:grid_a%%$. $h(\text{S})=8$, true cost 10: $f$ stays 8 down column 0 and along row 3, rises to 10 after the bottom dead end $(4,0),(4,1),(4,2)$. Path %%GEN:grid_a_path%%, \textbf{10 moves}, both optimal. \chk
+\begin{fbx}[Grid size in $d$ dimensions \pg{65}]
+\begin{gather*}|V|=N^{d},\quad \text{neighbours}=2d\ \text{or}\ 3^{d}-1\ \text{(diagonals)}\\ |E|_{m\times n}=m(n-1)+n(m-1)\end{gather*}
+\use{$N$ cells per dimension, $d$ C-space dimension. 6D at $N=100$: $10^{12}$ nodes, 12 or 728 neighbours \added. $40\times25$: $960+975=1935$ edges; 5D, $N=50$: $312\,500\,000$ nodes.} \chk
+\end{fbx}
+
+\hd{Sampling-based planners \pg{66--83}}
+Idea \pg{66,69}: no explicit $\mathcal C_{free}$; sampler + distance function + local planner + collision detector. PRM (1996), RRT (1998) \pg{68}.
+\begin{recipe}[PRM \pg{70--72}]
+\begin{enumerate}
+\item Learning: sample $\mathbf q$ uniformly, discard if in $\mathcal C_{obs}$ (point-in-polygon: ray to $+x$, odd crossings = inside); add to $V$.
+\item Connect to vertices within $r$ (or $k$ nearest) if the segment is free (segment--edge test).
+\item Query: add start, goal; A*/Dijkstra on the roadmap. \textbf{Check:} valid, rarely shortest; disconnected $\Rightarrow$ sample more.
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[Hit probability \added]
+\[p=\frac{A_{goal}}{A_{\mathcal C}},\quad E[N]=\frac1p,\quad P(\ge1\text{ hit in }N)=1-(1-p)^N\]
+\use{practical map: $p=\pi/100=0.0314$, $E[N]=31.8$.}
+\end{fbx}
+\begin{worked}[SAMPLE 6a: PRM, practical map, $r=4$]
+$\mathcal C=[0,10]^2$. T1 $(2,7),(4,5),(3,4)$; R $(6,6),(6,8),(8,8),(8,6)$; T2 $(5,3),(6,3),(5,1)$. $S=(1.5,1.5)$, goal disc $(9,9)$, radius 1. Nodes: n1 $(4,2.5)$, n2 $(7,4.5)$, n3 $(9,7)$, n4 $(9,8.5)$ (in disc), n5 $(4.5,6)$, n6 $(7,2)$. Rejected: $(3,5.2)$ in T1, $(5.4,2)$ in T2, $(7,7)$ in R.\par
+\begin{center}
+\scalebox{0.85}{%%GEN:prm_tikz%%}
+\end{center}
+\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\linewidth}{@{}lcX@{}}\toprule
+edge ($\le r$) & length & segment test\\\midrule
+%%GEN:prm_edges%%
+n1--n6 & 3.041 & \textbf{rejected}: crosses T2\\
+\bottomrule\end{tabularx}\par\vspace{1pt}
+S--G crosses R. Dijkstra (order, $g$): %%GEN:prm_order%%. Path \textbf{S--n1--n2--n3--n4}, $2.693+3.606+3.202+1.500=\mathbf{11.00}$ ($10.068$ optimum: S--n2 was $>r$, never tried). \chk
+\end{worked}
+\begin{fbx}[RRT extension \pg{73--76}]
+\[\mathbf q_{new}=\mathbf q_{near}+\delta\,\frac{\mathbf q_{rand}-\mathbf q_{near}}{\lVert\mathbf q_{rand}-\mathbf q_{near}\rVert}\quad(\text{if}\le\delta:\ \mathbf q_{new}=\mathbf q_{rand})\]
+\use{$\mathbf q_{near}$ = nearest tree node; $\delta$ step; keep $\mathbf q_{new}$ (parent $\mathbf q_{near}$) only if the segment is free. Goal bias \added: $\mathbf q_{rand}=\mathbf q_{goal}$ with prob.\ 5--10\,\%. Stop in goal region.}
+\end{fbx}
+\begin{worked}[SAMPLE 6b: RRT, practical map, $\delta=1$]
+$\mathbf q_{rand}=(6,2)$, tree $\{S\}$: $\lVert\cdot\rVert=\sqrt{4.5^2+0.5^2}=4.528$, $\mathbf q_{new}=(1.5+0.994,1.5+0.110)=(\mathbf{2.494},\mathbf{1.610})$ free. Next $\mathbf q_{rand}=(4,5)$: nearest n1 (3.709, S is 4.301), $\mathbf q_{new}=(\mathbf{2.900},\mathbf{2.524})$. From $(4.5,2.5)$ towards $(6.5,2)$: $(5.470,2.257)$ in T2, discarded. \chk
+\end{worked}
+\textbf{Non-holonomic} \pg{77--79}: straight lines assume sideways motion. Sample controls $(v,\omega)$, simulate the kinematic model for time $T$, keep the end pose closest to the target; every candidate obeys $\dot y\cos\theta-\dot x\sin\theta=0$.
+\begin{trap}
+``RRT finds the shortest path'' (no); PRM builds first then queries (RRT stops at the goal); testing the endpoint but not the \emph{segment}.
+\end{trap}
+
+\hd{Choosing a planner \pg{80--83}}\label{w12:which}
+\emph{Complete}: finds a path if one exists, else reports failure. \emph{Resolution complete}: at the chosen grid resolution. \emph{Probabilistically complete}: $P(\text{found})\to1$ as samples $\to\infty$; may not terminate if no path \pg{81}.\par
+\scriptsize\setlength{\tabcolsep}{2pt}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X@{}}\toprule
+Planner & Complete? & Optimal? & Use when\\\midrule
+BFS & resolution (finite graph) & fewest edges; cost only if equal costs & equal moves\\
+DFS & not on deep graphs & no & any path, low memory\\
+Dijkstra & resolution & cheapest, costs $\ge0$ & costs, no goal estimate\\
+A* & resolution & cheapest if $h$ admissible & costs + distance $h$; 2D grids\\
+Visibility & complete & shortest & 2D polygons (inflate)\\
+Voronoi & complete & max clearance & range-sensor following\\
+PRM & probabilistic & no & static map, many queries, high DoF\\
+RRT & probabilistic & no & single query, differential constraints\\\bottomrule
+\end{tabularx}
+\normalsize
+\begin{recipe}[``Which planner?'' \added]
+\begin{enumerate}
+\item $d\le3$ and known map: grid/visibility graph; large $d$: grid needs $N^d$ nodes $\Rightarrow$ sample.
+\item Car/diff-drive: RRT with sampled controls. Static map, many queries: PRM; one query: RRT.
+\item Costs + good guess: A*; costs only: Dijkstra; equal costs: BFS. Name the method \emph{and} its guarantee.
+\end{enumerate}
+\end{recipe}
+
+\begin{examq}[W12 practical sheet \mk{marks not published}]
+Q1 maze (our reading: 5 columns, entrance cell for S): (a) draw the graph; (b) BFS and DFS routes; (c) compare; (d) upgrade to A*. Q2 $\mathcal C=[0,10]^2$, $S=(1.5,1.5)$, goal disc radius 1 at $(9,9)$: PRM components and one path.
+\solution
+\textbf{Q1a} each open cell a node, each opening an undirected edge (weight 1): %%GEN:maze_nums%%. \textbf{b} BFS: fewest moves (8); DFS (up, right, down, left) finds a longer route (16). \textbf{c} BFS expands in rings, guaranteed shortest; DFS depends on neighbour order; goal is 4 cells away by Manhattan but a wall forces an 8-move detour. \textbf{d} $g$ = cost per move, $h$ = Manhattan/Euclidean distance to G (admissible, walls only lengthen), priority queue on $f=g+h$: same 8-move path, fewer cells.\par
+\textbf{Q2} (a) graph = vertex list + weighted edge dict (segment lengths), S first. (b) sampler uniform $x,y\in[0,10]$; $p=\pi/100$, about 32 samples. (c) point test: ray to $+x$, odd crossings = inside. (d) nearest vertex Euclidean. (e) segment $ab$ meets edge $cd$ iff $c,d$ on opposite sides of $ab$ and $a,b$ on opposite sides of $cd$ (orientation signs). (f) goal check $\lVert\mathbf q-(9,9)\rVert\le1$. (g) path S--n1--n2--n3--n4, 11.00 (sample 6a). \chk
+\end{examq}
+\begin{examq}[(W12) Graph search \mk{indicative 8}]
+Undirected: S--A 2, S--B 5, A--C 4, A--D 7, B--D 3, C--G 6, D--G 2. $h$: S 7, A 6, B 4, C 5, D 2, G 0. (a) A* S to G: table, path, cost. (b) Nodes Dijkstra expands. (c) $h$ admissible? consistent?
+\solution
+Ties: lowest $f$, then alphabetical.\par\vspace{1pt}
+\scriptsize\setlength{\tabcolsep}{1.5pt}
+\begin{tabularx}{\linewidth}{@{}rcccc>{\raggedright\arraybackslash}X@{}}\toprule
+\# & expand & $g$ & $h$ & $f$ & open after\\\midrule
+%%GEN:q9_rows%%
+\bottomrule\end{tabularx}\par\vspace{1pt}\small
+(a) Order S A B D G; D improves $9\to8$ (via B). Path \textbf{S--B--D--G}, cost $5+3+2=\boxed{10}=f(G)$. \mk{4}
+(b) Dijkstra: %%GEN:q9_dij_order%%, %%GEN:q9_dij_n%% nodes (A* %%GEN:q9_a_n%%; also expands C). \mk{1}
+(c) True costs to G: %%GEN:q9_true%%; all $h\le d$: admissible; every edge $h(n)\le d(n,m)+h(m)$ both ways: consistent. \mk{3}\ \chk
+\end{examq}
+\begin{examq}[(W12) Sampling-based \mk{indicative 6}]
+(a) Uniform samples in a $10\times10$ m map, goal disc radius 0.8 m: $p$ and expected samples to first hit. (b) $\mathbf q_{near}=(1.5,1.5)$, $\mathbf q_{rand}=(6,2)$, $\delta=1$: $\mathbf q_{new}$. (c) Planner for a 6-DoF arm in a static workshop; meaning of its guarantee?
+\solution
+(a) $p=\pi(0.8)^2/100=0.0201$, $E[N]=1/p=49.7$. \mk{2}
+(b) $\lVert\cdot\rVert=4.528$; $\mathbf q_{new}=(1.5,1.5)+(4.5,0.5)/4.528=\boxed{(2.494,1.610)}$, then test the segment. \mk{2}
+(c) PRM (static, repeated queries) or RRT (single query); grid needs $10^{12}$ nodes. Probabilistically complete: $P(\text{path})\to1$ as samples grow, no termination guarantee if none exists, path not shortest. \mk{2}\ \chk
+\end{examq}
+\end{multicols}

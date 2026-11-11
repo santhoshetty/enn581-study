@@ -1,0 +1,598 @@
+\week{W3}{Inverse kinematics and workspace}{3}
+\begin{multicols}{2}
+
+\hd{Which recipe for which robot? \added}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.17\linewidth}@{}}
+\toprule
+Robot (given $\to$ find) & Method & Solutions\\\midrule
+RP: $(x,y)\to S,q_1$ & polar coordinates & 1 (2 if $S<0$ allowed)\\
+PR: $(x,y)\to d_1,\theta$ & $\sin\theta=y/L$, then $d_1=x-L\cos\theta$ & 2\\
+RR: $(x,y)\to q_1,q_2$ & cosine rule, $\pm$ sine, atan2 & 2\\
+RRR planar: $(x,y,\varphi)$ & wrist point, then RR, $q_3=\varphi-q_1-q_2$ & 2\\
+RRP: $(x,y,\varphi)$ or $(x,y,z)$ & quadratic in $d_3$, or polar in 3D & 2\\
+RRR in 3D (W13 Q3) & top view $\to\theta_1$, side view $\to$ planar RR & 4\\
+6-DoF, spherical wrist & wrist centre; $q_1$--$q_3$; then $q_4$--$q_6$ & up to 8\\
+no closed form & Newton--Raphson with $\mathbf J^\dagger$ & depends on start\\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+\textbf{If the question says\ldots}\par
+\lookup{``derive the IK for $(x_T,y_T,z_T)$''}{top view, then side view (p.\,\pageref{w3:q3box})}
+\lookup{``sketch the workspace''}{outer and inner radius, sweep (p.\,\pageref{w3:wsrecipe})}
+\lookup{``how many solutions''}{count branches (table, \S Multiple solutions)}
+\lookup{``is the point reachable''}{test $|\cos q_2|\le1$ (\S Existence)}
+\lookup{``given a pose, find six joints''}{wrist centre first (\S Spherical wrist)}
+
+\hd{The IK problem: premise \pg{7--11}}
+\premise[inverse kinematics]{a desired tool pose $\xi^*$ (written ${}^0\T_E$, or $x,y,z$ and roll--pitch--yaw, or position and quaternion \pg{9}), expressed in the base frame $\{0\}$; the link constants ($L_i$, $H$, \dots)}{the joint vector $\mathbf q$ (angles in rad for R joints, extensions in m for P joints) with $\mathcal K(\mathbf q)=\xi^*$}
+\slidefig[0.5\linewidth]{w03-lec}{7}{355 119 163 178}{FK $\mathcal K$ maps joint (configuration, actuator) space to task space; IK $\mathcal K^{-1}$ goes back}
+\begin{fbx}[The two maps \pg{7--11}]
+\[\xi_n=\mathcal K(\mathbf q)\ \ (\text{FK}),\qquad \mathbf q=\mathcal K^{-1}(\xi_n)\ \ (\text{IK})\]
+\begin{symbols}
+$\mathbf q$ & joint vector, $q_i\in\mathbb S^1=[0,2\pi)$ for a revolute joint, extension for a prismatic joint & rad, m\\
+$\mathcal C$ & configuration (joint) space: the set of all $\mathbf q$ (two R joints: $\mathbb S^1\times\mathbb S^1$) \pg{8} & --\\
+$\mathcal T$ & task space: the set of all tool poses $\xi_n$ \pg{9} & --\\
+$\mathcal K$ & forward kinematics: many-to-one and nonlinear & --\\
+\end{symbols}
+\use{FK is always a formula; IK is an equation to solve. Because $\mathcal K$ is nonlinear, IK can have 0, 1, several or infinitely many solutions \pg{12}.}
+\end{fbx}
+The three key questions \pg{12}: \emph{does a solution exist? how many? which method?}
+
+\hd{Does a solution exist? Workspace \pg{12--16}}
+\textbf{Reachable} workspace $W_R$: points the tool can reach in \emph{at least one} orientation. \textbf{Dexterous} workspace $W_D$: points it can reach in \emph{every} orientation \pg{13}. A target given as a full pose must lie in $W_D$; a target given as a position only must lie in $W_R$. Always $W_D\subseteq W_R$.
+\slidefig[0.5\linewidth]{w03-lec}{15}{384 62 106 22}{planar RR, $L_1=1$, $L_2=0.7$ m, all joint angles free: reachable workspace = annulus between $|L_1-L_2|$ and $L_1+L_2$; dexterous workspace is empty}
+\begin{fbx}[Reach condition for two links \pg{15}]
+\[|L_1-L_2|\ \le\ r\ \le\ L_1+L_2,\qquad r=\sqrt{x^2+y^2}\]
+\begin{symbols}
+$r$ & distance from the base axis to the target & m\\
+$L_1,L_2$ & link lengths & m\\
+\end{symbols}
+\use{test reachability before solving. Fully stretched gives $r=L_1+L_2$ (outer edge); fully folded gives $r=|L_1-L_2|$ (inner edge). Equivalent to $|\cos q_2|\le1$.}
+\end{fbx}
+\textit{Example (slide numbers):} $L=(1.0,0.7)$ m gives the annulus $0.3\le r\le1.7$ m. Is $(0,0.2)$ reachable? $r=0.2<0.3$, and $\cos q_2=(0.04-1.49)/1.4=-1.036<-1$: no. \chk
+\slidefig[0.5\linewidth]{w03-lec}{16}{413 103 29 54}{same arm with $q_1,q_2\in[0,\pi/2]$: the reachable workspace shrinks to a crescent; dexterous workspace still empty}
+\textbf{Joint limits \pg{16}.} The boundary of the crescent is made of four arcs: the stretched arc $q_2=0$ (radius $1.7$ m), the arc at the other $q_2$ limit (radius $\sqrt{1^2+0.7^2}=1.221$ m at $q_2=\pi/2$), and the two circles of radius $L_2=0.7$ m traced by the forearm about the elbow with $q_1$ held at $0$ and at $\pi/2$ (the second reaches $x=-0.7$ m). \chk
+
+\begin{recipe}[Sketch a workspace (W13 Q2) \added]
+\label{w3:wsrecipe}
+\begin{enumerate}
+\item Name the frame and the point the sketch is centred on (the shoulder, not the base, if joint 1 is a pure lift).
+\item Fold the arm: smallest distance from that point to the tool. Stretch it: largest distance. (Two links: $|L_a-L_b|$ and $L_a+L_b$.)
+\item Sweep: every free joint that spins the arm about an axis through the centre turns the 2D annulus into a ring (planar) or a shell (3D).
+\item Draw the outline and a second view (side and top), both radii and the height of the centre labelled to scale.
+\item Say: reachable region, dexterous region (usually empty), what a joint limit would remove, and the one-line reason (cosine rule).
+\end{enumerate}
+\end{recipe}
+
+\begin{fbx}[Workspaces of the simple robots (no joint limits) \added]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}X@{}}
+\toprule robot & reachable workspace $W_R$\\\midrule
+RP, $S\in[S_{\min},S_{\max}]$ & annulus $S_{\min}\le r\le S_{\max}$ about the base\\
+PR, $d_1\in[0,D]$, link $L$ & ``stadium'': rectangle $D\times2L$ plus a half-disc of radius $L$ at each end\\
+RR & annulus $|L_1-L_2|\le r\le L_1+L_2$; if $L_1=L_2$ a full disc\\
+RRR planar & disc of radius $L_1+L_2+L_3$; hole of radius $2L_{\max}-\sum L_i$ if that is positive\\
+RRR in 3D (Q2) & spherical shell about the shoulder, $|L_3-L_4|\le\rho\le L_3+L_4$\\
+RRP (spherical) & spherical shell about the joint-2 axis point, $d_{3\min}\le\rho\le d_{3\max}$\\
+\bottomrule
+\end{tabularx}
+\use{dexterous workspaces: RR, RP, PR, 3D RRR: empty (position fixes orientation). Planar RRR: tool orientation is free, so the wrist point $\mathbf p-L_3[\cos\varphi,\sin\varphi]^\top$ must stay in the RR annulus for \emph{every} $\varphi$, which shrinks the annulus by $L_3$ on both sides: $L_3+|L_1-L_2|\le r\le L_1+L_2-L_3$ (for $r\ge L_3$).}
+\end{fbx}
+\textit{Example:} planar RRR, $L=(1.0,0.7,0.3)$: reachable disc $r\le2.0$ m; dexterous annulus $0.6\le r\le1.4$ m. \chk
+
+\columnbreak
+\hd{Multiple solutions and how to choose \pg{17--20}}
+\slidefig[0.62\linewidth]{w03-lec}{17}{115 119 115 162}{the dashed arm is a second configuration that puts the tool at the same position and orientation (elbow flip)}
+\begin{fbx}[Number of solutions (interior of the workspace)]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.43\linewidth}X@{}}
+\toprule problem & number\\\midrule
+RP, position & 1; 2 if $S<0$ allowed: $(-S,q_1+\pi)$\\
+PR, position & 2: $\theta$ and $\pi-\theta$\\
+RR, position & 2 (elbow, $\pm q_2$)\\
+RRR planar, pose $(x,y,\varphi)$ & 2\\
+RRR planar, position only & infinitely many (1 DoF spare)\\
+RRP spatial $(\theta_1,\theta_2,d_3\ge0)$ & 2\\
+RRR in 3D, position (Q3) & 4: shoulder $\times$ elbow\\
+6-DoF spherical wrist, full pose & up to 8: $2\times2\times2$ \added\\
+general 6R serial arm & up to 16 \added (standard result, not on slides)\\
+\bottomrule
+\end{tabularx}
+\use{on the workspace boundary two branches merge ($\sin q_2=0$): one solution. Outside: none. If an axis passes through the target ($x=y=0$ for $\theta_1$): infinitely many $\theta_1$.}
+\end{fbx}
+The slides state: a 6-DoF pose is 6 numbers and the arm has 6 joints, so there is no \emph{continuous} redundancy \pg{33}; discrete solutions remain.
+\slidefig[0.4\linewidth]{w03-lec}{18}{115 130 480 108}{start and end poses: solution 1 is closer to the start than solution 2}
+\textbf{Choosing one \pg{18--19}:} closeness to the current configuration (absolute or weighted change of joint angles; number of joints to move; type of joints: prefer small distal joints over big proximal ones), or avoiding an obstacle (p.\,19: only solution 1 is collision-free). Also apply joint limits \emph{after} listing all branches.
+
+\textbf{How IK is solved \pg{20}:} \emph{closed form} (algebra or geometry; non-iterative; all solutions known) or \emph{numerical} (iterative; slower; copes with long chains).
+\begin{trap}
+Answering with one branch. Even if the question asks for ``the'' solution, list both, then say which you choose and why.
+\end{trap}
+
+\hd{The analytic approach \pg{22}}
+\begin{recipe}[Closed-form IK, slide recipe + exam layout]
+\begin{enumerate}
+\item Sketch the robot, mark frame $\{0\}$ and the positive direction of every joint.
+\item Write the FK (position, and orientation if the pose is given).
+\item Use geometry or algebra to isolate the joint variables: project to views (top, side); reduce to planar 2R triangles.
+\item Solve with atan2; keep every branch ($\pm$).
+\item State when no solution exists ($|\cos|>1$) and how many solutions there are.
+\item Check one branch by FK at a number.
+\end{enumerate}
+\end{recipe}
+
+\hd{Planar RP arm \pg{23--24}}
+\slidefig[0.3\linewidth]{w03-lec}{23}{48 151 672 162}{planar RP arm: revolute $q_1$, then prismatic extension $S$ along the link, tip at $(x,y)$}
+\premise[RP]{tip position $(x,y)$ in $\{0\}$, m}{extension $S$ (m) and angle $q_1$ (rad)}
+\begin{fbx}[Polar coordinates \pg{24}]
+FK: $x=S\cos q_1,\ y=S\sin q_1$. Square and add; divide:
+\[S=\sqrt{x^2+y^2},\qquad q_1=\atantwo(y,x)\]
+\begin{symbols}
+$S$ & extension of the prismatic joint, measured from the joint-1 axis & m\\
+$q_1$ & revolute angle from the $x_0$ axis, anticlockwise positive & rad\\
+$x,y$ & tip position in $\{0\}$ & m\\
+\end{symbols}
+\use{the slide writes $q_1=\tan^{-1}(y/x)$; use atan2 so the quadrant is right. If $S<0$ is allowed, $(-S,\ q_1+\pi)$ is a second solution.}
+\end{fbx}
+\textit{Example:} $(x,y)=(0.3,0.4)$: $S=0.5$ m, $q_1=53.130^\circ$. $(-0.3,0.4)$: $S=0.5$, $q_1=126.870^\circ$ ($\tan^{-1}$ would give $-53.13^\circ$, wrong quadrant). FK check: $0.5(\cos53.13^\circ,\sin53.13^\circ)=(0.3,0.4)$. \chk\\
+Reachability: $S_{\min}\le S\le S_{\max}$ (e.g.\ $0.2\le S\le0.8$ m: $(0.9,0.5)$ needs $S=1.030$ m, no).
+
+\sh{PR arm (prismatic first, then revolute) \added}
+\premise[PR]{tip $(x,y)$ in $\{0\}$; slider $d_1$ along $x_0$; one revolute joint $\theta$ at the slider carrying a link of length $L$}{$d_1$ (m) and $\theta$ (rad)}
+FK: $x=d_1+L\cos\theta$, $y=L\sin\theta$. The slider cannot change $y$, so $\theta$ comes from $y$ alone:
+\[\sin\theta=\frac yL,\quad \theta=\atantwo\!\big(y,\ \pm\sqrt{L^2-y^2}\big),\quad d_1=x-L\cos\theta\]
+Two solutions ($\theta$ and $\pi-\theta$); none if $|y|>L$; one if $|y|=L$.\\
+\textit{Example:} $L=0.5$, target $(0.8,0.3)$: $\theta=36.870^\circ,\ d_1=0.4$ m, or $\theta=143.130^\circ,\ d_1=1.2$ m. FK: $0.4+0.5\cos36.87^\circ=0.8$ ✓, $0.5\sin36.87^\circ=0.3$ ✓. \chk
+
+\hd{Planar RR arm: algebraic solution \pg{25--30}}
+\premise[RR]{tip position $(x,y)$ in $\{0\}$ (m), link lengths $L_1,L_2$}{joint angles $q_1,q_2$ (rad); $q_1$ from the $x_0$ axis, $q_2$ relative to link 1, both anticlockwise positive}
+\begin{deriv}[of $q_2$ (square and add) \pg{26,28}]
+FK: $x=L_1\cos q_1+L_2\cos(q_1+q_2)$, $y=L_1\sin q_1+L_2\sin(q_1+q_2)$. Square each and add:
+\begin{align*}
+x^2+y^2&=L_1^2(c_1^2+s_1^2)+L_2^2(c_{12}^2+s_{12}^2)+2L_1L_2(c_1c_{12}+s_1s_{12})\\
+&=L_1^2+L_2^2+2L_1L_2\cos\big((q_1+q_2)-q_1\big)=L_1^2+L_2^2+2L_1L_2\cos q_2
+\end{align*}
+using $c_1c_{12}+s_1s_{12}=\cos(q_{12}-q_1)$. Solve for the cosine, then take $\sin q_2=\pm\sqrt{1-\cos^2q_2}$.
+\end{deriv}
+\begin{fbx}[Planar RR: $q_2$ \pg{28}]
+\[\cos q_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2},\quad \sin q_2=\pm\sqrt{1-\cos^2q_2},\quad q_2=\atantwo(\sin q_2,\cos q_2)\]
+\begin{symbols}
+$x,y$ & tip position in $\{0\}$ & m\\
+$L_1,L_2$ & link lengths & m\\
+$q_2$ & elbow angle, link 2 relative to link 1 & rad\\
+$\pm$ & the two elbow branches (two solutions \pg{28}) & --\\
+\end{symbols}
+\use{first line of every 2-link problem. If $|\cos q_2|>1$ the point is out of reach (no solution).}
+\end{fbx}
+\begin{deriv}[of $q_1$: the point is a rotated vector \pg{30}]
+Expand the compound angles $c_{12}=c_1c_2-s_1s_2$, $s_{12}=s_1c_2+c_1s_2$ and collect in $c_1,s_1$:
+\begin{align*}
+x&=(L_1+L_2c_2)\,c_1-(L_2s_2)\,s_1,\\
+y&=(L_2s_2)\,c_1+(L_1+L_2c_2)\,s_1.
+\end{align*}
+Write $k_1=L_1+L_2c_2$ and $k_2=L_2s_2$ (known once $q_2$ is known). Then $(x,y)^\top$ is $(k_1,k_2)^\top$ rotated by $q_1$, so the polar angles subtract:
+$\atantwo(y,x)=q_1+\atantwo(k_2,k_1)$. Hence
+\[q_1=\atantwo(y,x)-\atantwo(L_2\sin q_2,\ L_1+L_2\cos q_2)\]
+One $q_1$ for each $q_2$ (the slide: ``two solutions since $q_2$ has two solutions'').
+\end{deriv}
+\begin{fbx}[Planar RR: $q_1$ \pg{30}]
+\[q_1=\atantwo(y,x)-\atantwo\big(L_2\sin q_2,\ L_1+L_2\cos q_2\big)\]
+\[\text{general tool \pg{30}: }A\cos\varphi+B\sin\varphi=C\ \Rightarrow\ \varphi=\atantwo\!\big(C,\ \pm\sqrt{A^2+B^2-C^2}\big)-\atantwo(A,B)\]
+\begin{symbols}
+$A,B,C$ & known coefficients of the trigonometric equation & same unit\\
+$\varphi$ & unknown angle & rad\\
+$\pm$ & the two roots of the equation & --\\
+\end{symbols}
+\use{second line of the 2-link problem, one $q_1$ per branch. The general tool solves any $A\cos\varphi+B\sin\varphi=C$ (equivalent form \added: $\varphi=\atantwo(B,A)\pm\arccos\big(C/\sqrt{A^2+B^2}\big)$). }
+\end{fbx}
+\begin{slideerr}[slides use $\tan^{-1}$, p.\,24, 30; W13 p.\,7]
+The slides write $q_1=\tan^{-1}(y/x)$ and $\tan^{-1}(\cdot/\cdot)$ everywhere. $\tan^{-1}$ returns only $(-90^\circ,90^\circ)$, so it cannot tell $(1,1)$ from $(-1,-1)$. Use atan2 \pg{29}. The lecturer's own W13 Q3 sketch writes $\theta_1=\tan^{-1}(y/x)$; atan2 is what gets the quadrant right.
+\end{slideerr}
+\begin{fbx}[atan2 \pg{29}]
+\[\atantwo(y,x)=\begin{cases}\tan^{-1}(y/x)&x>0\\ \tan^{-1}(y/x)+\pi&x<0,\ y\ge0\\ \tan^{-1}(y/x)-\pi&x<0,\ y<0\\ +\pi/2&x=0,\ y>0\\ -\pi/2&x=0,\ y<0\\ \text{undefined}&x=y=0\end{cases}\qquad\text{range }[-\pi,\pi]\]
+\use{first argument is the $y$-like (sine) quantity. $\atantwo(-1,-1)=-135^\circ$ whereas $\tan^{-1}(1)=45^\circ$. Calculator: \texttt{atan2(y,x)} or Pol$(x,y)$.}
+\end{fbx}
+\begin{trap}[spurious root]
+Solving only the $x$-equation $A\cos q_1+B\sin q_1=x$ gives two roots; just one also satisfies the $y$-equation. For the example below the roots are $7.576^\circ$ and $-59.804^\circ$, but $-59.804^\circ$ gives $y=-0.8$. Use the atan2 pair, or check $y$.
+\end{trap}
+
+\hd{Planar RR arm: geometric solution \pg{31}}
+\slidefig[0.38\linewidth]{w03-lec}{31}{29 151 653 162}{triangle $OAB$: $O$ base, $A$ elbow, $B$ tip $(x,y)$; $\sigma=\atantwo(y,x)$, $\mu$ = angle at $O$ between $OA$ and $OB$}
+\begin{deriv}[triangle $OAB$ \pg{31}]
+Sides: $|OA|=L_1$, $|AB|=L_2$, $|OB|=\sqrt{x^2+y^2}$. The \emph{interior} angle at $A$ is $\pi-q_2$ (the joint angle $q_2$ is measured from the extension of link 1). Cosine rule:
+\[x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos(\pi-q_2)=L_1^2+L_2^2+2L_1L_2\cos q_2\]
+because $\cos(\pi-q_2)=-\cos q_2$. This is the algebraic result, so $\cos q_2$ is as in the box above. Sine rule (angle $\mu$ at $O$ opposite $L_2$):
+\[\frac{\sin\mu}{L_2}=\frac{\sin(\pi-q_2)}{\sqrt{x^2+y^2}}=\frac{\sin q_2}{\sqrt{x^2+y^2}}\]
+With $\sigma=\atantwo(y,x)$ the slide gives $q_1=\sigma-\mu$. \emph{Signs} \added: $\mu$ has the sign of $q_2$; for $q_2>0$ the elbow lies on the clockwise side of $OB$ and $q_1=\sigma-\mu$; for $q_2<0$, $\mu<0$ and $q_1=\sigma+|\mu|$. Using $\mu=\atantwo(L_2\sin q_2,\ L_1+L_2\cos q_2)$ gives both automatically, and then $q_1=\sigma-\mu$ equals the algebraic formula.
+\end{deriv}
+\begin{trap}
+Cosine rule with the joint angle: $x^2+y^2=L_1^2+L_2^2-2L_1L_2\cos q_2$ is wrong. For the example below it gives $\pm114.925^\circ=180^\circ-65.075^\circ$ (the supplement). Always write ``interior angle at the elbow $=\pi-q_2$''. \chk
+\end{trap}
+
+\begin{twoway}{A. Algebraic (square and add)}{B. Geometric (triangle $OAB$)}
+Needs only FK.\\
+$\cos q_2$ from $x^2+y^2$.\\
+$q_1=\atantwo(y,x)-\atantwo(k_2,k_1)$, $k_1=L_1+L_2c_2$, $k_2=L_2s_2$.\\
+Both branches: $\pm\sin q_2$.\\
+Works for any number of links if you can reduce to $A\cos\varphi+B\sin\varphi=C$.
+\tcblower
+Needs a clean figure.\\
+Cosine rule with \textbf{interior} angle $\pi-q_2$.\\
+$q_1=\sigma-\mu$ with $\mu$ from the sine rule.\\
+Both branches: mirror the triangle about $OB$.\\
+Fast for planar 2-link and 3D arms after the top/side view; full marks if the triangle is drawn and labelled.
+\end{twoway}
+
+\begin{recipe}[IK of any 2-link planar sub-problem (W13 Q3) \added]
+\label{w3:two}
+\begin{enumerate}
+\item Write FK. Find the shoulder point and the target in the plane (subtract offsets and base height first).
+\item $\cos q_2=\dfrac{\text{(distance)}^2-L_1^2-L_2^2}{2L_1L_2}$; check $|\cos q_2|\le1$.
+\item $q_2=\atantwo(\pm\sqrt{1-c_2^2},c_2)$: two branches.
+\item $q_1=\atantwo(\text{target direction})-\atantwo(L_2s_2,\ L_1+L_2c_2)$ for each branch.
+\item Check one branch by FK. Sanity: stretched arm $(L_1+L_2,0)\Rightarrow q=(0,0)$.
+\end{enumerate}
+\end{recipe}
+
+\begin{worked}[RR, both elbows, IK$\to$FK check]
+$L=(1.0,0.7)$ m, target $(1.2,0.8)$ m, $\{0\}$ at the base, degrees. $r^2=2.08$, $\cos q_2=\dfrac{1.44+0.64-1-0.49}{1.4}=0.421429$, $q_2=\pm65.075^\circ$. $\sigma=\atantwo(0.8,1.2)=33.690^\circ$.\\
+$q_2=+65.075^\circ$: $\mu=\atantwo(0.7\sin65.075^\circ,\ 1+0.7\cos65.075^\circ)=\atantwo(0.6348,1.2950)=26.114^\circ$, $q_1=33.690-26.114=\mathbf{7.576^\circ}$.\\
+$q_2=-65.075^\circ$: $\mu=-26.114^\circ$, $q_1=33.690+26.114=\mathbf{59.804^\circ}$.\\
+FK check ($q_2>0$): $x=\cos7.576^\circ+0.7\cos72.651^\circ=0.9913+0.2087=1.2000$ ✓, $y=\sin7.576^\circ+0.7\sin72.651^\circ=0.1318+0.6682=0.8000$ ✓. Other branch ($q_1=59.804^\circ$, $q_1+q_2=-5.271^\circ$): $x=0.5030+0.6970=1.2000$ ✓, $y=0.8643-0.0643=0.8000$ ✓. \chk
+\end{worked}
+\begin{center}
+\begin{tikzpicture}[scale=2.7,>=Latex]
+\draw[->,line width=0.4pt] (-0.1,0)--(1.55,0) node[right,font=\scriptsize]{$x_0$};
+\draw[->,line width=0.4pt] (0,-0.1)--(0,1.1) node[above,font=\scriptsize]{$y_0$};
+\coordinate (O) at (0,0); \coordinate (B) at (1.2,0.8);
+\coordinate (A1) at (0.9913,0.1318); \coordinate (A2) at (0.5030,0.8643);
+\draw[line width=0.5pt,dashed,g3] (O)--(B);
+\draw[line width=1.8pt] (O)--(A1)--(B);
+\draw[line width=1.8pt,densely dashed] (O)--(A2)--(B);
+\fill (O) circle (0.025); \fill (A1) circle (0.025); \fill (A2) circle (0.025); \fill[fill=white,draw=black] (B) circle (0.03);
+\node[font=\scriptsize,anchor=north] at (1.0,-0.07) {$A$, $q_2=+65.075^\circ$}; \draw[line width=0.3pt] (A1)--(1.0,-0.06);
+\node[font=\scriptsize,anchor=south east] at (A2) {$A'$, $q_2=-65.075^\circ$};
+\node[font=\scriptsize,anchor=south west] at (B) {$B=(1.2,0.8)$};
+\node[font=\scriptsize,anchor=north east] at (O) {$O$};
+\draw (0.28,0) arc (0:7.576:0.28); \node[font=\tiny,anchor=west] at (0.28,0.05) {$q_1$};
+\draw (0.52,0) arc (0:33.69:0.52); \node[font=\tiny] at (0.6,0.21) {$\sigma$};
+\end{tikzpicture}
+\end{center}
+\drawncap{both IK branches reach $B$; solid: $q=(7.576^\circ,65.075^\circ)$, dashed: $(59.804^\circ,-65.075^\circ)$. For $q_2>0$ the elbow is on the clockwise side of $OB$.}
+
+\hd{Planar RRR with tool angle, RRP with tool angle \added}
+\premise[RRR]{tool position $(x,y)$ and tool angle $\varphi$ (from $x_0$) in $\{0\}$; $L_1,L_2,L_3$}{$\theta_1,\theta_2,\theta_3$ (all relative, anticlockwise)}
+\begin{recipe}[Planar RRR: position and tool angle (notebook Q10)]
+\label{w3:rrr}
+\begin{enumerate}
+\item Wrist point $\mathbf p_W=(x-L_3\cos\varphi,\ y-L_3\sin\varphi)$ (end of link 2).
+\item Solve the RR problem to $\mathbf p_W$: $\theta_2=\atantwo(\pm\sqrt{1-c_2^2},c_2)$, $\theta_1$ by the formula above.
+\item $\theta_3=\varphi-\theta_1-\theta_2$ (the three relative angles add to the tool angle).
+\item Two solutions. FK check with the pose $(x,y,\varphi)$.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[RRR]
+$L=(1.0,0.7,0.3)$, $(x,y)=(1.2,0.9)$, $\varphi=60^\circ$: $\mathbf p_W=(1.2-0.15,\ 0.9-0.2598)=(1.0500,0.6402)$; $\theta_2=\pm89.085^\circ$; $\theta_1=-3.319^\circ$ or $66.061^\circ$; $\theta_3=-25.766^\circ$ or $83.024^\circ$. Both reproduce $(1.2,0.9,60^\circ)$. Without $\varphi$ the problem has infinitely many solutions. \chk
+\end{worked}
+\premise[RRP, planar]{tool position $(x,y)$ and slider direction $\varphi$ ($=\theta_1+\theta_2$) in $\{0\}$; first link $L_1$; slider extension $d_3\ge0$ along the second link}{$\theta_1,\theta_2,d_3$}
+FK: $\mathbf p=L_1(\cos\theta_1,\sin\theta_1)+d_3(\cos\varphi,\sin\varphi)$. Move the known slider term across and take the length of both sides: $|\mathbf p-d_3\mathbf u|^2=L_1^2$ with $\mathbf u=(\cos\varphi,\sin\varphi)$, which expands to a quadratic in $d_3$:
+\[d_3^2-2p\,d_3+(x^2+y^2-L_1^2)=0,\quad p=x\cos\varphi+y\sin\varphi,\quad d_3=p\pm\sqrt{p^2-(x^2+y^2-L_1^2)}\]
+\[\theta_1=\atantwo(y-d_3\sin\varphi,\ x-d_3\cos\varphi),\qquad \theta_2=\varphi-\theta_1\]
+Real roots need $p^2\ge x^2+y^2-L_1^2$; keep roots with $d_3\ge0$ (and within the stroke).\\
+\textit{Example:} $L_1=0.5$, $(x,y)=(0.7,0.4)$, $\varphi=30^\circ$: $p=0.8062$, discriminant $0.25$, $d_3=1.3062$ or $0.3062$ m; $(\theta_1,\theta_2)=(29.589^\circ,0.411^\circ)$ for $d_3=0.3062$ (the other: $(-149.589^\circ,179.589^\circ)$). Both give $(0.7,0.4)$. \chk
+
+\hd{RRP arm in 3D (spherical type) \added}
+\premise[RRP, 3D]{tip $(x,y,z)$ in $\{0\}$; $\theta_1$ about $z_0$; at height $H$ a horizontal-axis joint tilts the boom by $\theta_2$ from vertical; $d_3$ slides along the boom}{$\theta_1,\theta_2,d_3$}
+FK: $\mathbf p=(c_1d_3s_2,\ s_1d_3s_2,\ H+d_3c_2)^\top$. Then $r=\sqrt{x^2+y^2}=d_3s_2$ and $z'=z-H=d_3c_2$:
+\[\theta_1=\atantwo(y,x),\quad d_3=\sqrt{r^2+z'^2},\quad \theta_2=\atantwo(r,z')\]
+Second solution $(\theta_1+\pi,\ -\theta_2,\ d_3)$; two more with $d_3<0$ if allowed. \textit{Example:} $H=0.5$, $\mathbf p=(0.3,0.4,0.9)$: $\theta_1=53.130^\circ$, $r=0.5$, $z'=0.4$, $d_3=0.6403$ m, $\theta_2=51.340^\circ$. FK: $(0.3,0.4,0.9)$ ✓. \chk
+
+\hd{3D RRR arm (W13 Q3): top view, side view \pg{W13\,7}}
+\slidefig{w13-lec}{7}{38 86 10 103}{lecturer's solution sketch: top-down view gives $\theta_1$; side-on view gives a planar RR problem in $(\sqrt{x^2+y^2},\,z)$}
+\begin{fbx}[IK of the W13 RRR arm]
+FK: $x=c_1r$, $y=s_1r$, $z=L_1+L_2+L_3s_2+L_4s_{23}$, with $r=L_3c_2+L_4c_{23}$. Then
+\[\theta_1=\atantwo(y,x)\ (r>0)\ \text{ or }\ \theta_1+\pi\ (r<0)\]
+\[\cos\theta_3=\frac{r^2+z'^2-L_3^2-L_4^2}{2L_3L_4},\ \ z'=z-L_1-L_2,\quad \theta_3=\atantwo(\pm\sqrt{1-\cos^2\theta_3},\cos\theta_3)\]
+\[\theta_2=\atantwo(z',r)-\atantwo(L_4\sin\theta_3,\ L_3+L_4\cos\theta_3)\]
+\begin{symbols}
+$L_1,L_2$ & vertical offsets: base to shoulder height $L_1+L_2$ & m\\
+$L_3,L_4$ & upper arm and forearm (shoulder to elbow, elbow to tip) & m\\
+$\theta_1$ & rotation about $z_S$ & rad\\
+$\theta_2,\theta_3$ & rotations about horizontal axes, positive lifts the arm (about $-y$) & rad\\
+$r$ & horizontal radius of the tip, signed ($r=-\sqrt{x^2+y^2}$ for the back-reaching branch) & m\\
+$z'$ & tip height above the shoulder & m\\
+\end{symbols}
+\use{any arm whose first axis is vertical and the rest lie in one plane. Four solutions: ($\theta_1$ or $\theta_1+\pi$) $\times$ ($\pm\theta_3$). Full derivation and numbers: exam question in this week's last section.}
+\end{fbx}
+
+\hd{Six-DoF arm with a spherical wrist \pg{32--38}}
+\slidefig[0.56\linewidth]{w03-lec}{32}{48 130 557 194}{6-DoF arm; the last three axes meet in a point (spherical wrist)}
+\premise[6-DoF IK]{desired tool pose ${}^0\T_E=\begin{bmatrix}\Rm_{3\times3}&\mathbf T_{3\times1}\\\mathbf 0_{1\times3}&1\end{bmatrix}$ in $\{0\}$}{$q_1,\dots,q_6$}
+Idea \pg{33--34}: a pose is 6 numbers and the arm has 6 joints. Because the three wrist joints rotate about \emph{one point} (the wrist centre $W$), moving joints 4--6 cannot move $W$. So split the problem: \textbf{position of $W$ $\to q_1,q_2,q_3$}; \textbf{orientation $\to q_4,q_5,q_6$}.
+\begin{fbx}[Wrist centre \added; slide p.\,34 gives no formula]
+\[{}^0\mathbf p_W={}^0\mathbf p_E-d_6\,{}^0\Rm_E\begin{bmatrix}0\\0\\1\end{bmatrix}\]
+\begin{symbols}
+${}^0\mathbf p_E$ & tool position (last column of ${}^0\T_E$) in $\{0\}$ & m\\
+${}^0\Rm_E$ & tool orientation in $\{0\}$; its third column is the approach axis $\hat z_E$ & --\\
+$d_6$ & distance from the wrist centre to the tool point along $\hat z_E$ & m\\
+${}^0\mathbf p_W$ & wrist centre $(x_W,y_W,z_W)$ in $\{0\}$ & m\\
+\end{symbols}
+\use{first step whenever a tool pose (not the wrist centre) is given. If the slide gives $(x_W,y_W,z_W)$ directly, skip it.}
+\end{fbx}
+\slidefig[0.78\linewidth]{w03-lec}{35}{48 97 269 227}{step 1: look down from above, $q_1=\atantwo(y_W,x_W)$}
+\begin{deriv}[the three position joints \pg{35--37}]
+\textbf{Step 1 (top view).} The arm lies in the vertical plane through $z_0$ and $W$: $q_1=\atantwo(y_W,x_W)$. A second branch is $q_1+\pi$ with the arm reaching backwards (then use $r_W\to-r_W$ below).\\
+\textbf{Step 2 (vertical plane).} $H$ = height of joint 2, $G$ = link 2 (joint 2 to 3), $F$ = link 3 (joint 3 to $W$), $r_W^2=x_W^2+y_W^2$. Triangle joint2--joint3--$W$: sides $G$, $F$ and $\sqrt{r_W^2+(z_W-H)^2}$. With $q_3$ the relative elbow angle (anticlockwise positive), the interior angle at joint 3 is $\pi-q_3$:
+\[r_W^2+(z_W-H)^2=G^2+F^2-2GF\cos(\pi-q_3)=G^2+F^2+2GF\cos q_3\]
+\end{deriv}
+\slidefig[0.78\linewidth]{w03-lec}{36}{77 86 163 221}{step 2: the plane that contains the arm, $(r_W,z_W)$ with $r_W^2=x_W^2+y_W^2$}
+\begin{fbx}[Position joints $q_1,q_2,q_3$ \pg{35--37}, signed angles]
+\[q_1=\atantwo(y_W,x_W)\]
+\[\cos q_3=\frac{r_W^2+(z_W-H)^2-F^2-G^2}{2FG},\quad q_3=\atantwo\big(\pm\sqrt{1-\cos^2q_3},\ \cos q_3\big)\]
+\[\sigma=\atantwo(z_W-H,\ r_W),\quad \mu=\atantwo\big(F\sin q_3,\ G+F\cos q_3\big),\quad q_2=\sigma-\mu\]
+\begin{symbols}
+$H$ & height of joint 2 above the base frame & m\\
+$G,F$ & link lengths joint 2 to 3, and joint 3 to the wrist centre & m\\
+$r_W$ & horizontal distance of $W$ from the $z_0$ axis & m\\
+$\sigma$ & elevation of the line from joint 2 to $W$ & rad\\
+$\mu$ & angle at joint 2 between $G$ and that line & rad\\
+\end{symbols}
+\use{after the wrist centre is known. Branches: $q_1$ or $q_1+\pi$ (with $r_W\to-r_W$), and $\pm q_3$.}
+\end{fbx}
+\slidefig[0.78\linewidth]{w03-lec}{37}{77 86 163 232}{step 3: $\sigma$ is the elevation of the line to $W$, $\mu$ the angle between it and link $G$}
+\begin{slideerr}[elbow sign, pp.\,36--37]
+Slide 36 writes $\cos(\pi-q_3)$ on the left of the equation. By the cosine rule the right-hand side equals $\cos q_3$ when $q_3$ is the relative elbow angle (as in the RR arm, and as $\mu$ on p.\,37 assumes). Slide 37's $q_2=\sigma+\mu$ is right only if $q_3$ is drawn as a clockwise bend (elbow up) and $\mu>0$. With signed anticlockwise angles the formulas in the box above hold. In the exam, define your positive direction on the sketch and keep it. \chk
+\end{slideerr}
+\begin{worked}[wrist-arm position part, $\{0\}$ at the base]
+$H=0.5$, $G=0.4$, $F=0.3$ m, $W=(0.4813,0.4039,0.5974)$ m. $q_1=\atantwo(0.4039,0.4813)=40^\circ$; $r_W=0.6283$, $z_W-H=0.0974$; $\cos q_3=\dfrac{0.3948+0.0095-0.09-0.16}{0.24}=0.6428$, $q_3=\pm50^\circ$.\\
+$q_3=-50^\circ$ (elbow up): $\sigma=8.811^\circ$, $\mu=\atantwo(0.3\sin(-50^\circ),\ 0.4+0.3\cos50^\circ)=-21.189^\circ$, $q_2=\mathbf{30.0^\circ}$.\\
+$q_3=+50^\circ$ (elbow down): $\mu=+21.189^\circ$, $q_2=-12.378^\circ$.\\
+With $q_1+\pi=220^\circ$ ($r_W\to-r_W$): $(q_2,q_3)=(150.0^\circ,50^\circ)$ and $(192.378^\circ,-50^\circ)$. Four position solutions, all reproduce $W$ by FK. With the wrist flip below: $4\times2=8$. \chk
+\end{worked}
+\begin{deriv}[the wrist, step 4 \pg{38}]
+${}^0\T_6={}^0\T_3\,{}^3\T_6$. Joints 1--3 are now known, so ${}^0\Rm_3$ is known and
+\[{}^3\Rm_6=({}^0\Rm_3)^\top\,{}^0\Rm_6\quad(\text{since }{}^0\Rm_3^{-1}={}^0\Rm_3^\top)\]
+${}^3\Rm_6$ is a product of three elementary rotations, ``like the Euler angles of the previous lecture'': read $q_4,q_5,q_6$ from it with compound-rotation algebra. For a wrist with axes $z,y,z$ \added: ${}^3\Rm_6=R_z(q_4)R_y(q_5)R_z(q_6)$, so $r_{13}=c_4s_5$, $r_{23}=s_4s_5$, $r_{33}=c_5$, $r_{31}=-s_5c_6$, $r_{32}=s_5s_6$ (rows and columns of ${}^3\Rm_6$).
+\end{deriv}
+\begin{fbx}[Z--Y--Z wrist angles \added]
+\[q_5=\atantwo\big(\sqrt{r_{13}^2+r_{23}^2},\ r_{33}\big),\quad q_4=\atantwo(r_{23},\,r_{13}),\quad q_6=\atantwo(r_{32},\,-r_{31})\]
+\begin{symbols}
+$r_{ij}$ & element in row $i$, column $j$ of ${}^3\Rm_6$ & --\\
+$q_4,q_5,q_6$ & wrist joint angles & rad\\
+\end{symbols}
+\use{second solution (wrist flip): $q_5\to-q_5$, $q_4\to q_4+\pi$, $q_6\to q_6+\pi$ (recompute with $-\sqrt{\cdot}$). If $q_5=0$ the wrist is singular: only $q_4+q_6$ is fixed. A different wrist (e.g.\ $x,y,z$) needs its own extraction; derive it from the same product.}
+\end{fbx}
+\begin{worked}[wrist angles from a numerical ${}^3\Rm_6$]
+\[{}^3\Rm_6=\begin{bmatrix}0.4963&-0.1684&0.8517\\-0.4014&0.8253&0.3971\\-0.7698&-0.5390&0.3420\end{bmatrix}\]
+$q_5=\atantwo(\sqrt{0.8517^2+0.3971^2},\ 0.3420)=\atantwo(0.9397,0.3420)=70^\circ$; $q_4=\atantwo(0.3971,0.8517)=25^\circ$; $q_6=\atantwo(-0.5390,\ 0.7698)=-35^\circ$. Flip: $(-155^\circ,-70^\circ,145^\circ)$ gives the same matrix. \chk
+\end{worked}
+\begin{recipe}[Decoupled IK of a 6-DoF arm with a spherical wrist (W13-style)]
+\label{w3:wrist}
+\begin{enumerate}
+\item Wrist centre: ${}^0\mathbf p_W={}^0\mathbf p_E-d_6\,{}^0\Rm_E[0\ 0\ 1]^\top$.
+\item Top view: $q_1=\atantwo(y_W,x_W)$ (also $q_1+\pi$).
+\item Vertical plane: $\cos q_3$, then $\pm q_3$; $q_2=\sigma-\mu$.
+\item ${}^3\Rm_6=({}^0\Rm_3)^\top\,{}^0\Rm_6$; read $q_4,q_5,q_6$ as Euler angles (both signs of $q_5$).
+\item Count: $2$ ($q_1$) $\times2$ ($q_3$) $\times2$ (wrist flip) $=8$ for a PUMA-type arm. Check by FK.
+\end{enumerate}
+\end{recipe}
+\textbf{Why a closed form exists \pg{55--56}:} any 6-DoF serial chain of R and P joints is ``solvable'', but not always in closed form. A sufficient condition is that three neighbouring joint axes intersect at one point (the spherical wrist; Pieper's result \added; three consecutive parallel axes also work \added). The slides treat one generic 6-DoF arm; they do not give a PUMA 560 DH table in this week. The count $8$ for a PUMA-type arm is the standard result \added.
+
+\hd{Numerical IK \pg{40--52}}
+\slidefig[0.45\linewidth]{w03-lec}{42}{48 130 528 151}{goal $\xi^*=(x^*,y^*)$; minimise the distance to $\xi=\mathcal K(\mathbf q)$}
+\begin{fbx}[Goal potential \pg{41--42}]
+\[\mathbf q^*=\arg\min_{\mathbf q}\ G(\mathbf q),\qquad G(\mathbf q)=\lvert\mathcal K(\mathbf q)\ominus\xi^*\rvert=(x^*-x)^2+(y^*-y)^2\ \ (\text{position only})\]
+\begin{symbols}
+$G(\mathbf q)$ & goal potential: how far the tool is from the goal & m$^2$\\
+$\ominus$ & pose difference operator & --\\
+$(x,y)=\mathcal K(\mathbf q)$ & current tool position & m\\
+\end{symbols}
+\use{adjust $\mathbf q$ until $\xi\to\xi^*$; the minimiser is the IK solution.}
+\end{fbx}
+\begin{fbx}[Newton--Raphson, scalar \pg{45--47}]
+\[G(q)\approx G(q^0)+\frac{\partial G}{\partial q}(q^0)\,(q-q^0)\ \overset{G=0}{\Longrightarrow}\ q^{k+1}=q^k-\Big(\frac{\partial G}{\partial q}(q^k)\Big)^{-1}G(q^k),\quad \Big\lvert\frac{G(q^{k+1})-G(q^k)}{G(q^k)}\Big\rvert\le\epsilon\]
+\begin{symbols}
+$G(q)$ & function whose root is wanted ($G:\R\to\R$) & --\\
+$q^k$ & $k$-th guess; $q^0$ the initial guess & rad\\
+$\epsilon$ & stopping threshold on the relative change & --\\
+\end{symbols}
+\use{keep the first-order Taylor term only and solve for the zero. For IK use the residual form $G=\mathcal F(\mathbf q)-\mathbf x^*$ (p.\,50), not the squared distance.}
+\end{fbx}
+\begin{worked}[scalar Newton--Raphson \added]
+One link, $L=1$ m, wanted $x^*=0.6$ m: $G(q)=\cos q-0.6$, $G'(q)=-\sin q$. $q^0=1$ rad: $G=-0.0597$, $G'=-0.8415$, $q^1=1-(-0.0597)/(-0.8415)=0.9291$; $q^2=0.9273$; $q^3=0.9273=\arccos0.6$. \chk
+\end{worked}
+\begin{fbx}[Jacobian update and pseudo-inverse \pg{48--52}]
+\[\mathbf e=\mathbf x^*-\mathcal F(\mathbf q^i),\qquad \mathbf q^{i+1}=\mathbf q^i+\mathbf J^\dagger(\mathbf q^i)\,\mathbf e,\qquad \mathbf J=\frac{\partial\mathcal F}{\partial\mathbf q}\in\R^{m\times n}\]
+\begin{symbols}
+$\mathbf x^*\in\R^m$ & desired task vector & m\\
+$\mathcal F(\mathbf q)$ & forward kinematics in task coordinates & m\\
+$\mathbf e$ & task-space error (goal minus current); stop when $|\mathbf e|\le\epsilon$ & m\\
+$\mathbf J$ & Jacobian: $m$ task rows, $n$ joint columns & m/rad\\
+$\mathbf J^\dagger$ & (pseudo-)inverse of $\mathbf J$ & rad/m\\
+\end{symbols}
+\use{one iteration = one FK, one $\mathbf J$, one solve. For a $2\times2$: $\begin{bmatrix}a&b\\c&d\end{bmatrix}^{-1}=\dfrac1{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$.}
+\end{fbx}
+\begin{fbx}[Which inverse? Decide from the shape of $\mathbf J$ \pg{51}]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}X@{}}
+\toprule shape & $\mathbf J^\dagger$ & meaning\\\midrule
+square, $n=m$ & $\mathbf J^{-1}$ & exact step\\
+fat, $n>m$ (redundant) & $\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}$ & infinitely many $\Delta\mathbf q$; picks the smallest\\
+tall, $n<m$ & $(\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top$ & no exact $\Delta\mathbf q$; least squares\\
+\bottomrule
+\end{tabularx}
+\use{for planar 2R position IK $\mathbf J$ is $2\times2$:\ $\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}$, $\det\mathbf J=L_1L_2\sin q_2$ (singular when the arm is stretched or folded). Planar RRR with position only is fat ($2\times3$).}
+\end{fbx}
+\begin{recipe}[One Newton--Raphson iteration for IK]
+\begin{enumerate}
+\item FK at $\mathbf q^i$; $\mathbf e=\mathbf x^*-\mathcal F(\mathbf q^i)$; if $|\mathbf e|\le\epsilon$ stop.
+\item Write $\mathbf J(\mathbf q^i)$ in full (radians).
+\item $\Delta\mathbf q=\mathbf J^\dagger\mathbf e$ (use the table for the shape).
+\item $\mathbf q^{i+1}=\mathbf q^i+\Delta\mathbf q$; recompute $|\mathbf e|$ to confirm it fell.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[one Newton step, RR, $\{0\}$ at base]
+$L=(1.0,0.7)$, target $(1.2,0.8)$, $\mathbf q^0=(0.5,0.5)$ rad. FK $=(1.2558,1.0685)$, $\mathbf e=(-0.0558,-0.2685)$.\\
+$\mathbf J=\begin{bmatrix}-1.0685&-0.5890\\1.2558&0.3782\end{bmatrix}$, $\det\mathbf J=0.3355$ ($=L_1L_2\sin0.5$ ✓).\\
+$\mathbf J^{-1}=\frac1{0.3355}\begin{bmatrix}0.3782&0.5890\\-1.2558&-1.0685\end{bmatrix}$, $\Delta\mathbf q=(-0.5341,\ 1.0635)$ rad.\\
+$\mathbf q^1=(-0.0341,\ 1.5635)$ rad; $|\mathbf e|$: $0.2742\to0.2181$. It converges to $(7.576^\circ,65.075^\circ)$ in 5 iterations. \chk
+\end{worked}
+\begin{worked}[fat Jacobian: planar RRR, position only \added]
+$L=(1.0,0.7,0.3)$, $\mathbf q=(0.3,0.5,0.4)$ rad, want $\mathbf e=(0.05,-0.02)$ m. $\mathbf J=\begin{bmatrix}-1.0773&-0.7818&-0.2796\\1.5517&0.5964&0.1087\end{bmatrix}$, $\mathbf J\mathbf J^\top=\begin{bmatrix}1.8499&-2.1683\\-2.1683&2.7754\end{bmatrix}$ (det $0.4326$). $\Delta\mathbf q=\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}\mathbf e=(0.0186,-0.0740,-0.0437)$ rad, $|\Delta\mathbf q|=0.0879$; check $\mathbf J\Delta\mathbf q=(0.05,-0.02)$ ✓. \chk
+\end{worked}
+\begin{trap}
+$\mathbf J^\top$ instead of $\mathbf J^{-1}$ is gradient descent: a different direction, needs a step size. For tall $\mathbf J$, $\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}$ is wrong ($\mathbf J\mathbf J^\top$ is singular). Degrees in $\mathbf J$ or in the update: radians only.
+\end{trap}
+\textbf{Why numerical IK can fail (name three; notebook Q4--Q6, p.\,44):} (1) $G=0$ is impossible if $\xi^*$ is outside the workspace (the best it can do is the nearest reachable point; for $(2,0.5)$ with $L=(1,0.7)$ the minimiser stops $0.362$ m short); (2) it can stall in a local minimum, or blow up where $\mathbf J$ is singular ($\det\mathbf J=0$ at $q_2=0$); (3) the answer depends on the initial guess; a redundant arm has infinitely many. \chk
+\begin{fbx}[Closed form versus numerical \pg{54}]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule & closed form & numerical\\\midrule
+speed & potentially faster, no iteration & iterative, slower\\
+solutions & all known a priori & one near the start guess\\
+many joints & harder & suits long chains\\
+no exact answer & none & a close-enough answer\\
+\bottomrule
+\end{tabularx}
+\end{fbx}
+\begin{slideerr}[p.\,54]
+``a unique solution to all manipulator positions can be determined a priori'' contradicts pp.\,17 and 20 (several solutions). Read it as ``a definite, complete set of solutions''.
+\end{slideerr}
+
+\hd{Simple scenarios: corners of a square, edge cases \added}
+\premise[square]{planar RR, $L=(0.7,0.6)$ m; the tool must visit the corners $(0.5,0.2)$, $(0.9,0.2)$, $(0.9,0.6)$, $(0.5,0.6)$ m in $\{0\}$}{$(q_1,q_2)$ at each corner; one branch for the whole path}
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}\toprule
+corner & $\cos q_2$ & branch $q_2>0$ & branch $q_2<0$\\\midrule
+$P_1=(0.5,0.2)$ & $-0.6667$ & $(-34.34^\circ,\ 131.81^\circ)$ & $(77.95^\circ,\ -131.81^\circ)$\\
+$P_2=(0.9,0.2)$ & $0.0000$ & $(-28.07^\circ,\ 90.00^\circ)$ & $(53.13^\circ,\ -90.00^\circ)$\\
+$P_3=(0.9,0.6)$ & $0.3810$ & $(2.83^\circ,\ 67.61^\circ)$ & $(64.55^\circ,\ -67.61^\circ)$\\
+$P_4=(0.5,0.6)$ & $-0.2857$ & $(2.79^\circ,\ 106.60^\circ)$ & $(97.60^\circ,\ -106.60^\circ)$\\\bottomrule
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tikzpicture}[scale=3.4,>=Latex]
+\draw[line width=0.4pt,g3] (0.5,0.2) rectangle (0.9,0.6);
+\foreach \p/\n/\a in {(0.5,0.2)/1/south east,(0.9,0.2)/2/south west,(0.9,0.6)/3/south west,(0.5,0.6)/4/north west}{\fill \p circle (0.012); \node[font=\scriptsize,anchor=\a] at \p {$P_\n$};}
+\draw[line width=1.6pt] (0,0)--(0.6991,0.0346)--(0.9,0.6);
+\draw[line width=1.6pt,densely dashed] (0,0)--(0.3008,0.6321)--(0.9,0.6);
+\fill (0,0) circle (0.02); \node[font=\scriptsize,anchor=north east] at (0,0) {$O$};
+\node[font=\tiny,anchor=north] at (0.6991,-0.02) {elbow, $q_2>0$};
+\node[font=\tiny,anchor=south] at (0.3008,0.6321) {elbow, $q_2<0$};
+\draw[->,line width=0.4pt] (-0.05,0)--(1.0,0) node[right,font=\scriptsize]{$x_0$};
+\draw[->,line width=0.4pt] (0,-0.05)--(0,0.78) node[above,font=\scriptsize]{$y_0$};
+\end{tikzpicture}
+\end{center}
+\drawncap{the arm at corner $P_3$ in both branches; $r$ along the whole square stays between $0.538$ and $1.082$ m, inside $[0.1,\,1.3]$ m.}
+Along the whole square, branch $q_2>0$ has $67.6^\circ\le q_2\le131.8^\circ$ and branch $q_2<0$ the mirror image: $q_2$ never reaches $0$ or $\pm180^\circ$, so neither branch meets a singularity or the boundary, and the arm can follow the square without switching branches. \textbf{Choose} the branch by the start configuration (smallest joint change), joint limits (e.g.\ $q_2\in[0,150^\circ]$ rules out the second column) or an obstacle. \chk
+
+\sh{Target out of reach / on the boundary / interior}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.3\linewidth}>{\raggedright\arraybackslash}X@{}}
+\toprule target & result (RR, $L_1=L_2=0.5$ m; RR slide arm)\\\midrule
+$r>L_1+L_2$ or $r<|L_1-L_2|$ & $|\cos q_2|>1$: no solution (e.g.\ $(2,0.5)$ for $L=(1,0.7)$)\\
+$r=L_1+L_2$ (stretched) & $\cos q_2=1$: one solution, $q_2=0$ ($(1,0)\to(0,0)$)\\
+$r=|L_1-L_2|$ (folded) & $\cos q_2=-1$: one solution, $q_2=\pm180^\circ$\\
+interior & two solutions\\
+$L_1=L_2$, target $=$ base & $\cos q_2=-1$ and $q_1$ arbitrary: infinitely many\\
+\bottomrule
+\end{tabularx}\\
+\emph{Why it matters (explain, 2--4 sentences):} at the boundary the two branches coincide and the Jacobian is singular ($\det\mathbf J=L_1L_2\sin q_2=0$), so a small move of the target needs a very large joint move; in a numerical solver this is where Newton steps blow up.
+
+\hd{Practical (optional): \texttt{rrp\_ik.py}}
+Despite its name the file is a planar \textbf{2R} arm with $L_1=L_2=1$: analytic IK with both elbows, the $2\times2$ Jacobian above, and a Newton--Raphson loop. $\cos q_2$ is clipped to $[-1,1]$, so an unreachable target silently returns the nearest boundary pose. The notebook builds the same arm with the Robotics Toolbox and compares the numerical solution (Levenberg--Marquardt) to the analytic one; the W3 folder also has PUMA 560 FK (proximal DH and distal ETS), which pairs with W2. Notebook Q12: a 3-DoF arm ($\theta_1$, horizontal $\theta_2$ offset by $L_2$, slider $d_3$): $\theta_1$ faces the point or $+\pi$, and in its plane $|d_3|=\sqrt{\rho^2-L_2^2}$, so up to $4$ solutions ($2$ if $d_3\ge0$); state the assumption (our reading of the figure) \added.
+
+\columnbreak
+\hd{How this is examined: worked solutions}
+\begin{examq}[W13 Q2 \mk{marks not published; $\sim$1 mark per step}]
+\label{w3:q2box}
+\emph{Sketch the workspace of the manipulator (RRR arm of Q1: rotation $\theta_1$ about $z_S$, then two joints about horizontal axes, links $L_3,L_4$ above a shoulder at height $L_1+L_2$). Assume no limit on joint angles, ignore collisions.}
+\slidefig[0.8\linewidth]{w13-lec}{6}{38 97 96 135}{the question and the lecturer's ``donut'': a ring in the side view}
+\solution
+\textbf{Frames.} $\{S\}$ at the base, $z_S$ up. Shoulder point $O=(0,0,L_1+L_2)$.\\
+\textbf{Reasoning.} Joints 2 and 3 are a planar RR arm (links $L_3,L_4$) in a vertical plane through $z_S$, pivoting about $O$. By the cosine rule the tip is at distance $\rho=\sqrt{L_3^2+L_4^2+2L_3L_4\cos\theta_3}$ from $O$; with $\theta_3$ free, $\rho$ takes every value from $|L_3-L_4|$ (folded) to $L_3+L_4$ (stretched). With $\theta_2$ free, the tip sweeps a full annulus in that plane. Joint 1 spins the plane about $z_S$, which passes through $O$.\\
+\textbf{Result.} The workspace is a \textbf{hollow sphere (spherical shell) centred on $O$}, outer radius $L_3+L_4$, inner radius $|L_3-L_4|$; $L_1,L_2$ only lift the centre. For $L_3=0.4$, $L_4=0.3$ m: $0.1\le\rho\le0.7$ m about $O$. If $L_3=L_4$ the hole closes: a solid ball. The dexterous workspace is empty (a position fixes the tool direction up to the branch).
+\begin{center}
+\begin{tikzpicture}[scale=1.0]
+\def\R{1.75}\def\r{0.25}
+\begin{scope}
+\fill[g2,even odd rule] (0,2.6) circle (\R) (0,2.6) circle (\r);
+\draw[line width=0.6pt] (0,2.6) circle (\R); \draw[line width=0.6pt] (0,2.6) circle (\r);
+\draw[line width=0.8pt] (-1,0)--(1,0); \draw[line width=0.8pt] (0,0)--(0,2.6);
+\fill (0,2.6) circle (0.04); \node[font=\scriptsize,anchor=west] at (0.05,2.45) {$O$};
+\draw[<->,line width=0.4pt] (0.2,0.05)--(0.2,2.55) node[midway,right,font=\scriptsize]{$L_1{+}L_2$};
+\draw[->,line width=0.4pt] (0,2.6)--(\R,2.6) node[pos=0.55,above,font=\tiny]{$L_3{+}L_4$};
+\node[font=\scriptsize] at (0,-0.35) {side view ($x_S z_S$ plane)};
+\end{scope}
+\begin{scope}[xshift=5.0cm,yshift=2.6cm]
+\fill[g2] (0,0) circle (\R); \draw[line width=0.6pt] (0,0) circle (\R); \draw[line width=0.5pt,dashed] (0,0) circle (\r);
+\fill (0,0) circle (0.04); \draw[->,line width=0.4pt] (0,0)--(\R,0) node[pos=0.6,above,font=\tiny]{$L_3{+}L_4$};
+\node[font=\scriptsize] at (0,-2.95) {top view (disc)};
+\end{scope}
+\end{tikzpicture}
+\end{center}
+\drawncap{side view: ring about $O$ (hole radius $|L_3-L_4|$, to scale; height of $O$ not to scale). Top view: full disc of radius $L_3+L_4$ (hole not visible from above: those points are reached at other heights).}
+\textbf{Check} at a simple pose: $\theta_2=\theta_3=0$, arm horizontal, tip at $(L_3+L_4,0,L_1+L_2)$, on the outer sphere ✓; folded $\theta_3=\pi$: $\rho=|L_3-L_4|$ ✓ (500 random poses give $\rho\in[0.1,0.7]$). \chk
+\end{examq}
+
+\begin{examq}[W13 Q3 \mk{marks not published}]
+\label{w3:q3box}
+\emph{Derive the inverse kinematics of the RRR arm of Q1. You are given the position of the end effector $(x_T,y_T,z_T)$.}
+\solution
+\textbf{FK (from Q1).} ${}^S\mathbf p_T=(c_1r,\ s_1r,\ L_1+L_2+L_3s_2+L_4s_{23})$, $r=L_3c_2+L_4c_{23}$; $c_{23}=\cos(\theta_2+\theta_3)$.
+\par \textbf{Top-down view} gives $\theta_1$: $\theta_1=\atantwo(y_T,x_T)$, $r=+\sqrt{x_T^2+y_T^2}$ (arm faces the point). Branch 2: $\theta_1+\pi$ with $r=-\sqrt{x_T^2+y_T^2}$ (arm reaches back over the base axis). atan2, not the $\tan^{-1}(y/x)$ of the slide.\\
+\par \textbf{Side-on view}: planar RR in the plane $(r,z')$, $z'=z_T-L_1-L_2$:
+\[r=L_3c_2+L_4c_{23},\qquad z'=L_3s_2+L_4s_{23}\]
+Square and add (the cross terms give $2L_3L_4(c_2c_{23}+s_2s_{23})=2L_3L_4\cos\theta_3$):
+\begin{gather*}r^2+z'^2=L_3^2+L_4^2+2L_3L_4\cos\theta_3\ \Rightarrow\ \cos\theta_3=\frac{r^2+z'^2-L_3^2-L_4^2}{2L_3L_4},\\ \theta_3=\atantwo\big(\pm\sqrt{1-\cos^2\theta_3},\cos\theta_3\big)\end{gather*}
+Expand $c_{23},s_{23}$ and write $r=(L_3+L_4c_3)c_2-(L_4s_3)s_2$, $z'=(L_4s_3)c_2+(L_3+L_4c_3)s_2$; the point $(r,z')$ is $(L_3+L_4c_3,\ L_4s_3)$ rotated by $\theta_2$:
+\[\theta_2=\atantwo(z',r)-\atantwo(L_4\sin\theta_3,\ L_3+L_4\cos\theta_3)\]
+\par \textbf{Number and existence.} $2$ (shoulder) $\times\,2$ (elbow) $=4$ for an interior point. No solution if $|\cos\theta_3|>1$, i.e.\ the point lies outside the shell of Q2 (outside $|L_3-L_4|\le\rho\le L_3+L_4$ about the shoulder). On the shell surface the two elbow branches merge. If $x_T=y_T=0$, $\theta_1$ is arbitrary.\\
+\par \textbf{Numbers.} $L=(0.6,0.5,0.4,0.3)$ m, $\mathbf p_T=(0.4554,0.2629,1.4966)$ m. $\theta_1=\atantwo(0.2629,0.4554)=30^\circ$, $r=0.5259$, $z'=1.4966-1.1=0.3966$; $\cos\theta_3=\dfrac{0.2766+0.1573-0.16-0.09}{0.24}=0.7660$, $\theta_3=\pm40^\circ$; $\sigma=\atantwo(0.3966,0.5259)=37.024^\circ$, $\mu=\pm17.024^\circ$. Solutions $(\theta_1,\theta_2,\theta_3)$ in degrees:
+\[(30,\ 20,\ 40),\quad(30,\ 54.047,\ -40),\quad(-150,\ 125.953,\ 40),\quad(-150,\ 160,\ -40)\]
+Each reproduces $\mathbf p_T$ by FK; the first is the Q1 pose, so the check closes. Reach test: a target $(0.5,0.5,1.8)$ is $0.995$ m from the shoulder $>0.7$: no solution. \chk\par
+\textbf{Sanity:} $\theta_2=\theta_3=0$ gives $r=L_3+L_4$, $z=L_1+L_2$ (stretched, on the outer sphere) ✓.
+\end{examq}
+
+\begin{examq}[SCARA-type: RRP with tool yaw \mk{marks assumed 6}]
+A SCARA arm (column height $H=0.40$ m, horizontal links $L_1=0.35$, $L_2=0.25$ m, vertical axes for $q_1,q_2,q_4$, slider $d_3$ down) must put the tool at $(0.30,0.25,0.28)$ m with yaw $\varphi=60^\circ$ in $\{0\}$. (a) Derive $q_1,q_2,d_3,q_4$ with every branch and the existence condition. (b) Evaluate. (c) How many solutions?
+\solution
+(a) FK: $x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$, $z=H-d_3$, $\varphi=q_1+q_2+q_4$. Hence $d_3=H-z$, the RR formulas for $q_1,q_2$ and $q_4=\varphi-q_1-q_2$. Existence: $|L_1-L_2|\le r\le L_1+L_2$ and $0\le d_3\le$ stroke.\\
+(b) $r^2=0.1525$, $r=0.3905\in[0.10,0.60]$ ✓. $\cos q_2=\dfrac{0.1525-0.1225-0.0625}{0.175}=-0.1857$, $q_2=\pm100.70^\circ$. $\atantwo(0.25,0.30)=39.806^\circ$.\\
+$q_2=+100.70^\circ$: $\mu=\atantwo(0.2457,0.3036)=38.980^\circ$, $q_1=0.826^\circ$, $q_4=60-0.826-100.703=-41.53^\circ$.\\
+$q_2=-100.70^\circ$: $q_1=78.785^\circ$, $q_4=81.917^\circ$. $d_3=0.40-0.28=\mathbf{0.12}$ m in both.\\
+(c) Two (elbow); $d_3$ and $q_4$ follow uniquely. One on the outer boundary, none beyond. Both reproduce the target by FK. \chk
+\end{examq}
+
+\begin{examq}[RRP in 3D \mk{marks assumed 6}]
+A base joint rotates about $z_0$. At height $H=0.5$ m a horizontal-axis joint tilts a boom by $\theta_2$ from the vertical; a prismatic joint extends the tool by $d_3$ along the boom: $\mathbf p=(c_1d_3s_2,\ s_1d_3s_2,\ H+d_3c_2)$. Derive the IK and evaluate it for $\mathbf p=(0.3,0.4,0.9)$ m. How many solutions?
+\solution
+$r=\sqrt{x^2+y^2}=d_3s_2$, $z'=z-H=d_3c_2$. So $\theta_1=\atantwo(y,x)$, $d_3=\sqrt{r^2+z'^2}$, $\theta_2=\atantwo(r,z')$. Numbers: $\theta_1=53.130^\circ$, $r=0.5$, $z'=0.4$, $d_3=0.6403$ m, $\theta_2=51.340^\circ$. Second solution $(\theta_1+180^\circ,-\theta_2,d_3)$. With $d_3>0$ there are exactly two; with $d_3<0$ allowed, two more $(\theta_1,\theta_2+\pi,-d_3)$ and $(\theta_1+\pi,\pi-\theta_2,-d_3)$. FK check of both: $(0.3,0.4,0.9)$ ✓. \chk
+\end{examq}
+
+\begin{examq}[Corners of a square \mk{marks assumed 5}]
+A planar RR arm ($L_1=0.7$, $L_2=0.6$ m, base at the origin) must trace the square with corners $(0.5,0.2)$, $(0.9,0.2)$, $(0.9,0.6)$, $(0.5,0.6)$ m. (a) Find the joint angles at each corner for both elbow branches. (b) Is the square reachable? (c) Can the arm follow the square without changing branch? (d) Which branch would you choose if $q_2\in[0,150^\circ]$?
+\solution
+Formulas: $\cos q_2=\dfrac{x^2+y^2-0.85}{0.84}$ ($L_1^2+L_2^2=0.49+0.36=0.85$, $2L_1L_2=0.84$), $q_1=\atantwo(y,x)-\atantwo(0.6\sin q_2,\ 0.7+0.6\cos q_2)$.\\
+(a) $P_1$: $r^2=0.29$, $\cos q_2=-0.6667$, $q_2=\pm131.81^\circ$, $q_1=-34.34^\circ$ or $77.95^\circ$. $P_2$: $r^2=0.85$, $\cos q_2=0$, $q_2=\pm90^\circ$, $q_1=-28.07^\circ$ or $53.13^\circ$. $P_3$: $r^2=1.17$, $\cos q_2=0.381$, $q_2=\pm67.61^\circ$, $q_1=2.83^\circ$ or $64.55^\circ$. $P_4$: $r^2=0.61$, $\cos q_2=-0.2857$, $q_2=\pm106.60^\circ$, $q_1=2.79^\circ$ or $97.60^\circ$ (table above).\\
+(b) $r$ ranges $0.538$ to $1.082$ m over the whole boundary of the square, inside $[0.1,1.3]$ m: all points reachable.\\
+(c) Yes: $\cos q_2\in[-0.667,0.381]$, so $q_2$ stays in $67.6^\circ$--$131.8^\circ$ (one branch) and never reaches $0$ or $\pm180^\circ$; a branch can change only through a singular pose.\\
+(d) Branch $q_2>0$, the only one inside the limits. \chk
+\end{examq}
+
+\begin{examq}[Joint limits choose the branch \mk{marks assumed 4}]
+Planar RR, $L_1=0.6$, $L_2=0.45$ m; the elbow can only bend one way: $q_2\in[0^\circ,150^\circ]$. The tip must reach $(0.70,-0.30)$ m. Find the allowed $(q_1,q_2)$ and say why the other solution is rejected.
+\solution
+$\cos q_2=\dfrac{0.58-0.36-0.2025}{0.54}=0.03241$, $q_2=\pm88.143^\circ$. $\atantwo(-0.3,0.7)=-23.20^\circ$. For $q_2=+88.143^\circ$: $\mu=\atantwo(0.4498,0.6146)=36.20^\circ$, $q_1=-23.20-36.20=-59.40^\circ$. For $q_2=-88.143^\circ$: $q_1=-23.20+36.20=13.00^\circ$. Only $q_2=+88.143^\circ\in[0,150^\circ]$, so \textbf{$(-59.40^\circ,\ 88.14^\circ)$}; the other violates $q_2\ge0$. Rule: list all branches, then apply limits (slide 18: closeness, joint limits, obstacles). Both reproduce the target by FK. \chk
+\end{examq}
+
+\begin{examq}[Spot the errors \mk{marks assumed 4}]
+A student solves a planar RR arm ($L_1=0.5$, $L_2=0.4$ m) for the target $(-0.45,0.30)$ m: ``$\cos q_2=-0.29375$, so $q_2=\cos^{-1}(-0.29375)=107.08^\circ$. Then $q_1=\tan^{-1}(y/x)-\atantwo(L_2\sin q_2,L_1+L_2\cos q_2)=-78.68^\circ$. Unique solution.'' Find the errors and give the correct $q_1$ for $q_2=+107.08^\circ$.
+\solution
+Error 1: $\tan^{-1}(0.30/-0.45)=-33.69^\circ$ cannot tell the second quadrant from the fourth; $\atantwo(0.30,-0.45)=146.31^\circ$. Error 2: $\cos^{-1}$ returns one sign only; the other branch is $q_2=-107.08^\circ$, so the solution is not unique. The student's $(-78.68^\circ,107.08^\circ)$ puts the tip at $(0.45,-0.30)$, the point reflected through the base. Correct: $\mu=\atantwo(0.4\sin107.08^\circ,\ 0.5+0.4\cos107.08^\circ)=44.99^\circ$, so $q_1=146.31-44.99=\mathbf{101.32^\circ}$; other branch $q_2=-107.08^\circ$, $q_1=146.31+44.99=191.30^\circ$. Both check by FK. \chk
+\end{examq}
+
+\begin{examq}[One Newton step on a 2R arm \mk{marks assumed 4}]
+$L_1=0.6$, $L_2=0.45$ m, start $\mathbf q^0=(0.3,0.8)$ rad. Take one Newton--Raphson step towards $(0.70,0.30)$ m: give $\Delta\mathbf q$ and the distance left.
+\solution
+FK at $\mathbf q^0$ $=(0.7773,0.5784)$, $\mathbf e=(-0.0773,-0.2784)$. $\mathbf J=\begin{bmatrix}-0.5784&-0.4010\\0.7773&0.2041\end{bmatrix}$, $\det\mathbf J=L_1L_2\sin0.8=0.27\sin0.8=0.1937$. $\mathbf J^{-1}=\frac1{0.1937}\begin{bmatrix}0.2041&0.4010\\-0.7773&-0.5784\end{bmatrix}$.\par $\Delta q_1=[0.2041(-0.0773)+0.4010(-0.2784)]/0.1937=-0.6578$ and $\Delta q_2=[-0.7773(-0.0773)-0.5784(-0.2784)]/0.1937=1.1415$ rad. New angles $(-0.358,1.941)$ rad; FK there is $0.156$ m from the target (was $0.289$ m). The step is large because $\mathbf J$ is only a local linear map: repeat. $\mathbf J^\top\mathbf e=(-0.1717,-0.0258)$ would be a gradient step (wrong method). \chk
+\end{examq}
+\end{multicols}

@@ -1,0 +1,462 @@
+% W11 Dynamics of wheeled robots -- booklet v2. Numbers: vcheck/v2_w11.py (and site/src/checks/w11.py).
+% Slide notation: {}^C F_G, {}^C N_G, {}^G I, {}^C P_G, omega, u, v, thetadot.  Deck = Newton--Euler of a planar chassis (no control content).
+\newcommand{\wEz}{\boldsymbol\zeta}
+\newcommand{\wEx}{\boldsymbol\xi}
+\newcommand{\wEQC}{{}^{C}\mathbf Q}
+\newcommand{\wEQO}{{}^{O}\mathbf Q}
+\newcommand{\wEPG}{{}^{C}\mathbf P_G}
+\newcommand{\wEth}{\dot\theta}
+\newcommand{\wEthh}{\ddot\theta}
+\newcommand{\wEI}{{}^{G}I}
+
+\week{W11}{Dynamics of wheeled robots}{11}
+\begin{multicols}{2}
+
+%==================================================================
+\hd{Week 11 at a glance \added}
+\begin{fbx}[The formulas to know (each is derived on the page given)]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.25\linewidth}X@{}}
+balance at $G$ & ${}^C\mathbf F_G=m\,{}^C\ddot{\mathbf P}_G$,\quad ${}^CN_z=\wEI\,\wEthh$, \quad ${}^CN_z={}^Cn_z+({}^Cy_G\,{}^Cf_x-{}^Cx_G\,{}^Cf_y)$\\
+acceleration of $G$ & ${}^C\ddot x_G=\dot u-{}^Cy_G\wEthh-v\wEth-{}^Cx_G\wEth^2$, \quad ${}^C\ddot y_G=\dot v+{}^Cx_G\wEthh+u\wEth-{}^Cy_G\wEth^2$\\
+body-frame EoM & $\mathbf M\dot{\wEz}+c(\wEz)=\wEQC$, \quad $\wEz=(u,v,\wEth)$\\
+$C=G$ & $\mathbf M=\operatorname{diag}(m,m,\wEI)$, \quad $c=(-mv\wEth,\ mu\wEth,\ 0)$\\
+frames & $\dot{\wEx}=\mathbf J\wEz$, \quad $\wEQC=\mathbf J^{\top}\wEQO$ (power invariance)\\
+inertial-frame EoM & ${}^O\mathbf M\ddot{\wEx}+{}^Oc={}^O\mathbf Q$, \quad ${}^O\mathbf M=(\mathbf J^\top)^{-1}\mathbf M\mathbf J^{-1}$\\
+differential drive & $\wEQC=\begin{bmatrix}1&1\\0&0\\-a&a\end{bmatrix}\begin{bmatrix}F_1\\F_2\end{bmatrix}$, \quad $F_i=\tau_i/r$\\
+\end{tabularx}
+\use{given forces/torques find accelerations ($\dot{\wEz}=\mathbf M^{-1}(\wEQC-c)$), or the inverse. Frame names: $\{O\}$ world, $\{C\}$ chassis, $\{G\}$ centre of mass.}
+\end{fbx}
+\begin{trap}
+There is \emph{no control} in W11 (no feed-forward, no PID, no Lyapunov law). The deck is: Newton--Euler for one planar rigid chassis, the $\{C\}\leftrightarrow\{O\}$ conversion, an integration recipe, a differential-drive and a Swedish-wheel example. Control of such robots belongs to W8--W9.
+\end{trap}
+
+%==================================================================
+\hd{Recap of week 10, and what is new \pg{4--7}}
+W10 (kinematics) gave the wheel model $\dot\varphi_i=f_i(\dot x,\dot y,\wEth)$ (\pg{6}) and $\dot{\wEx}=\mathbf J(\theta)\wEz$ with $\wEz=(u,v,\wEth)$ the chassis velocity in $\{C\}$. W11 asks the \emph{cause} of motion: which forces and torques produce which accelerations.
+\begin{recipe}[The W11 chain, in the order the deck builds it]
+\begin{enumerate}
+\item Frames $\{O\},\{C\},\{G\}$ and the free-body picture (\pg{12--17}).
+\item Velocity then acceleration of $G$ in $\{C\}$ (\pg{18--24}).
+\item Newton and Euler: $m\mathbf a_G$, $\wEI\wEthh$, move the moment from $G$ to $C$ $\Rightarrow\ \mathbf M\dot{\wEz}+c=\wEQC$ (\pg{25--26}).
+\item Re-express in $\{O\}$ with $\mathbf J$ (\pg{28--34}).
+\item Simulate (\pg{35}); wheel forces to $\wEQC$ (\pg{36--38}).
+\end{enumerate}
+\end{recipe}
+
+%==================================================================
+\hd{The dynamics problem: forward and inverse \pg{9--11}}
+\begin{fbx}[Definition \pg{9}]
+\[\mathbf Q=f(\wEx,\dot{\wEx},\ddot{\wEx}),\qquad \wEx=\begin{bmatrix}x\\y\\\theta\end{bmatrix},\qquad \mathbf Q=\begin{bmatrix}f_x\\f_y\\\tau_z\end{bmatrix}\]
+\begin{symbols}
+$\wEx$ & pose of the robot in the inertial frame $\{O\}$ & m, m, rad\\
+$\mathbf Q$ & net force and torque on the robot, expressed in an inertial frame & N, N, N\,m\\
+\end{symbols}
+\use{one equation, read two ways: forward (simulation) or inverse (control).}
+\end{fbx}
+\premise[forward dynamics \pg{10}]{input force--torque vector $\mathbf Q$, the robot's $m$, $\wEI$, geometry, the starting state}{the trajectory $(\wEx,\dot{\wEx},\ddot{\wEx})$: used to \emph{simulate or analyse} the robot}
+\premise[inverse dynamics \pg{11}]{a desired trajectory $(\wEx,\dot{\wEx},\ddot{\wEx})$}{the force and torque $\mathbf Q$ that the robot needs: used for \emph{control}}
+\begin{trap}
+Mixing up $\wEx$ (pose, always in $\{O\}$) and $\wEz$ (chassis velocity, in $\{C\}$). $\mathbf Q$ also has two forms, $\wEQO$ and $\wEQC$ (\pg{26, 31}): always write the frame.
+\end{trap}
+
+%==================================================================
+\hd{Setup: the frames $\{O\}$, $\{C\}$, $\{G\}$ \pg{12}}
+\slidefig[0.5\linewidth]{w11-lec}{12}{29 119 586 194}{$\{O\}$ inertial, $\{C\}$ on the chassis, $\{G\}$ at the centre of mass with the same orientation as $\{C\}$}
+\begin{fbx}[Quantities of the problem \pg{12}]
+\begin{symbols}
+$\{O\}$ & global inertial frame, fixed to the ground & --\\
+$\{C\}$ & frame attached to the chassis (origin $C$, $\hat x$ forwards) & --\\
+$\{G\}$ & frame at the centre of mass, \emph{same orientation as $\{C\}$} & --\\
+$m$ & mass of the robot & kg\\
+$\wEI$ & ${}^G I_{zz}$: moment of inertia about the vertical axis through $G$ & kg\,m$^2$\\
+$\wEPG=({}^Cx_G,{}^Cy_G,0)$ & position of $G$ in $\{C\}$ (the slides also write ${}^C\mathbf P_{CG}$: same vector, $C\to G$) & m\\
+$\theta(t)$ & heading: angle of $\hat x_C$ from $\hat x_O$, anticlockwise positive & rad\\
+$\mathbf J=\,{}^O\mathbf R_C$ & rotation of $\{C\}$ in $\{O\}$ (rotation about $z$ by $\theta$, as W10) & --\\
+\end{symbols}
+\use{$C$ is the reference point where wheel loads are applied; $G$ is where the mass acts. If $C=G$ everything simplifies. Both frames rotate with the robot, so $\wEPG$ is \emph{constant}.}
+\end{fbx}
+
+%==================================================================
+\hd{Newton--Euler: force and moment balance \pg{14--17}}
+\slidefig[0.45\linewidth]{w11-lec}{15}{29 113 643 200}{red: applied force and torque at $C$; blue: inertial force ${}^C\mathbf F_G$ and torque ${}^GN_z$ at $G$}
+\begin{fbx}[Balance, all terms in $\{C\}$ \pg{15}]
+\[{}^C\mathbf F_G-{}^C\mathbf f_C=\mathbf 0\ \Rightarrow\ {}^CF_x={}^Cf_x,\quad {}^CF_y={}^Cf_y\]
+\[{}^CN_G-{}^Cn_C-(-{}^C\mathbf P_{CG})\times{}^C\mathbf f_C=0\ \Rightarrow\ {}^CN_z={}^Cn_z+\big({}^Cy_{G}\,{}^Cf_x-{}^Cx_{G}\,{}^Cf_y\big)\]
+\begin{symbols}
+${}^C\mathbf f_C=({}^Cf_x,{}^Cf_y)$ & applied force from wheels and ground, acting at $C$ (red) & N\\
+${}^Cn_C={}^Cn_z$ & applied torque (about $z$) acting at $C$ & N\,m\\
+${}^C\mathbf F_G=({}^CF_x,{}^CF_y)$ & inertial force at $G$ (what the body ``needs'', blue) & N\\
+${}^CN_G={}^CN_z$ & inertial torque about $G$ & N\,m\\
+${}^Cx_{G},{}^Cy_{G}$ & coordinates of $G$ in $\{C\}$ & m\\
+\end{symbols}
+\use{the applied force acts at $C$ but the inertial force acts at $G$. Moving the applied force's moment from $C$ to $G$ gives the bracket $(y_Gf_x-x_Gf_y)$.}
+\end{fbx}
+\begin{deriv}[of the moment transfer, every line \added]
+The lever arm from $G$ to $C$ is $-{}^C\mathbf P_{CG}=(-x_G,-y_G,0)$. The moment of the applied force about $G$ is the cross product
+\[(-{}^C\mathbf P_{CG})\times{}^C\mathbf f_C=\begin{bmatrix}-x_G\\-y_G\\0\end{bmatrix}\times\begin{bmatrix}f_x\\f_y\\0\end{bmatrix}=\begin{bmatrix}0\\0\\(-x_G)f_y-(-y_G)f_x\end{bmatrix}=\begin{bmatrix}0\\0\\y_Gf_x-x_Gf_y\end{bmatrix}.\]
+Torque balance about $G$: inertial torque $={}$ applied torque $+$ moment of the applied force about $G$, so ${}^CN_z={}^Cn_z+(y_Gf_x-x_Gf_y)$. Rearranged for the \emph{applied} torque: ${}^Cn_z={}^CN_z-(y_Gf_x-x_Gf_y)$.
+\end{deriv}
+\begin{fbx}[Inertial force and torque \pg{17}]
+\[{}^C\mathbf F_G=m\,{}^C\dot{\mathbf v}_G\ \ \Big({}^CF_x=m\,{}^C\ddot x_G,\ {}^CF_y=m\,{}^C\ddot y_G\Big),\qquad {}^CN_G=\wEI\dot{\boldsymbol\omega}+\boldsymbol\omega\times\wEI\boldsymbol\omega\ \Rightarrow\ {}^CN_z=\wEI\,\wEthh\]
+\use{$m$ and $\wEI$ are known; $\ddot x_G,\ddot y_G,\ddot\theta$ are the unknowns (the slide's own note). In planar motion $\boldsymbol\omega=(0,0,\dot\theta)$ is parallel to $\wEI\boldsymbol\omega$, so $\boldsymbol\omega\times\wEI\boldsymbol\omega=\mathbf 0$. Missing piece: the acceleration of $G$.}
+\end{fbx}
+\begin{worked}[moment transfer, numbers ours]
+$G$ is $0.05$\,m ahead of $C$ ($x_G=0.05$, $y_G=0$), ${}^C\mathbf f=(10,4)$\,N, ${}^Cn_z=0.4$\,N\,m: ${}^CN_z=0.4+(0\cdot10-0.05\cdot4)=\mathbf{0.2}$\,N\,m. A sideways push at $C$ is a clockwise lever about $G$ when $G$ is ahead. \chk
+\end{worked}
+
+%==================================================================
+\hd{Velocity of a point on a rotating body \pg{18--20}}
+\begin{deriv}[velocity of $G$, as the slides do it \pg{19--20}]
+Position of $G$ in $\{O\}$: ${}^O\mathbf P_G={}^O\mathbf P_C+{}^O\mathbf R_C\,{}^C\mathbf P_G$. Differentiate:
+\[{}^O\dot{\mathbf P}_G={}^O\dot{\mathbf P}_C+{}^O\dot{\mathbf R}_C\,{}^C\mathbf P_G+{}^O\mathbf R_C\,{}^C\dot{\mathbf P}_G,\qquad {}^C\dot{\mathbf P}_G=\mathbf 0\]
+because $G$ is fixed in the chassis (the slide strikes this term out). For a rotating frame ${}^O\dot{\mathbf R}_C\,\mathbf p={}^O\boldsymbol\omega_C\times({}^O\mathbf R_C\,\mathbf p)$, so
+\[{}^O\dot{\mathbf P}_G={}^O\dot{\mathbf P}_C+{}^O\boldsymbol\omega_C\times{}^O\mathbf R_C\,{}^C\mathbf P_G.\]
+Write the velocity of $C$ and the rotation rate through $\mathbf J(\theta)={}^O\mathbf R_C$: ${}^O\dot{\mathbf P}_C=\mathbf J\,{}^C\dot{\mathbf P}_C$ and ${}^O\boldsymbol\omega_C={}^O\mathbf R_C\,{}^C\boldsymbol\omega_C$; a rotation preserves cross products, $\mathbf R(\mathbf a\times\mathbf b)=\mathbf R\mathbf a\times\mathbf R\mathbf b$. Factor ${}^O\mathbf R_C$:
+\end{deriv}
+\begin{fbx}[Velocity of $G$ \pg{19--20}]
+\[{}^O\dot{\mathbf P}_G={}^O\mathbf R_C\Big[{}^C\dot{\mathbf P}_C+{}^C\boldsymbol\omega_C\times{}^C\mathbf P_G\Big],\qquad {}^C\dot{\mathbf P}_C=\begin{bmatrix}u\\v\\0\end{bmatrix},\ {}^C\boldsymbol\omega_C=\begin{bmatrix}0\\0\\\dot\theta\end{bmatrix},\ {}^C\mathbf P_G=\begin{bmatrix}{}^Cx_G\\{}^Cy_G\\0\end{bmatrix}\]
+\[{}^C\boldsymbol\omega_C\times{}^C\mathbf P_G=\begin{bmatrix}0\cdot0-\dot\theta\,{}^Cy_G\\ \dot\theta\,{}^Cx_G-0\cdot0\\0\end{bmatrix}=\begin{bmatrix}-\dot\theta\,{}^Cy_G\\ \dot\theta\,{}^Cx_G\\0\end{bmatrix}\ \Rightarrow\ \text{velocity of }G\text{ in the chassis axes}=\begin{bmatrix}u-\dot\theta\,{}^Cy_G\\ v+\dot\theta\,{}^Cx_G\end{bmatrix}\]
+\begin{symbols}
+${}^C\dot{\mathbf P}_C$ & velocity of the origin $C$, written in the chassis axes: $(u,v,0)$ (the position of $C$ seen from $\{C\}$ is zero, so this is the velocity \emph{expressed} in $\{C\}$) & m/s\\
+$u,v$ & components of that velocity along $\hat x_C$ (forwards) and $\hat y_C$ (left) & m/s\\
+${}^C\boldsymbol\omega_C$ & angular velocity of the chassis, along $z$ & rad/s\\
+\end{symbols}
+\use{every point of a rigid body has velocity (velocity of $C$) $+$ ($\boldsymbol\omega\times$ position). The cross product $(0,0,k)\times(a,b,0)=(-kb,\,ka,\,0)$ is used in every line of this week.}
+\end{fbx}
+\begin{worked}[velocity of $G$, numbers ours]
+$G=(0.3,0.2)$\,m, $u=1.0$, $v=0.5$\,m/s, $\dot\theta=2$\,rad/s: in $\{C\}$: $(1.0-2(0.2),\,0.5+2(0.3))=(\mathbf{0.6},\mathbf{1.1})$\,m/s. At $\theta=30^\circ$ in $\{O\}$: $\mathbf J(0.6,1.1)=(0.6(0.8660)-1.1(0.5),\ 0.6(0.5)+1.1(0.8660))=(\mathbf{-0.0304},\ \mathbf{1.2526})$\,m/s. Speed $1.253$ in both frames. \chk
+\end{worked}
+
+%==================================================================
+\hd{Acceleration of $G$ \pg{21--24}}
+\begin{deriv}[differentiate the velocity again \pg{22}]
+Start from ${}^O\dot{\mathbf P}_G={}^O\mathbf R_C\big[{}^C\dot{\mathbf P}_C+{}^C\boldsymbol\omega_C\times{}^C\mathbf P_G\big]$ and apply the product rule:
+\[{}^O\ddot{\mathbf P}_G={}^O\dot{\mathbf R}_C\big[{}^C\dot{\mathbf P}_C+{}^C\boldsymbol\omega_C\times{}^C\mathbf P_G\big]+{}^O\mathbf R_C\big[{}^C\ddot{\mathbf P}_C+{}^C\dot{\boldsymbol\omega}_C\times{}^C\mathbf P_G+\underbrace{{}^C\boldsymbol\omega_C\times{}^C\dot{\mathbf P}_G}_{=\,0}\big]\]
+The last term is the slide's red $0$ ($G$ does not move in $\{C\}$). Replace ${}^O\dot{\mathbf R}_C\,\mathbf p={}^O\mathbf R_C\,({}^C\boldsymbol\omega_C\times\mathbf p)$ and take ${}^O\mathbf R_C$ out as a common factor:
+\[{}^O\ddot{\mathbf P}_G={}^O\mathbf R_C\Big[{}^C\boldsymbol\omega_C\times\big({}^C\dot{\mathbf P}_C+{}^C\boldsymbol\omega_C\times{}^C\mathbf P_G\big)+{}^C\ddot{\mathbf P}_C+{}^C\dot{\boldsymbol\omega}_C\times{}^C\mathbf P_G\Big].\]
+Multiply on the left by ${}^O\mathbf R_C^{-1}$ to read the acceleration \emph{in the chassis axes}, and expand the bracket:
+\end{deriv}
+\begin{fbx}[Acceleration of $G$ in $\{C\}$: four terms \pg{22--23}]
+\[\boxed{{}^C\ddot{\mathbf P}_G={}^C\ddot{\mathbf P}_C+{}^C\dot{\boldsymbol\omega}_C\times{}^C\mathbf P_G+{}^C\boldsymbol\omega_C\times{}^C\dot{\mathbf P}_C+{}^C\boldsymbol\omega_C\times{}^C\boldsymbol\omega_C\times{}^C\mathbf P_G}\]
+\begin{symbols}
+${}^C\ddot{\mathbf P}_C=(\dot u,\dot v,0)$ & rate of change of the velocity components of $C$ & m/s$^2$\\
+${}^C\dot{\boldsymbol\omega}_C=(0,0,\ddot\theta)$ & angular acceleration & rad/s$^2$\\
+$\dot{\boldsymbol\omega}\times\mathbf P_G$ & \emph{tangential} term, from angular acceleration; $\perp$ to the arm $C\to G$ & m/s$^2$\\
+$\boldsymbol\omega\times\dot{\mathbf P}_C$ & \emph{Coriolis-like} term: velocity of $C$ turns with the body & m/s$^2$\\
+$\boldsymbol\omega\times\boldsymbol\omega\times\mathbf P_G$ & \emph{centripetal} term, points from $G$ towards $C$ & m/s$^2$\\
+\end{symbols}
+\use{the slide writes ${}^C\mathbf P_{CG}$ in the second term and ${}^C\mathbf P_G$ in the last; both are the same vector.}
+\end{fbx}
+\begin{deriv}[every cross product expanded: skew-symmetric matrix \added]
+In the plane $[\boldsymbol\omega\times]=\begin{bmatrix}0&-\dot\theta&0\\\dot\theta&0&0\\0&0&0\end{bmatrix}$ (the cross product $\boldsymbol\omega\times\mathbf a$ equals this matrix times $\mathbf a$) and $[\dot{\boldsymbol\omega}\times]$ is the same with $\ddot\theta$. Then
+\[\dot{\boldsymbol\omega}\times\mathbf P_G=\begin{bmatrix}0&-\ddot\theta&0\\\ddot\theta&0&0\\0&0&0\end{bmatrix}\begin{bmatrix}x_G\\y_G\\0\end{bmatrix}=\begin{bmatrix}-y_G\ddot\theta\\x_G\ddot\theta\\0\end{bmatrix},\qquad
+\boldsymbol\omega\times\dot{\mathbf P}_C=\begin{bmatrix}0&-\dot\theta&0\\\dot\theta&0&0\\0&0&0\end{bmatrix}\begin{bmatrix}u\\v\\0\end{bmatrix}=\begin{bmatrix}-v\dot\theta\\u\dot\theta\\0\end{bmatrix}\]
+\[\boldsymbol\omega\times\boldsymbol\omega\times\mathbf P_G=\boldsymbol\omega\times\begin{bmatrix}-y_G\dot\theta\\x_G\dot\theta\\0\end{bmatrix}=\begin{bmatrix}-\dot\theta(x_G\dot\theta)\\\dot\theta(-y_G\dot\theta)\\0\end{bmatrix}=\begin{bmatrix}-x_G\dot\theta^2\\-y_G\dot\theta^2\\0\end{bmatrix}\]
+Add the four columns (the slide's matrix equation, \pg{24}):
+\[\begin{bmatrix}{}^C\ddot x_G\\{}^C\ddot y_G\\0\end{bmatrix}=\begin{bmatrix}\dot u\\\dot v\\0\end{bmatrix}+\begin{bmatrix}-y_G\ddot\theta\\x_G\ddot\theta\\0\end{bmatrix}+\begin{bmatrix}-v\dot\theta\\u\dot\theta\\0\end{bmatrix}+\begin{bmatrix}-x_G\dot\theta^2\\-y_G\dot\theta^2\\0\end{bmatrix}\]
+\end{deriv}
+\begin{fbx}[Components \pg{24}]
+\[{}^C\ddot x_G=\dot u-{}^Cy_G\,\ddot\theta-v\,\dot\theta-{}^Cx_G\,\dot\theta^2\]
+\[{}^C\ddot y_G=\dot v+{}^Cx_G\,\ddot\theta+\boxed{u}\,\dot\theta-{}^Cy_G\,\dot\theta^2\]
+\use{pattern: the Coriolis-like pair is $\dot\theta\,(-v,\ u)$: $x$ gets $-v\dot\theta$, $y$ gets $+u\dot\theta$. With $C=G$ and no accelerations this is $\dot\theta(-v,u)$, perpendicular to the velocity: the centripetal acceleration of any turn.}
+\end{fbx}
+\begin{slideerr}[pp.\,24--25: $v\dot\theta$ should be $u\dot\theta$ in $y$]
+The slides print ${}^C\ddot y_G=\dot v+x_G\ddot\theta+\mathbf{v\dot\theta}-y_G\dot\theta^2$ (and the same $+v\dot\theta$ in ${}^CF_y$ and ${}^Cf_y$, \pg{24, 25}). The correct term is $+u\dot\theta$: (1) the slide's own matrix equation gives $(0,0,\dot\theta)\times(u,v,0)=(-v\dot\theta,\,u\dot\theta,0)$; (2) the matrix form on p.\,26 already uses $u$ in rows 2 and 3; (3) at constant $u$ on a circle ($v=0$) the printed form gives $a_y=0$, no centripetal acceleration. The $x$ equation is right. In the exam write the cross-product line so $u\dot\theta$ is justified. \chk
+\end{slideerr}
+\slidefig[0.4\linewidth]{w11-lec}{24}{106 162 624 200}{velocity components $u,v$, rates $\dot\theta,\ddot\theta$ at $C$; ${}^CF_x,{}^CF_y,{}^GN_z$ at $G$}
+\begin{worked}[all four terms, numbers ours]
+$u=1.5$, $v=0.2$ m/s, $\dot\theta=0.8$ rad/s, $\dot u=0.3$, $\dot v=-0.1$ m/s$^2$, $\ddot\theta=0.5$ rad/s$^2$, $G=(0.2,0.1)$ m in $\{C\}$:
+\begin{center}\small\begin{tabular}{@{}lcc@{}}\toprule term&$x$&$y$\\\midrule
+$\ddot{\mathbf P}_C$&$0.3$&$-0.1$\\ tangential $\ddot\theta(-y_G,x_G)$&$-0.05$&$0.10$\\ Coriolis-like $\dot\theta(-v,u)$&$-0.16$&$1.20$\\ centripetal $-\dot\theta^2(x_G,y_G)$&$-0.128$&$-0.064$\\\midrule
+sum (m/s$^2$)&$\mathbf{-0.038}$&$\mathbf{1.136}$\\\bottomrule\end{tabular}\end{center}
+(The printed $+v\dot\theta$ would give $a_y=0.096$: wrong.) A finite-difference derivative of the world-frame motion, rotated back into $\{C\}$, gives the same $(-0.038,\,1.136)$. \chk
+\end{worked}
+\begin{trap}
+Treating $\dot u,\dot v$ as the whole acceleration. They are only the rate of change of the \emph{components}; the axes themselves turn, which adds $\dot\theta(-v,u)$. A robot driving a circle at constant speed still accelerates.
+\end{trap}
+\begin{center}
+\begin{tikzpicture}[scale=0.95]
+\draw[dashed,g3] (0,0) circle (1.4);
+\fill (0,0) circle (1.2pt) node[below left,font=\scriptsize]{ICR};
+\draw[dashed,g3] (0,0)--(1.4,0) node[pos=0.5,above,font=\scriptsize]{$R$};
+\draw[rotate around={90:(1.4,0)},fill=g1] (1.05,-0.22) rectangle (1.75,0.22);
+\fill (1.4,0) circle (1.2pt);
+\draw[sig,line width=0.9pt] (1.4,0)--(1.4,0.95) node[right,font=\scriptsize]{$\hat x_C$, $u$};
+\draw[sig,line width=0.9pt] (1.4,0)--(0.65,0) node[below,font=\scriptsize,pos=0.85]{$\hat y_C$};
+\node[font=\scriptsize,anchor=west] at (1.9,-0.45) {$a_y=u\dot\theta=u^2/R$ (towards the ICR)};
+\node[font=\scriptsize,anchor=west] at (1.9,-0.85) {force $mu\dot\theta$ is supplied by the wheels\,(no-slip)};
+\draw[-{Latex}] (0.9,0.45) arc (30:70:0.9) ;
+\node[font=\scriptsize] at (0.45,0.75) {$\dot\theta$};
+\end{tikzpicture}
+\end{center}
+\drawncap{top view: $C=G$, constant $u$, $v=0$, $\dot\theta=u/R$ (circle at constant speed)}
+
+%==================================================================
+\hd{Equations of motion in the chassis frame \pg{25--26}}
+\begin{fbx}[Newton--Euler equations of motion \pg{25}]
+\[{}^Cf_x={}^CF_x=m\big(\dot u-{}^Cy_G\ddot\theta-v\dot\theta-{}^Cx_G\dot\theta^2\big)\]
+\[{}^Cf_y={}^CF_y=m\big(\dot v+{}^Cx_G\ddot\theta+u\dot\theta-{}^Cy_G\dot\theta^2\big)\quad(\text{slide prints }v\dot\theta;\ \text{see the slide check})\]
+\[{}^Cn_z={}^CN_z-\big({}^Cy_G\,{}^Cf_x-{}^Cx_G\,{}^Cf_y\big)=\wEI\,\ddot\theta-\big({}^Cy_G\,{}^Cf_x-{}^Cx_G\,{}^Cf_y\big)\]
+\use{this is the whole model: the two force equations come from $m\mathbf a_G$, the third from the torque balance. Three equations, three unknowns $(\dot u,\dot v,\ddot\theta)$.}
+\end{fbx}
+\begin{deriv}[from the three equations to the matrix, every line \added]
+Insert ${}^Cf_x,{}^Cf_y$ into ${}^Cn_z=\wEI\ddot\theta-y_Gf_x+x_Gf_y$ ($x_G,y_G$ short for ${}^Cx_G,{}^Cy_G$):
+\begin{align*}
+{}^Cn_z&=\wEI\ddot\theta-y_G\,m\big(\dot u-y_G\ddot\theta-v\dot\theta-x_G\dot\theta^2\big)+x_G\,m\big(\dot v+x_G\ddot\theta+u\dot\theta-y_G\dot\theta^2\big)\\
+&=-my_G\,\dot u+mx_G\,\dot v+\big(\wEI+m(x_G^2+y_G^2)\big)\ddot\theta+m\dot\theta\big(y_Gv+y_Gx_G\dot\theta+x_Gu-x_Gy_G\dot\theta\big)\\
+&=-my_G\,\dot u+mx_G\,\dot v+\big(\wEI+m(x_G^2+y_G^2)\big)\ddot\theta+m\dot\theta\,(x_Gu+y_Gv).
+\end{align*}
+The $x_Gy_G\dot\theta^2$ terms cancel. Collect $\dot u,\dot v,\ddot\theta$ on the left and velocity terms on the right.
+\end{deriv}
+\begin{fbx}[Matrix form $\mathbf M\dot{\wEz}+c(\wEz)=\wEQC$ \pg{26}]
+\[\underbrace{\begin{bmatrix}m&0&-m\,{}^Cy_G\\0&m&m\,{}^Cx_G\\-m\,{}^Cy_G&m\,{}^Cx_G&\wEI+m\big({}^Cx_G^2+{}^Cy_G^2\big)\end{bmatrix}}_{\mathbf M}\begin{bmatrix}\dot u\\\dot v\\\ddot\theta\end{bmatrix}\]
+\[+\underbrace{\begin{bmatrix}-m\dot\theta\,(v+{}^Cx_G\dot\theta)\\m\dot\theta\,(u-{}^Cy_G\dot\theta)\\m\dot\theta\,({}^Cx_G\,u+{}^Cy_G\,v)\end{bmatrix}}_{c(\wEz)}=\underbrace{\begin{bmatrix}{}^Cf_x\\{}^Cf_y\\{}^Cn_z\end{bmatrix}}_{\wEQC}\]
+\begin{symbols}
+$\mathbf M$ & depends only on geometry and mass distribution: constant, symmetric; $M_{33}=\wEI+m(x_G^2+y_G^2)$ is the inertia about $C$ (parallel-axis theorem) & kg, kg\,m$^2$\\
+$c(\wEz)$ & function of the instantaneous velocity (centripetal, Coriolis-like); zero at rest & N, N\,m\\
+$\wEQC$ & forces and moment on the chassis, in $\{C\}$, applied at $C$ & N, N\,m\\
+$\wEz$ & $(u,v,\dot\theta)^\top$, chassis velocity in $\{C\}$ & m/s, rad/s\\
+\end{symbols}
+\use{simulation: $\dot{\wEz}=\mathbf M^{-1}\big(\wEQC-c(\wEz)\big)$. Inverse dynamics: given $\dot{\wEz},\wEz$ read $\wEQC$ directly. Special case $C=G$ ($x_G=y_G=0$): $\mathbf M=\operatorname{diag}(m,m,\wEI)$, $c=(-mv\dot\theta,\ mu\dot\theta,\ 0)^\top$, i.e. $m(\dot u-v\dot\theta)=f_x$, $m(\dot v+u\dot\theta)=f_y$, $\wEI\ddot\theta=n_z$.}
+\end{fbx}
+\begin{recipe}[Derive the equations of motion (W13 Q4 style)]
+\begin{enumerate}
+\item Draw $\{O\},\{C\},\{G\}$; applied ${}^Cf_x,{}^Cf_y,{}^Cn_z$ at $C$; inertial ${}^CF_x,{}^CF_y,{}^CN_z$ at $G$; mark $({}^Cx_G,{}^Cy_G)$.
+\item Velocity of $G$: ${}^C\dot{\mathbf P}_G=(u-\dot\theta y_G,\ v+\dot\theta x_G)$.
+\item Acceleration of $G$ by the four terms (expand each cross product).
+\item Newton: ${}^Cf_x=m\ddot x_G$, ${}^Cf_y=m\ddot y_G$. Euler about $G$: ${}^CN_z=\wEI\ddot\theta$; transfer to $C$: ${}^Cn_z={}^CN_z-(y_Gf_x-x_Gf_y)$.
+\item Substitute, collect $\to\mathbf M\dot{\wEz}+c=\wEQC$; state which of $\mathbf M,c$ are zero or diagonal when $C=G$.
+\item \textbf{Check:} $\mathbf M$ symmetric; $c=0$ at rest; $C=G$ gives $\operatorname{diag}(m,m,\wEI)$; units N and N\,m.
+\end{enumerate}
+\end{recipe}
+\begin{twoway}{A. Newton--Euler (the slides)}{B. Lagrange (\pg{27} homework; \added)}
+Body frame $\{C\}$. Unknowns $\dot u,\dot v,\ddot\theta$. Steps: $m\mathbf a_G$, $\wEI\ddot\theta$, move the moment $G\to C$. Gives $\mathbf M\dot{\wEz}+c=\wEQC$ directly, in the axes where wheel forces are natural. Needs the acceleration of $G$ (four terms) and care with $u\dot\theta$.
+\tcblower
+World coordinates $\wEx=(x,y,\theta)$ of $C$. Kinetic energy $T=\tfrac12m|\dot{\mathbf P}_G|^2+\tfrac12\wEI\dot\theta^2=\tfrac12\wEz^\top\mathbf M\wEz=\tfrac12\dot{\wEx}^\top\,{}^O\mathbf M\dot{\wEx}$. No potential (flat floor). $\frac{d}{dt}\frac{\partial T}{\partial\dot{\wEx}}-\frac{\partial T}{\partial\wEx}=\wEQO$. Gives ${}^O\mathbf M\ddot{\wEx}+{}^Oc=\wEQO$ with no cross products. For $C=G$: $m\ddot x=f_x$, $m\ddot y=f_y$, $\wEI\ddot\theta=\tau_z$.
+\end{twoway}
+\begin{deriv}[the kinetic energy is $\tfrac12\wEz^\top\mathbf M\wEz$; why the two methods agree \added]
+With ${}^C\dot{\mathbf P}_G=(u-\dot\theta y_G,\ v+\dot\theta x_G)$ from the velocity page:
+\[|\dot{\mathbf P}_G|^2=u^2+v^2-2\dot\theta y_Gu+2\dot\theta x_Gv+\dot\theta^2(x_G^2+y_G^2),\]
+so $T=\tfrac12m(u^2+v^2)-my_G\,u\dot\theta+mx_G\,v\dot\theta+\tfrac12\big(\wEI+m(x_G^2+y_G^2)\big)\dot\theta^2$, which is $\tfrac12\wEz^\top\mathbf M\wEz$ with exactly the matrix above (the cross terms $-my_G$, $mx_G$ appear in rows 1 and 2 of column 3). Lagrange and Newton--Euler describe the same motion: for an offset $G$ I checked numerically that the Euler--Lagrange load equals $\mathbf J\,(\mathbf M\dot{\wEz}+c)$ (the Newton--Euler load turned into world axes). \chk
+\end{deriv}
+\begin{worked}[offset centre of mass, solved at rest]
+$m=8$\,kg, $\wEI=0.3$\,kg\,m$^2$, $G=(0.05,\,0.02)$\,m, applied at $C$: ${}^C\mathbf f=(6,0)$\,N, ${}^Cn_z=0.5$\,N\,m, robot at rest ($c=\mathbf 0$). $M_{33}=0.3+8(0.0025+0.0004)=0.3232$:
+\[\begin{bmatrix}8&0&-0.16\\0&8&0.4\\-0.16&0.4&0.3232\end{bmatrix}\begin{bmatrix}\dot u\\\dot v\\\ddot\theta\end{bmatrix}=\begin{bmatrix}6\\0\\0.5\end{bmatrix}\Rightarrow
+\dot v=-0.05\ddot\theta,\ \dot u=0.75+0.02\ddot\theta,\]
+row 3: $-0.12+0.3\ddot\theta=0.5$, so $\ddot\theta=\mathbf{2.0667}$\,rad/s$^2$, $\dot v=\mathbf{-0.1033}$, $\dot u=\mathbf{0.7913}$\,m/s$^2$. (Using $M_{33}=\wEI$ alone gives $2.24$: wrong.) \chk
+\end{worked}
+
+%==================================================================
+\hd{From $\{C\}$ to $\{O\}$: $\wEz,\dot{\wEz}$ in terms of $\wEx,\dot{\wEx},\ddot{\wEx}$ \pg{28--30}}
+\begin{fbx}[Kinematic link and its derivative \pg{30}]
+\[\dot{\wEx}={}^O\mathbf v_C=\mathbf J(\wEx)\,\wEz,\qquad \ddot{\wEx}=\dot{\mathbf J}(\wEx)\wEz+\mathbf J(\wEx)\dot{\wEz}\]
+\[\dot{\wEz}=\mathbf J^{-1}(\wEx)\Big[\ddot{\wEx}-\dot{\mathbf J}(\wEx)\wEz\Big]=\mathbf J^{-1}(\wEx)\Big[\ddot{\wEx}-\dot{\mathbf J}(\wEx)\mathbf J^{-1}(\wEx)\dot{\wEx}\Big]\]
+\[\mathbf J=\begin{bmatrix}\cos\theta&-\sin\theta&0\\\sin\theta&\cos\theta&0\\0&0&1\end{bmatrix},\quad\dot{\mathbf J}=\dot\theta\begin{bmatrix}-\sin\theta&-\cos\theta&0\\\cos\theta&-\sin\theta&0\\0&0&0\end{bmatrix},\quad \mathbf J^{-1}\dot{\mathbf J}=\dot\theta\begin{bmatrix}0&-1&0\\1&0&0\\0&0&0\end{bmatrix}\]
+\use{aim of the slide (\pg{28}): write $\wEQO=f(\wEx,\dot{\wEx},\ddot{\wEx})$. Two ingredients: (1) $\wEz,\dot{\wEz}$ from $\wEx$ and its derivatives (this slide), (2) a relation between $\wEQC$ and $\wEQO$ (next). The product $\mathbf J^{-1}\dot{\mathbf J}$ is the constant skew matrix $[\boldsymbol\omega\times]$, so $\dot{\wEz}=\mathbf J^{-1}\ddot{\wEx}-[\boldsymbol\omega\times]\wEz$.}
+\end{fbx}
+\begin{slideerr}[p.\,30: ``$\mathbf J(\eta)$'']
+The line ``Taking the derivative of $\dot{\wEx}=\mathbf J(\eta)\wEz$'' should read $\mathbf J(\wEx)$ (the slide's $\eta$ is a typo; $\mathbf J$ depends on the heading $\theta$ only). The three displayed equations are right.
+\end{slideerr}
+\columnbreak
+\hd{Loads between frames: power invariance \pg{31--32}}
+\begin{fbx}[$\wEQC=\mathbf J^\top\wEQO$ \pg{32}]
+\begin{gather*}\wEQO\!\cdot\dot{\wEx}=\wEQC\!\cdot\wEz\ \Rightarrow\ \wEQO^{\top}\dot{\wEx}=\wEQC^{\top}\wEz\ \Rightarrow\ \wEQO^{\top}\mathbf J(\wEx)\wEz=\wEQC^{\top}\wEz\\ \Rightarrow\ \wEQO^{\top}\mathbf J(\wEx)=\wEQC^{\top}\ \Rightarrow\ \boxed{\mathbf J(\wEx)^{\top}\,\wEQO=\wEQC}\end{gather*}
+\begin{symbols}
+$\wEQO\!\cdot\dot{\wEx}$ & power of the load in world axes ($f_x\dot x+f_y\dot y+\tau_z\dot\theta$) & W\\
+$\wEQC\!\cdot\wEz$ & power of the same load in chassis axes ($f_xu+f_yv+n_z\dot\theta$) & W\\
+\end{symbols}
+\use{the slide's argument: ``conservation of energy (power, to be precise)'': the power consumed by the robot is the same in any frame. The step $\wEQO^\top\mathbf J\wEz=\wEQC^\top\wEz$ holds for \emph{every} $\wEz$, so the row vectors are equal. Velocities map with $\mathbf J$, loads with $\mathbf J^\top$ (same idea as $\boldsymbol\tau=\mathbf J^\top\mathbf F$ for an arm). Since $\mathbf J$ is a rotation, $\mathbf J^\top=\mathbf J^{-1}$ and $\wEQO=\mathbf J\,\wEQC$.}
+\end{fbx}
+\begin{worked}[turn a load between frames]
+\textbf{(a)} $\wEQC=(10,0,0.4)$ (N, N, N\,m), $\theta=30^\circ$: $\wEQO=\mathbf J\wEQC=(10\cos30^\circ,\ 10\sin30^\circ,\ 0.4)=(\mathbf{8.660},\ \mathbf{5.000},\ 0.4)$.
+\textbf{(b)} $\wEQO=(4,-2,0.7)$, $\theta=120^\circ$: $\wEQC=\mathbf J^\top\wEQO$: ${}^Cf_x=4(-0.5)+(-2)(0.8660)=-3.732$, ${}^Cf_y=-4(0.8660)+(-2)(-0.5)=-2.464$, ${}^Cn_z=0.7$. $|\mathbf f|=4.472$ in both frames. Using $\mathbf J$ instead gives $(-0.268,\ 4.464)$: wrong. \chk
+\end{worked}
+
+%==================================================================
+\hd{Equation of motion in the inertial frame \pg{33--34}}
+\begin{fbx}[Plug into $\mathbf M\dot{\wEz}+c=\wEQC$ \pg{34}]
+\[\mathbf M\,\mathbf J^{-1}\Big[\ddot{\wEx}-\dot{\mathbf J}\mathbf J^{-1}\dot{\wEx}\Big]+c(\wEx,\dot{\wEx})=\mathbf J^\top\,\wEQO\]
+\[(\mathbf J^\top)^{-1}\mathbf M\mathbf J^{-1}\,\ddot{\wEx}+(\mathbf J^\top)^{-1}\Big[c(\wEx,\dot{\wEx})-\mathbf M\,\mathbf J^{-1}\dot{\mathbf J}\,\mathbf J^{-1}\dot{\wEx}\Big]=\wEQO\]
+\[\boxed{{}^O\mathbf M\,\ddot{\wEx}+{}^Oc(\wEx,\dot{\wEx})={}^O\mathbf Q},\qquad {}^O\mathbf M=(\mathbf J^\top)^{-1}\mathbf M\mathbf J^{-1},\quad {}^Oc=(\mathbf J^\top)^{-1}\Big[c-\mathbf M\,\mathbf J^{-1}\dot{\mathbf J}\,\mathbf J^{-1}\dot{\wEx}\Big]\]
+\use{the result is ``entirely in terms of $\wEx,\dot{\wEx},\ddot{\wEx}$''. First line: multiply $\mathbf M\dot{\wEz}$ with the formula for $\dot{\wEz}$ above; second: multiply the line by $(\mathbf J^\top)^{-1}$. Since $\mathbf J^{-1}\dot{\mathbf J}\mathbf J^{-1}\dot{\wEx}=[\boldsymbol\omega\times]\wEz$, ${}^Oc=\mathbf J\big[c-\mathbf M[\boldsymbol\omega\times]\wEz\big]$ (a rotation has $(\mathbf J^\top)^{-1}=\mathbf J$).}
+\end{fbx}
+\begin{slideerr}[p.\,34, third line: a missing $\mathbf J^{-1}$]
+The slide prints ${}^Oc=(\mathbf J^\top)^{-1}[c-\mathbf M\,\dot{\mathbf J}\,\mathbf J^{-1}\dot{\wEx}]$, without the $\mathbf J^{-1}$ in front of $\dot{\mathbf J}$ (expand line 2 of the same slide: $\mathbf M\mathbf J^{-1}\dot{\mathbf J}\mathbf J^{-1}\dot{\wEx}$). The two agree only at $\theta=0$. Test: $C=G$, $m=10$, $\wEI=0.25$, $\theta=90^\circ$, $u=1$, $v=0$, $\dot\theta=2$: correct ${}^Oc=(0,0,0)$ (as it must be, a free body obeys $m\ddot x=f_x$), the printed form gives $(-20,\ 20,\ 0)$. \chk
+\end{slideerr}
+\begin{worked}[$C=G$: the velocity terms vanish in world axes]
+$c=(-mv\dot\theta,\ mu\dot\theta,\ 0)=m\dot\theta(-v,u,0)=\mathbf M[\boldsymbol\omega\times]\wEz$, so $c-\mathbf M[\boldsymbol\omega\times]\wEz=\mathbf 0$ and ${}^O\mathbf M=\operatorname{diag}(m,m,\wEI)$, ${}^Oc=\mathbf 0$: $m\ddot x=f_x$, $m\ddot y=f_y$, $\wEI\ddot\theta=\tau_z$ in world axes. The $c$ in $\{C\}$ exists only because the axes rotate. \chk
+\end{worked}
+\begin{center}\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}\toprule
+& \textbf{Chassis frame} $\mathbf M\dot{\wEz}+c=\wEQC$ & \textbf{Inertial frame} ${}^O\mathbf M\ddot{\wEx}+{}^Oc=\wEQO$\\\midrule
+unknown & $\dot u,\dot v,\ddot\theta$ & $\ddot x,\ddot y,\ddot\theta$\\
+$\mathbf M$ & constant & depends on $\theta$ (full for offset $G$)\\
+loads & wheel forces natural here & need $\wEQO=\mathbf J\wEQC$\\
+use when & simulating with wheel forces (\pg{35}) & you want $\wEQO$ along world axes\\\bottomrule\end{tabularx}
+\end{center}
+\drawncap{choice of frame, added}
+
+%==================================================================
+\columnbreak
+\hd{Using the model: forward simulation \pg{35}}
+\begin{fbx}[Slide recipe \pg{35}]
+\[\dot{\wEz}=\mathbf M^{-1}\Big[\wEQC-c(\wEz)\Big],\qquad\wEz\leftarrow\int\dot{\wEz}\,dt,\qquad \dot{\wEx}=\mathbf J(\wEx)\,\wEz,\qquad\wEx\leftarrow\int\dot{\wEx}\,dt\]
+\use{the chassis frame is used because the forces on the robot come from wheel--ground interaction, naturally written in $\{C\}$. Start from a known configuration with known wheel forces. Order: acceleration, velocity, pose.}
+\end{fbx}
+\begin{recipe}[One Euler step]
+\begin{enumerate}
+\item From $\wEz_k$ compute $c(\wEz_k)=(-m\dot\theta v,\ m\dot\theta u,\ 0)$ if $C=G$ (zero at rest).
+\item Wheel forces $\to\wEQC$ (differential drive: next section); add the lateral no-slip reaction if the question says the wheels do not slip.
+\item $\dot{\wEz}=\mathbf M^{-1}(\wEQC-c)$.
+\item $\wEz_{k+1}=\wEz_k+\Delta t\,\dot{\wEz}$; then $\dot{\wEx}=\mathbf J(\theta_k)\wEz_{k+1}$; $\wEx_{k+1}=\wEx_k+\Delta t\,\dot{\wEx}$.
+\item \textbf{Check:} $\theta$ in radians; $v$ stays $0$ for a no-slip diff drive; with $\wEz=\mathbf 0$ the pose does not move at all in the first step.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[one step with a moving robot, numbers ours]
+$C=G$, $m=10$, $\wEI=0.25$, $r=0.1$, $a=0.2$; state $\wEx=(1.0,\,2.0,\,\pi/6)$, $\wEz=(1.0,\,0,\,1.6)$; torques $\tau_L=0.4$, $\tau_R=0.6$ N\,m; $\Delta t=0.1$ s.
+$F=\tau/r=(4,6)$ N; $\wEQC=(10,\ 0,\ 0.2(6-4))=(10,0,0.4)$. $c=(-0,\ 10(1.0)(1.6),\ 0)=(0,\,16,\,0)$.
+Free body: $\dot{\wEz}=(10/10,\ (0-16)/10,\ 0.4/0.25)=(1,\ -1.6,\ 1.6)$. With no slip the ground adds ${}^Cf_y=16$ N, so $\dot{\wEz}=(\mathbf1,\ \mathbf0,\ \mathbf{1.6})$.
+$\wEz_{1}=(1.0+0.1,\ 0,\ 1.6+0.16)=(1.1,\ 0,\ 1.76)$. $\dot{\wEx}=\mathbf J(30^\circ)\wEz_1=(1.1\cos30^\circ,\ 1.1\sin30^\circ,\ 1.76)=(0.9526,\ 0.55,\ 1.76)$.
+$\wEx_1=(1.0953,\ 2.055,\ 0.6996)$ ($\theta=40.1^\circ$). Using the old $\wEz_k$ in $\dot{\wEx}$ instead gives $(1.0866,\,2.05,\,0.6836)$: the two orders differ at $O(\Delta t)$ here; state which you use. \chk
+\end{worked}
+
+%==================================================================
+\hd{Where does the chassis load come from? Differential drive \pg{36--37}}
+\slidefig[0.95\linewidth]{w11-lec}{37}{29 151 173 146}{two driven wheels $2a$ apart, $\{C,G\}$ at the axle midpoint, forces $F_1$ (left, $+\hat y$) and $F_2$ (right, $-\hat y$), handwritten ${}^C\mathbf Q=\mathbf B\mathbf F$}
+\premise[wheel forces $\to$ chassis loads]{wheel forces $F_1,F_2$ (or torques $\tau_i$ and radius $r$), half-track $a$, $m$, $\wEI$}{loads $\wEQC=({}^Cf_x,{}^Cf_y,{}^Cn_z)$, then accelerations $\dot u,\ddot\theta$}
+\begin{fbx}[Differential drive \pg{37}]
+\[\begin{bmatrix}{}^Cf_x\\{}^Cf_y\\{}^Cn_z\end{bmatrix}=\underbrace{\begin{bmatrix}1&1\\0&0\\-a&a\end{bmatrix}}_{3\times2}\underbrace{\begin{bmatrix}F_1\\F_2\end{bmatrix}}_{2\times1},\qquad F_i=\frac{\tau_i}{r}\]
+\[\dot u=\frac{F_1+F_2}{m},\qquad\ddot\theta=\frac{a\,(F_2-F_1)}{\wEI}\qquad(C=G,\ \text{from rest})\]
+\begin{symbols}
+$F_1,F_2$ & forward ground force of the left wheel (at $+a$) and right wheel (at $-a$) & N\\
+$\tau_i,\,r$ & wheel torque, wheel radius (wheel inertia neglected) & N\,m, m\\
+$a$ & half the wheel separation $2a$ (lever arm of each wheel about $C$) & m\\
+\end{symbols}
+\use{two inputs, three loads: the second row is zero, so wheel torques cannot push sideways. The sideways force that turns the path (the $mu\dot\theta$ of $c$) is a no-slip reaction, which is the non-holonomic constraint of W10 again.}
+\end{fbx}
+\begin{deriv}[of the matrix: each wheel is one column \added]
+A force $F$ along unit vector $\mathbf d=(d_x,d_y)$ applied at position $(x_i,y_i)$ contributes the load $(Fd_x,\ Fd_y,\ F(x_id_y-y_id_x))$ (moment $=x f_y-y f_x$). Both wheels push along $\hat x$, $\mathbf d=(1,0)$: left wheel at $(0,+a)$: $(F_1,\ 0,\ -aF_1)$; right wheel at $(0,-a)$: $(F_2,\ 0,\ +aF_2)$. Add the two columns to get the matrix. In terms of W10: wheel speeds are $\dot{\boldsymbol\varphi}=\mathbf J_w\wEz$ with $\mathbf J_w=\frac1r\begin{bmatrix}1&0&-a\\1&0&a\end{bmatrix}$ and $\wEQC=\mathbf J_w^\top\boldsymbol\tau=\mathbf B\mathbf F$: the same matrix transposed, because power $\boldsymbol\tau\cdot\dot{\boldsymbol\varphi}=\wEQC\cdot\wEz$ is the same.
+\end{deriv}
+\begin{recipe}[Wheel torques $\to\dot u,\ddot\theta$]
+\begin{enumerate}
+\item Top view: $C=G$, wheels at $(0,\pm a)$, $F_1$ left, $F_2$ right, both along $+\hat x$.
+\item $F_i=\tau_i/r$.
+\item $f_x=F_1+F_2$, $f_y=0$, $n_z=a(F_2-F_1)$ (lever arm $a$, not $2a$).
+\item $C=G$, no slip: $\dot u=f_x/m$, $\ddot\theta=n_z/\wEI$ (from rest $c=0$), $v=0$.
+\item \textbf{Check sign:} the right wheel pushing harder turns the robot left ($\ddot\theta>0$). Check power: $\boldsymbol\tau\cdot\dot{\boldsymbol\varphi}=f_xu+n_z\dot\theta$. Path radius $R=u/\dot\theta=\wEI f_x/(m\,n_z)$.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[wheel torques, numbers ours (the slide has none)]
+$m=10$\,kg, $\wEI=0.25$\,kg\,m$^2$, $r=0.1$\,m, $a=0.2$\,m, $\tau_L=0.4$, $\tau_R=0.6$\,N\,m, from rest. $F=(4,6)$\,N; $f_x=10$\,N, $n_z=0.2(6-4)=0.4$\,N\,m; $\dot u=\mathbf{1.0}$\,m/s$^2$, $\ddot\theta=\mathbf{1.6}$\,rad/s$^2$; $R=\wEI f_x/(mn_z)=0.625$\,m. At $t=1$\,s: $u=1$, $\dot\theta=1.6$; $\dot\varphi_L=(1-0.2\cdot1.6)/0.1=6.8$, $\dot\varphi_R=13.2$\,rad/s; power $0.4(6.8)+0.6(13.2)=10.64$\,W $=10(1)+0.4(1.6)$. Holding $v=0$ needs a sideways ground force $mu\dot\theta=16$\,N (if the wheels were free to slide: $\dot v=-u\dot\theta=-1.6$). At $t=2$\,s: $(x,y)=(-0.036,\ 1.249)$ m, $\theta=3.2$ rad. \chk
+\end{worked}
+\begin{slideerr}[gap, not an error: no-slip is not in the deck]
+The deck never states the no-slip condition inside the dynamics. The p.\,37 matrix lists the forward forces only; the sideways force that keeps $v=0$ is a constraint reaction. If wheel forces are given and $\dot v$ is asked: say ``no slip $\Rightarrow v=0$, $\dot v=0$''; for a body with no lateral grip use $\mathbf M\dot{\wEz}+c=\wEQC$ with ${}^Cf_y=0$.
+\end{slideerr}
+\begin{trap}
+$2a$ as the lever arm (doubles $\ddot\theta$); swapping the signs of the $n_z$ row (right push turns right); forgetting $F=\tau/r$; using $\mathbf J$ instead of $\mathbf J^\top$ to bring loads to $\{C\}$.
+\end{trap}
+
+%==================================================================
+\columnbreak
+\hd{Scenario: force to drive a circle of radius $R$ at speed $v$ \added}
+\premise[circle at constant speed]{mass $m$, speed $u$ (call it $v$ in the question), radius $R$; $C=G$, no slip}{the loads $\wEQC$ needed, which of them the wheels supply, wheel speeds for half-track $a$ and wheel radius $r$}
+\begin{recipe}[Circle of radius $R$ at speed $u$]
+\begin{enumerate}
+\item Anticlockwise circle (centre on the $+\hat y$ side): $\dot\theta=u/R$, $v=0$, $\dot u=\ddot\theta=0$.
+\item Steady state: $\wEQC=c=(-mv\dot\theta,\ mu\dot\theta,\ 0)=(0,\ mu^2/R,\ 0)$ (for $C=G$).
+\item Meaning: the force is $mu^2/R$ \emph{towards the centre}, sideways in $\{C\}$. Drive forces $f_x=n_z=0$ (apart from friction losses): both wheels give equal forces $F_1=F_2$ that only balance friction. The sideways force is the wheel--ground no-slip reaction.
+\item Wheel speeds: $\dot\varphi_{1,2}=(u\mp a\dot\theta)/r$ (left, right; W10).
+\item \textbf{Check:} $R\to\infty$ gives $0$ N; double the speed means 4 times the force.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[numbers ours]
+$m=12$\,kg, $u=0.6$\,m/s, $R=1.5$\,m: $\dot\theta=0.4$\,rad/s, $f_y=mu\dot\theta=12(0.6)(0.4)=\mathbf{2.88}$\,N ($=mu^2/R$). With $a=0.2$, $r=0.1$: $\dot\varphi_L=(0.6-0.08)/0.1=\mathbf{5.2}$, $\dot\varphi_R=\mathbf{6.8}$\,rad/s. (Slide-style: $m=10$, $u=2$, $\dot\theta=0.5$: $R=4$\,m, $f_y=10$\,N; the printed $v\dot\theta$ would give $0$.) \chk
+\end{worked}
+
+%==================================================================
+\hd{Swedish-wheel robot \pg{38}}
+\slidefig[0.4\linewidth]{w11-lec}{38}{48 162 672 162}{four Swedish wheels, forces $F_1\dots F_4$ along the roller directions, offsets $a$ and $b$, $\{C,G\}$ at the centre}
+The slide is a figure only (the answer was done in class). The method is the same as for the differential drive.
+\begin{deriv}[load matrix for the four wheels \added]
+Read from the figure: wheel $i$ at $(x_i,y_i)$ in $\{C\}$ with roller (force) direction $\mathbf d_i$ at $\pm45^\circ$, $s=1/\sqrt2$. I took $F_1$ at $(b,a)$, $\mathbf d_1=s(1,1)$; $F_2$ at $(-b,a)$, $\mathbf d_2=s(1,-1)$; $F_3$ at $(-b,-a)$, $\mathbf d_3=s(1,1)$; $F_4$ at $(b,-a)$, $\mathbf d_4=s(1,-1)$ (the exact label positions of $a,b$ on the slide are my reading). Each column is $(d_x,\ d_y,\ x_id_y-y_id_x)$:
+\[\begin{bmatrix}{}^Cf_x\\{}^Cf_y\\{}^Cn_z\end{bmatrix}=s\begin{bmatrix}1&1&1&1\\1&-1&1&-1\\b-a&b-a&a-b&a-b\end{bmatrix}\begin{bmatrix}F_1\\F_2\\F_3\\F_4\end{bmatrix}\]
+$3\times4$, rank $3$: any load is reachable, and the null space $\mathbf F\propto(1,-1,-1,1)$ gives internal forces with zero net load (wheels fighting each other).
+\end{deriv}
+\begin{worked}[numbers ours]
+$a=0.2$, $b=0.25$ m. $\mathbf F=(5,-5,5,-5)$ N: ${}^C\mathbf f=(0,\ 14.14)$ N, $n_z=0$: pure sideways push. $\mathbf F=(5,5,5,5)$: $\mathbf f=(14.14,\ 0)$, $n_z=0$: forwards. $\mathbf F=(5,5,-5,-5)$: $\mathbf f=\mathbf 0$, $n_z=0.0354\cdot20=0.707$ N\,m: pure spin. With $m=10$, $\mathbf F=(5,-5,5,-5)$ from rest: $\dot v=1.414$ m/s$^2$. A holonomic robot can accelerate sideways without turning, unlike the differential drive. \chk
+\end{worked}
+
+%==================================================================
+\hd{Summary \pg{39}}
+\begin{fbx}[Two equations, one link]
+\[\text{body frame: }\mathbf M\dot{\wEz}+c(\wEz)=\wEQC\qquad\text{inertial frame: }{}^O\mathbf M\ddot{\wEx}+{}^Oc(\wEx,\dot{\wEx})=\wEQO\qquad\wEQC=\mathbf J^\top\wEQO\]
+\use{the slide lists only these two (``dynamics equation in the body frame'', ``in the inertial frame''). Wheel forces enter through $\wEQC=\mathbf B\mathbf F$.}
+\end{fbx}
+\begin{trap}
+Spot-the-error list: $+v\dot\theta$ in the $y$ row (should be $u$); $M_{33}=\wEI$ for an offset $G$ (needs $+m(x_G^2+y_G^2)$); $\wEQC=\mathbf J\wEQO$ (should be $\mathbf J^\top$); $2a$ as lever arm; calling a simulation from given forces ``inverse dynamics'' (it is forward).
+\end{trap}
+
+%==================================================================
+\hd{How this is examined: worked solutions}
+No W11 question is among the W13 samples (W13 pp.\,4--20). The nearest are Q4 (derive the equations of motion) and Q10 (wheel model). Marks are not published; indicative, about 1 mark per step.
+
+\begin{examq}[1: derive and solve, offset centre of mass \mk{indicative: 6 steps}]
+A planar chassis has mass $m=8$\,kg and moment of inertia $\wEI=0.3$\,kg\,m$^2$ about its centre of mass $G$, which lies at $({}^Cx_G,{}^Cy_G)=(0.05,\ 0.02)$\,m from the reference point $C$. Wheels apply at $C$ the force ${}^C\mathbf f=(6,0)$\,N and torque ${}^Cn_z=0.5$\,N\,m; the robot is at rest. (a) Derive $\mathbf M$ in $\mathbf M\dot{\wEz}+c(\wEz)=\wEQC$. (b) Find $\ddot\theta$ and $\dot v$.
+\solution
+(a) Frames $\{O\},\{C\},\{G\}$ drawn, applied loads at $C$, inertial loads at $G$. At rest $u=v=\dot\theta=0$, so the acceleration of $G$ is $({}^C\ddot x_G,{}^C\ddot y_G)=(\dot u-y_G\ddot\theta,\ \dot v+x_G\ddot\theta)$ and $c=\mathbf 0$.
+Newton: ${}^Cf_x=m(\dot u-y_G\ddot\theta)$, ${}^Cf_y=m(\dot v+x_G\ddot\theta)$. Euler about $G$ and transfer to $C$: ${}^Cn_z=\wEI\ddot\theta-y_G{}^Cf_x+x_G{}^Cf_y$. Substitute: ${}^Cn_z=-my_G\dot u+mx_G\dot v+(\wEI+m(x_G^2+y_G^2))\ddot\theta$. So
+\[\mathbf M=\begin{bmatrix}m&0&-my_G\\0&m&mx_G\\-my_G&mx_G&\wEI+m(x_G^2+y_G^2)\end{bmatrix}=\begin{bmatrix}8&0&-0.16\\0&8&0.4\\-0.16&0.4&0.3232\end{bmatrix}\]
+(symmetric, constant; $M_{33}=0.3+8(0.0025+0.0004)=0.3232$).
+(b) Row 2: $8\dot v+0.4\ddot\theta=0$, $\dot v=-0.05\ddot\theta$. Row 1: $8\dot u-0.16\ddot\theta=6$, $\dot u=0.75+0.02\ddot\theta$. Row 3: $-0.16(0.75+0.02\ddot\theta)+0.4(-0.05\ddot\theta)+0.3232\ddot\theta=-0.12+0.3\ddot\theta=0.5$.
+\[\boxed{\ddot\theta=2.067\ \text{rad/s}^2,\quad\dot v=-0.103\ \text{m/s}^2,\quad\dot u=0.791\ \text{m/s}^2}\]
+Check: the coefficient of $\ddot\theta$ is exactly $\wEI=0.3$ after elimination (torque about $G$ sets the spin); $M_{33}=\wEI$ would give $2.24$, wrong. \chk
+\end{examq}
+
+\begin{examq}[2: differential drive from wheel torques \mk{indicative: 5 steps}]
+A differential-drive robot ($C=G$ at the axle midpoint) has $m=12$\,kg, $\wEI=0.4$\,kg\,m$^2$, wheel radius $r=0.08$\,m and half-track $a=0.25$\,m. From rest the left and right wheel torques are $\tau_L=0.5$ and $\tau_R=0.9$\,N\,m (wheel inertia neglected, no slip). Find $\dot u$ and $\ddot\theta$, and the radius of the path.
+\solution
+Frames: $\hat x_C$ forwards, left wheel at $(0,+a)$. Forces $F_1=\tau_L/r=6.25$\,N, $F_2=\tau_R/r=11.25$\,N, both along $+\hat x_C$.
+\[\wEQC=\begin{bmatrix}1&1\\0&0\\-a&a\end{bmatrix}\begin{bmatrix}F_1\\F_2\end{bmatrix}=\begin{bmatrix}17.5\\0\\0.25(11.25-6.25)\end{bmatrix}=\begin{bmatrix}17.5\ \text{N}\\0\\1.25\ \text{N\,m}\end{bmatrix}\]
+From rest $c=\mathbf 0$ and $C=G$: $\mathbf M=\operatorname{diag}(12,12,0.4)$.
+\[\boxed{\dot u=17.5/12=1.458\ \text{m/s}^2,\qquad\ddot\theta=1.25/0.4=3.125\ \text{rad/s}^2}\]
+Both are constant, so $R=u/\dot\theta=\wEI f_x/(mn_z)=0.4(17.5)/(12\cdot1.25)=0.467$\,m: a circle. Check: the stronger right wheel turns the robot left ($\ddot\theta>0$); using $2a$ would give $6.25$, wrong. \chk
+\end{examq}
+
+\begin{examq}[3: the force needed to drive a circle \mk{indicative: 5 steps}]
+A robot of mass $12$\,kg ($C=G$) drives a circle of radius $1.5$\,m at a constant $0.6$\,m/s without sliding. (a) What force, in the chassis frame, does the ground exert? (b) Which part of $\wEQC$ do the drive wheels supply? (c) Wheel speeds for $a=0.2$\,m, $r=0.1$\,m. (d) Explain why constant speed still needs a force.
+\solution
+(a) Steady circle: $\dot\theta=u/R=0.6/1.5=0.4$ rad/s, $v=0$, $\dot u=\ddot\theta=0$. Equations of motion with $C=G$: ${}^Cf_x=m(\dot u-v\dot\theta)=0$, ${}^Cf_y=m(\dot v+u\dot\theta)=12(0.6)(0.4)$, ${}^Cn_z=\wEI\ddot\theta=0$.
+\[\boxed{{}^Cf_y=mu\dot\theta=mu^2/R=2.88\ \text{N},\ \text{towards the centre (}+\hat y_C\text{)}}\]
+(b) The drive wheels supply no net load in steady state ($f_x=n_z=0$, only friction); the sideways $2.88$ N is the no-slip reaction (row 2 of the diff-drive matrix is zero). (c) $\dot\varphi_L=(0.6-0.2(0.4))/0.1=5.2$, $\dot\varphi_R=(0.6+0.08)/0.1=6.8$ rad/s. (d) The velocity vector turns with the body: the acceleration is $u\dot\theta$ even though $|\mathbf v|$ is constant; Newton needs a force. Check: $R\to\infty$ gives zero. \chk
+\end{examq}
+
+\begin{examq}[4: acceleration of the centre of mass \mk{indicative: 4 steps}]
+The chassis velocity is $u=1.5$, $v=0.2$ m/s, $\dot\theta=0.8$ rad/s, and $\dot u=0.3$, $\dot v=-0.1$ m/s$^2$. (a) With $C=G$ and $\ddot\theta=0$, find the acceleration of $C$ in the chassis axes. (b) Now $G$ is at $(0.2,0.1)$\,m and $\ddot\theta=0.5$ rad/s$^2$: find the acceleration of $G$ and the force $m\mathbf a_G$ for $m=12$\,kg.
+\solution
+(a) $\mathbf v=u\hat x+v\hat y$; the unit vectors turn: $\dot{\hat x}=\dot\theta\hat y$, $\dot{\hat y}=-\dot\theta\hat x$. So $\mathbf a=(\dot u-v\dot\theta)\hat x+(\dot v+u\dot\theta)\hat y$:
+\[\boxed{a_x=0.3-0.2(0.8)=0.14\ \text{m/s}^2,\qquad a_y=-0.1+1.5(0.8)=1.10\ \text{m/s}^2}\]
+(b) Four terms (cross products of $\boldsymbol\omega=(0,0,0.8)$, $\dot{\boldsymbol\omega}=(0,0,0.5)$): $\ddot{\mathbf P}_C=(0.3,-0.1)$; $\dot{\boldsymbol\omega}\times\mathbf P_G=(-0.5(0.1),\ 0.5(0.2))=(-0.05,0.10)$; $\boldsymbol\omega\times\dot{\mathbf P}_C=0.8(-0.2,\ 1.5)=(-0.16,1.20)$; $\boldsymbol\omega\times\boldsymbol\omega\times\mathbf P_G=-0.64(0.2,0.1)=(-0.128,-0.064)$.
+\[\boxed{\mathbf a_G=(-0.038,\ 1.136)\ \text{m/s}^2,\qquad m\mathbf a_G=(-0.456,\ 13.63)\ \text{N}}\]
+Check: the $y$ entry is dominated by $u\dot\theta=1.2$ (centripetal); the printed $+v\dot\theta$ would give $0.06$ in (a), 18 times too small. \chk
+\end{examq}
+
+\begin{examq}[5: one integration step \mk{indicative: 5 steps}]
+The robot of Worked example ``wheel torques'' ($m=10$, $\wEI=0.25$, $r=0.1$, $a=0.2$, $C=G$, no slip) is at $\wEx=(1.0,\ 2.0,\ \pi/6)$ with chassis velocity $\wEz=(1.0,\ 0,\ 1.6)$. The wheel torques are $\tau_L=0.4$, $\tau_R=0.6$\,N\,m. Using the slide recipe with $\Delta t=0.1$\,s find $\dot{\wEz}$, $\wEz$ and $\wEx$ after one step.
+\solution
+$\{C\}$ axes. Wheel forces $F=(4,6)$ N, so $\wEQC=(10,\ 0,\ 0.2(6-4))=(10,0,0.4)$. With $C=G$: $\mathbf M=\operatorname{diag}(10,10,0.25)$ and $c=(-mv\dot\theta,\ mu\dot\theta,\ 0)=(0,\ 16,\ 0)$. No slip: the ground supplies ${}^Cf_y=16$ N (so that $\dot v=0$), giving $\dot{\wEz}=\mathbf M^{-1}(\wEQC+(0,16,0)-c)=(1.0,\ 0,\ 1.6)$.
+Integrate: $\wEz_1=(1.0+0.1(1.0),\ 0,\ 1.6+0.1(1.6))=(1.1,\ 0,\ 1.76)$. Kinematics: $\dot{\wEx}=\mathbf J(\pi/6)\wEz_1=\begin{bmatrix}\cos30^\circ&-\sin30^\circ&0\\\sin30^\circ&\cos30^\circ&0\\0&0&1\end{bmatrix}\begin{bmatrix}1.1\\0\\1.76\end{bmatrix}=(0.9526,\ 0.55,\ 1.76)$.
+Integrate: $\wEx_1=(1.0+0.0953,\ 2.0+0.055,\ 0.5236+0.176)$:
+\[\boxed{\dot{\wEz}=(1,\ 0,\ 1.6),\quad\wEz_1=(1.1,\ 0,\ 1.76),\quad\wEx_1=(1.095\ \text{m},\ 2.055\ \text{m},\ 0.700\ \text{rad})}\]
+Check: radians throughout; speed $|\mathbf v|$ goes from $1.0$ to $1.1$ m/s. If the lateral reaction were omitted the free body would give $\dot v=-1.6$ (it would slide). \chk
+\end{examq}
+
+\begin{examq}[6: loads between frames; spot the errors \mk{indicative: 4 steps}]
+(a) Show that $\wEQC=\mathbf J^\top\wEQO$. (b) At $\theta=120^\circ$ the world-frame load is $\wEQO=(4,\,-2,\,0.7)$ (N, N, N\,m): find ${}^Cf_x,{}^Cf_y$. (c) A student writes ``for $a=0.2$ m, $F_1=3$ N, $F_2=7$ N: $n_z=2a(F_2-F_1)=1.6$ N\,m; the simulation from these forces is inverse dynamics; $\wEQC=\mathbf J\wEQO$''. Find the three errors.
+\solution
+(a) Power is the same in any frame: $\wEQO^\top\dot{\wEx}=\wEQC^\top\wEz$. With $\dot{\wEx}=\mathbf J\wEz$: $\wEQO^\top\mathbf J\wEz=\wEQC^\top\wEz$ for every $\wEz$, so $\wEQO^\top\mathbf J=\wEQC^\top$, i.e. $\wEQC=\mathbf J^\top\wEQO$ ($=\mathbf J^{-1}\wEQO$ for a rotation).
+(b) $\cos120^\circ=-0.5$, $\sin120^\circ=0.8660$. ${}^Cf_x=4(-0.5)+(-2)(0.8660)=-3.732$, ${}^Cf_y=-4(0.8660)+(-2)(-0.5)=-2.464$:
+\[\boxed{{}^Cf_x=-3.73\ \text{N},\quad{}^Cf_y=-2.46\ \text{N},\quad{}^Cn_z=0.7\ \text{N\,m}}\]
+Check: $\sqrt{3.732^2+2.464^2}=4.472=\sqrt{4^2+2^2}$ (rotation keeps magnitude); torque about $z$ unchanged.
+(c) Error 1: the lever arm is $a$ not $2a$: $n_z=0.2(7-3)=0.8$ N\,m. Error 2: forces in, motion out is \emph{forward} dynamics. Error 3: $\wEQC=\mathbf J^\top\wEQO$, not $\mathbf J\wEQO$ (the latter would rotate the load the wrong way, by $+\theta$). \chk
+\end{examq}
+\end{multicols}

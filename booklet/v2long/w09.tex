@@ -1,0 +1,691 @@
+\week{W9}{Control 2: computed torque, Cartesian, force and hybrid control}{9}
+% ---- local macros (prefix wn) ----
+\newif\ifwnAq
+\newenvironment{wnfig}{\par\vspace{2pt}\noindent\begin{minipage}{\linewidth}}{\end{minipage}\par\vspace{2pt}}
+\newcommand{\wnE}{E}\newcommand{\wnEd}{\dot E}
+% generic partitioned-controller diagram (slides p.11, p.20); set \wn* then call \wnloop
+\newcommand{\wnloop}{\begin{tikzpicture}[x=0.93cm,y=0.93cm]
+\node[sgn,anchor=east] (i2) at (0,0) {$\wnDD$};
+\node[sgn,anchor=east] (i1) at (0,-2.5) {$\wnD$};
+\node[sgn,anchor=east] (i0) at (0,-3.5) {$\wnR$};
+\node[sumj] (ss) at (2.1,0) {};
+\node[svblk,minimum width=9mm] (kp) at (1.2,-1.3) {$\wnKp$};
+\node[svblk,minimum width=9mm] (kv) at (2.8,-1.3) {$\wnKv$};
+\node[sumj] (sv) at (2.8,-2.5) {};
+\node[sumj] (sp) at (1.2,-3.5) {};
+\node[mbblk] (al) at (4.7,0) {$\wnAl$};
+\node[sumj] (sb) at (5.9,0) {};
+\node[mbblk] (be) at (7.95,-1.3) {$\wnBe$};
+\node[plant] (rb) at (8.1,0) {$\wnPl$};
+\draw[sig] (i2.east) -- (ss.west); \node[sgn] at (1.6,0.22) {$+$};
+\draw[sig] (kp.north) -- (ss.235); \node[sgn] at (1.35,-0.55) {$+$};
+\draw[sig] (kv.north) -- (ss.305); \node[sgn] at (2.65,-0.55) {$+$};
+\draw[sig] (ss) -- node[sgn,above]{$\wnFp$} (al);
+\draw[sig] (al) -- node[sgn,pos=0.45,above]{$+$} (sb);
+\draw[sig] (be.west) -- (5.9,-1.3) -- (sb.south); \node[sgn] at (6.12,-0.55) {$+$};
+\draw[sig] (sb) -- node[sgn,above]{$\wnU$} (rb);
+\draw[sig] (rb.east) -- (11.0,0) node[sgn,right]{$\wnP,\wnV$};
+\draw[line width=0.6pt] (10.2,0) -- (10.2,-3.5);
+\fill (10.2,0) circle (0.9pt); \fill (10.2,-1.3) circle (0.9pt); \fill (10.2,-2.5) circle (0.9pt);
+\draw[sig] (10.2,-1.3) -- (be.east); 
+\draw[sig] (10.2,-2.5) -- node[sgn,above,pos=0.25]{$\wnV$} node[sgn,pos=0.93,above]{$-$} (sv.east);
+\draw[sig] (10.2,-3.5) -- node[sgn,above,pos=0.25]{$\wnP$} node[sgn,pos=0.93,above]{$-$} (sp.east);
+\draw[sig] (i1.east) -- (1.05,-2.5) arc[start angle=180,end angle=0,radius=0.15] -- (sv.west); \node[sgn] at (2.35,-2.28) {$+$};
+\draw[sig] (i0.east) -- (sp.west); \node[sgn] at (0.8,-3.28) {$+$};
+\draw[sig] (sv.north) -- node[sgn,right]{$\wnEd$} (kv.south);
+\draw[sig] (sp.north) -- node[sgn,left]{$\wnE$} (kp.south);
+\ifwnAq\draw[sig] (10.2,0) -- (10.2,1.0) -- (4.7,1.0) -- (al.north); \node[sgn,above] at (7.4,1.0) {$\wnP$};\fi
+\node[grpsv,fit=(ss)(kp)(kv)(sv)(sp)] (gsv) {};
+\node[grplab,text=svcol,anchor=south west] at (gsv.north west) {SERVO};
+\node[grpmb,fit=(al)(sb)(be)(rb)] (gmb) {};
+\node[grplab,text=mbcol,anchor=north east] at (gmb.south east) {MODEL-BASED};
+\end{tikzpicture}}
+
+% ============================================================
+\begin{multicols}{2}
+\hd{Which law for which problem? \added}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.16\linewidth}>{\raggedright\arraybackslash}X@{}}
+\toprule
+Law & needs (model) & needs (sensors, $\mathbf J$) & what it gives / when to use\\\midrule
+joint PD / PID (W8) & none, or gravity only & $\mathbf q,\dot{\mathbf q}$ & stable; fine for slow motion or highly geared joints; steady error without an integral\\
+computed torque (partitioned) \pg{18--21} & $\mathbf M,\mathbf C,\mathbf g,\mathbf f$ exactly & $\mathbf q,\dot{\mathbf q}$ & $\ddot{\mathbf E}+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E=\mathbf 0$, decoupled; fast motion, good model, continuous law\\
+computed torque, inexact \pg{27--28} & estimates $\hat{\mathbf M},\hat{\mathbf C},\hat{\mathbf g},\hat{\mathbf f}$ & $\mathbf q,\dot{\mathbf q}$ & error eq.\ with a non-zero right side: small, not zero; the real case\\
+Cartesian \pg{32--33} & $\mathbf M_x,\mathbf c_x,\mathbf g_x$, $\mathcal K$ & $\mathbf q,\dot{\mathbf q}\to\mathbf x,\dot{\mathbf x}$; $\mathbf J$ & same form in $\mathbf x$; no IK or $\mathbf J^{-1}$ along the path; fails near a singularity\\
+force \pg{36--43} & $m$ (and $k_e$) & force sensor $f_e$; $\dot x$ & Option 2: $E_{ss}=f_{dist}/(1+mk_e^{-1}k_p)$; pushing, polishing, assembly\\
+hybrid \pg{47} & as Cartesian, plus force law & $\mathbf x$, $\mathcal F_E$, the constraints & each axis obeys exactly one law; surface or hole tasks\\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+\textbf{If the question says\ldots}\par
+\lookup{``write the control law / partitioned law''}{recipe, p.\,\pageref{w9:rec}}
+\lookup{``closed-loop error equation''}{\S Computed torque (exact) or \S Imprecise model}
+\lookup{``the mass is wrong by 10\,\%''}{p.\,\pageref{w9:ten}}
+\lookup{``choose $K_p,K_v$'' / critical damping}{p.\,\pageref{w9:gain}}
+\lookup{``Cartesian controller, joint torques from a tool force''}{p.\,\pageref{w9:cart}}
+\lookup{``force control against a wall / steady-state force error''}{p.\,\pageref{w9:force}}
+\lookup{``which axes are force / position controlled''}{p.\,\pageref{w9:hyb}}
+
+\hd{Recap and roadmap \pg{5--6}}
+Week 8 built the pipeline drawn below: a \emph{trajectory generator} turns the task into $\mathbf q_D(t),\dot{\mathbf q}_D(t),\ddot{\mathbf q}_D(t)$; a \emph{control} block turns these and the measured $\mathbf q,\dot{\mathbf q}$ into joint torques $\mathbf Q$; the \emph{robot} moves. Today's questions \pg{6}: (1) non-linear systems; (2) one combined law for an $n$-joint manipulator; (3) force control; (4) force \emph{and} position control.
+\begin{center}
+\begin{tikzpicture}[x=0.93cm,y=0.93cm]
+\node[blk,minimum width=17mm] (tg) at (1.6,0) {trajectory\\generator};
+\node[blk,minimum width=14mm] (ct) at (5.2,0) {control};
+\node[plant,minimum width=14mm] (rb) at (8.2,0) {robot};
+\draw[sig] (tg.east) ++(0,0.3) -- ++(1.4,0) node[sgn,pos=0.5,above]{$\ddot{\mathbf q}_D$};
+\draw[sig] (tg.east) -- node[sgn,above]{$\dot{\mathbf q}_D$} (ct.west);
+\draw[sig] (tg.east) ++(0,-0.3) -- ++(1.4,0) node[sgn,pos=0.5,below]{$\mathbf q_D$};
+\draw[sig] (ct) -- node[sgn,above]{$\mathbf Q$} (rb);
+\draw[sig] (rb.east) -- (10.0,0) node[sgn,right]{$\mathbf q,\dot{\mathbf q}$};
+\draw[sig] (9.4,0) -- (9.4,-1.3) -- (5.2,-1.3) -- (ct.south);
+\fill (9.4,0) circle (0.9pt);
+\end{tikzpicture}
+\end{center}
+\drawncap{slide p.\,5; every line is an $n\times1$ vector for an $n$-joint robot \pg{17}}
+
+\hd{Simple non-linear systems: the cubic spring \pg{7--11}}
+\premise[partitioned control, scalar]{the equation of motion of one joint or mass, e.g.\ $m\ddot x+b\dot x+kx^3=f$; a reference $x_d(t),\dot x_d,\ddot x_d$; measured $x,\dot x$}{the actuator force $f(t)$ so that $x\to x_d$ with error dynamics you choose}
+\textbf{Linear case \pg{8}.} $m\ddot x+b\dot x+kx=f$ (mass $m$, damper $b$, spring $k$) is a linear second-order ODE; W8 gave control laws $f$ that make it behave (e.g.\ critically damped). \textbf{Non-linear spring \pg{9}.} Replace the spring force by $f_{spring}=kx^3$: $m\ddot x+b\dot x+kx^3=f$ is a second-order \emph{non-linear} ODE with constant coefficients; the linear W8 gains no longer give a clean closed loop.
+\begin{fbx}[Partitioned (computed-torque) law, scalar \pg{10}]
+\[f=\alpha\,\acute f+\beta,\qquad \alpha=m,\quad \beta=b\dot x+kx^3,\qquad \acute f=\ddot x_d+k_v\dot E+k_pE,\quad E=x_d-x\]
+\begin{symbols}
+$f$ & actuator force on the mass & N\\
+$\alpha$ & scaling: the coefficient of $\ddot x$ in the plant (here the mass) & kg\\
+$\beta$ & everything else in the plant: damper and non-linear spring, evaluated with the \emph{measured} $x,\dot x$ & N\\
+$\acute f$ & commanded acceleration (``$f$ with an acute accent''): output of the servo law & m/s$^2$\\
+$x_d,\dot x_d,\ddot x_d$ & desired position, velocity, acceleration (from the trajectory generator) & m, m/s, m/s$^2$\\
+$E,\dot E$ & position and velocity error, $E=x_d-x$, $\dot E=\dot x_d-\dot x$ & m, m/s\\
+$k_p,k_v$ & position and velocity gains of the servo law & s$^{-2}$, s$^{-1}$\\
+\end{symbols}
+\use{any plant you can write as $(\text{coefficient})\ddot x+(\text{rest})=f$. $\alpha$ is the coefficient of $\ddot x$, $\beta$ the rest, with its sign.}
+\end{fbx}
+\begin{deriv}[closed loop of the cubic spring, every line]
+Plant: $m\ddot x+b\dot x+kx^3=f$. Insert the law $f=m\acute f+b\dot x+kx^3$:
+\[m\ddot x+b\dot x+kx^3=m\acute f+b\dot x+kx^3\ \Rightarrow\ m\ddot x=m\acute f\ \Rightarrow\ \ddot x=\acute f=\ddot x_d+k_v\dot E+k_pE.\]
+The damper and the cubic spring cancel exactly. With $\ddot E=\ddot x_d-\ddot x$:
+\[\boxed{\ddot E+k_v\dot E+k_pE=0}\]
+a \emph{linear} second-order equation, whatever the non-linearity. Roots $s^2+k_vs+k_p=0$: both in the left half-plane for $k_p,k_v>0$.
+\end{deriv}
+\begin{recipe}[Write a partitioned law \pg{15}]\label{w9:rec}
+\begin{enumerate}
+\item Write the equation of motion in the form $(\text{coefficient})\,\ddot q+(\text{rest})=\text{input}$ (Lagrange for a link, \S p.\,13).
+\item $\alpha$ = coefficient of the acceleration; $\beta$ = the rest, with signs, written with the measured state.
+\item Servo law $\acute f=\ddot q_d+k_v\dot E+k_pE$, with $E=q_d-q$.
+\item Law: input $=\alpha\acute f+\beta$. Closed loop: $\ddot E+k_v\dot E+k_pE=0$.
+\item Check: units of $\alpha\acute f$ equal units of the input; at rest on the path the law must reduce to $\beta$ (e.g.\ $mgL\cos q$).
+\end{enumerate}
+\end{recipe}
+\begin{worked}[cubic spring, slide structure; $m=2$, $b=4$, $k=50$, $k_p=100$, $k_v=20$]
+State $x=0.10$ m, $\dot x=0.30$ m/s; reference $x_d=0.12$, $\dot x_d=0.40$, $\ddot x_d=0.50$. $E=0.02$, $\dot E=0.10$. $\acute f=0.50+20(0.10)+100(0.02)=4.5$ m/s$^2$; $\beta=4(0.30)+50(0.10)^3=1.25$ N; $f=2(4.5)+1.25=10.25$ N. Check: plant $\ddot x=(10.25-1.25)/2=4.5=\acute f$ \checkmark. \chk
+\end{worked}
+\begin{trap}
+$\acute f$ is an \emph{acceleration}; writing $f=\acute f+\beta$ (no $\alpha$) mixes m/s$^2$ and N. $\ddot x_d$ belongs in $\acute f$, never in $\beta$. $E=x_d-x$, not $x-x_d$.
+\end{trap}
+
+\begin{wnfig}
+\begin{center}\small
+\wnAqfalse
+\def\wnDD{\ddot x_d}\def\wnD{\dot x_d}\def\wnR{x_d}\def\wnKp{k_p}\def\wnKv{k_v}\def\wnAl{m}\def\wnBe{b\dot x+kx^3}\def\wnPl{m\ddot x{+}b\dot x{+}kx^3{=}f}\def\wnU{f}\def\wnP{x}\def\wnV{\dot x}\def\wnE{E}\def\wnEd{\dot E}\def\wnFp{\acute f}
+\wnloop
+\end{center}
+\cdlegend
+\drawncap{non-linear SISO partitioned controller (slide p.\,11, redrawn). $\ddot x_d$ is a feed-forward; $\alpha=m$ scales $\acute f$; $\beta$ is fed back from the measured $x,\dot x$ and \emph{added} to give $f$. The plant block is the slide's ``System''.}
+\end{wnfig}
+\begin{wnfig}\slidefig[0.62\linewidth]{w09-lec}{11}{96 108 96 135}{the slide's own block diagram (the slide's ``$m$'' and ``$bx\dot{}+kx^3$'' blocks are the orange ones above)}\end{wnfig}
+
+\hd{Single link with viscous and Coulomb friction \pg{12--14}}
+\premise[single-link computed torque]{link of length $L$, point mass $m$ at the tip, joint angle $q$ from the horizontal, gravity $g$ acting down, friction $b_v,b_c$; reference $q_d,\dot q_d,\ddot q_d$}{joint torque $\tau$}
+\begin{wnfig}\slidefig[0.62\linewidth]{w09-lec}{13}{38 76 48 119}{slide p.\,13: link of length $L$, mass $m$ at $(x,y)$, angle $q$ from the horizontal, gravity down; the handwriting is the Lagrange derivation below}\end{wnfig}
+\begin{deriv}[equation of motion, as handwritten on p.\,13]
+Frictions \pg{12}: viscous $\tau_v=b_v\dot q$, Coulomb $\tau_c=b_c\operatorname{sgn}(\dot q)$. Position of the mass: $x=L\cos q$, $y=L\sin q$, so $\dot x=-L\sin q\,\dot q$, $\dot y=L\cos q\,\dot q$.
+\[K=\tfrac12m(\dot x^2+\dot y^2)=\tfrac12mL^2\dot q^2,\qquad P=mgy=mgL\sin q,\qquad \mathcal L=K-P.\]
+Lagrange (slide): $Q=\dfrac{d}{dt}\dfrac{\partial\mathcal L}{\partial\dot q}-\dfrac{\partial\mathcal L}{\partial q}$. Here $\dfrac{\partial\mathcal L}{\partial\dot q}=mL^2\dot q$, so $\dfrac{d}{dt}(\cdot)=mL^2\ddot q$, and $\dfrac{\partial\mathcal L}{\partial q}=-mgL\cos q$. Adding the two friction torques:
+\[\boxed{\tau=mL^2\ddot q+b_v\dot q+b_c\operatorname{sgn}(\dot q)+mgL\cos q}\ \pg{13}\]
+\end{deriv}
+\begin{fbx}[Control law of the single link \pg{14}]
+\[\tau=\alpha\acute\tau+\beta,\quad \alpha=mL^2,\quad \beta=b_v\dot q+b_c\operatorname{sgn}(\dot q)+mgL\cos q,\quad \acute\tau=\ddot q_d+k_v\dot E+k_pE\]
+\begin{symbols}
+$\tau$ & joint torque & N\,m\\
+$m,L$ & tip mass, link length & kg, m\\
+$\alpha=mL^2$ & moment of inertia about the joint & kg\,m$^2$\\
+$b_v$, $b_c$ & viscous coefficient; Coulomb friction torque & N\,m\,s/rad; N\,m\\
+$q,\dot q$ & joint angle (from the horizontal), rate & rad, rad/s\\
+$\acute\tau$ & commanded joint acceleration & rad/s$^2$\\
+\end{symbols}
+\use{closed loop $\ddot E+k_v\dot E+k_pE=0$. At rest on the path: $\tau=mgL\cos q$ (largest horizontal, zero when vertical).}
+\end{fbx}
+\begin{worked}[$m=2$, $L=0.5$, $b_v=0.3$, $b_c=0.2$, $k_p=64$, $k_v=16$; radians]
+State $q=30^\circ$, $\dot q=1$ rad/s, $\ddot q_d=2$, $E=0.05$, $\dot E=-0.1$. $\alpha=2(0.25)=0.5$. $\acute\tau=2+16(-0.1)+64(0.05)=3.6$. $\beta=0.3(1)+0.2(+1)+2(9.81)(0.5)\cos30^\circ=0.5+8.4957=8.9957$. $\tau=0.5(3.6)+8.9957=10.7957$ N\,m. Plant check: $\ddot q=(\tau-\beta)/\alpha=1.8/0.5=3.6=\acute\tau$ \checkmark. \chk
+\end{worked}
+\begin{trap}
+Degrees in $\cos q$ on a radian calculator; $\operatorname{sgn}$ takes the sign of $\dot q$ (not $q$, not $E$); $\alpha=mL$ instead of $mL^2$; $\cos q$ dropped from $\beta$. If the link has its own inertia, $mL^2$ becomes the total inertia about the pivot. $\operatorname{sgn}(\dot q)$ jumps at $\dot q=0$: real controllers smooth it \added.
+\end{trap}
+
+\hd{General procedure and its limits \pg{15}}
+The slide's three steps: (1) determine the equation of motion; (2) compute a non-linear \emph{model-based} part that cancels the non-linearities; (3) the system is then linear and a linear \emph{servo} law controls it. \textbf{Limit \pg{15}:} you must know the \emph{parameters} ($k$, $b_c$, \dots) and the \emph{structure} (cubic spring, Coulomb friction, \dots). ``In practice, these are not always known'': see \S Imprecise model.
+
+\hd{MIMO partitioning: $n$ joints \pg{16--21}}
+\premise[computed torque, $n$ joints]{equation of motion $\mathbf Q=\mathbf M(\mathbf q)\ddot{\mathbf q}+\mathbf C(\mathbf q,\dot{\mathbf q})+\mathbf g(\mathbf q)+\mathbf f(\dot{\mathbf q})$ (all $n\times1$ except $\mathbf M$, $n\times n$); reference $\mathbf q_d,\dot{\mathbf q}_d,\ddot{\mathbf q}_d$; measured $\mathbf q,\dot{\mathbf q}$}{joint torque vector $\mathbf Q$ ($n\times1$) that makes every joint error decay as you choose}
+W8 split the problem into $n$ independent single-joint loops \pg{17}. Now each line of the diagram is an $n\times1$ vector: positions, velocities, accelerations in; torques out \pg{18}. The model-based part is $\mathbf Q=\boldsymbol\alpha\acute{\mathbf Q}+\boldsymbol\beta$ with shapes $n{\times}1=n{\times}n\cdot n{\times}1+n{\times}1$.
+\begin{fbx}[Computed-torque law of a manipulator \pg{18--19}]
+\[\mathbf Q=\boldsymbol\alpha\acute{\mathbf Q}+\boldsymbol\beta,\quad \boldsymbol\alpha=\mathbf M(\mathbf q),\quad \boldsymbol\beta=\mathbf C(\mathbf q,\dot{\mathbf q})+\mathbf g(\mathbf q)+\mathbf f(\dot{\mathbf q}),\quad \acute{\mathbf Q}=\ddot{\mathbf q}_d+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E,\quad \mathbf E=\mathbf q_d-\mathbf q\]
+\begin{symbols}
+$\mathbf Q$ & joint torques (N\,m for a revolute joint, N for a prismatic one), $n\times1$ & N\,m, N\\
+$\mathbf M(\mathbf q)$ & inertia matrix, $n\times n$, symmetric positive definite & kg\,m$^2$\\
+$\mathbf C(\mathbf q,\dot{\mathbf q})$ & Coriolis and centripetal torques, $n\times1$ & N\,m\\
+$\mathbf g(\mathbf q)$ & gravity torques, $n\times1$ & N\,m\\
+$\mathbf f(\dot{\mathbf q})$ & friction torques (the slides write $\mathbf f(\dot{\mathbf q})$ on p.\,19 and $\hat{\mathbf f}(\mathbf q,\dot{\mathbf q})$ on p.\,27) & N\,m\\
+$\acute{\mathbf Q}$ & commanded joint accelerations, $n\times1$ & rad/s$^2$\\
+$\mathbf K_p,\mathbf K_v$ & position, velocity gain matrices, \emph{diagonal} & s$^{-2}$, s$^{-1}$\\
+$\mathbf E,\dot{\mathbf E}$ & joint position and velocity error & rad, rad/s\\
+\end{symbols}
+\use{$\boldsymbol\alpha$ is chosen so that it \emph{decouples} the $n$ equations; it is \textbf{not} diagonal. $\mathbf K_v,\mathbf K_p$ are usually diagonal \pg{18}.}
+\end{fbx}
+\begin{deriv}[closed loop, every line \pg{21}]
+Plant: $\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g+\mathbf f=\mathbf Q$. Insert $\mathbf Q=\mathbf M\acute{\mathbf Q}+\mathbf C+\mathbf g+\mathbf f$:
+\[\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g+\mathbf f=\mathbf M\acute{\mathbf Q}+\mathbf C+\mathbf g+\mathbf f\ \Rightarrow\ \mathbf M\ddot{\mathbf q}=\mathbf M\acute{\mathbf Q}\ \Rightarrow\ \ddot{\mathbf q}=\acute{\mathbf Q}\]
+($\mathbf M$ is invertible, being positive definite). With $\ddot{\mathbf q}=\ddot{\mathbf q}_d-\ddot{\mathbf E}$ and the servo law:
+\[\boxed{\ddot{\mathbf E}+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E=\mathbf 0}\quad\Rightarrow\quad \ddot e_i+k_{vi}\dot e_i+k_{pi}e_i=0\ \ (i=1,\dots,n).\]
+Because $\mathbf K_p,\mathbf K_v$ are diagonal this is $n$ separate, linear, \emph{decoupled} equations \pg{21}. The off-diagonal terms of $\mathbf M$ in $\boldsymbol\alpha$ are what cancel the inertial coupling $M_{ij}\ddot q_j$ of the plant.
+\end{deriv}
+\begin{wnfig}
+\begin{center}\small
+\wnAqtrue
+\def\wnDD{\ddot{\mathbf q}_d}\def\wnD{\dot{\mathbf q}_d}\def\wnR{\mathbf q_d}\def\wnKp{\mathbf K_p}\def\wnKv{\mathbf K_v}\def\wnAl{\mathbf M(\mathbf q)}\def\wnBe{\mathbf C(\mathbf q,\dot{\mathbf q}){+}\mathbf g(\mathbf q){+}\mathbf f(\dot{\mathbf q})}\def\wnPl{\text{Manipulator}}\def\wnU{\mathbf Q}\def\wnP{\mathbf q}\def\wnV{\dot{\mathbf q}}\def\wnE{\mathbf E}\def\wnEd{\dot{\mathbf E}}\def\wnFp{\acute{\mathbf Q}}
+\wnloop
+\end{center}
+\cdlegend
+\drawncap{MIMO computed-torque controller (slide p.\,20, redrawn). The slide's \textbf{red} dashed box ``linearises the system'' = the \textbf{orange} model-based group here; the slide's \textbf{green} dashed box ``stabilises the closed-loop system'' = the \textbf{blue} servo group. The arrow from $\mathbf q$ into $\mathbf M(\mathbf q)$ is added (the slide omits it).}
+\end{wnfig}
+\begin{wnfig}\slidefig[0.7\linewidth]{w09-lec}{20}{0 81 38 140}{slide p.\,20: red box ``Linearises the system'', green box ``Stabilises the closed-loop system''}\end{wnfig}
+\textbf{Reading the diagram.} Inside the orange group $\mathbf Q=\mathbf M\acute{\mathbf Q}+\boldsymbol\beta$ and the robot is a copy of the same equation, so the combination from $\acute{\mathbf Q}$ to $\mathbf q$ is $n$ double integrators ($\ddot{\mathbf q}=\acute{\mathbf Q}$): the non-linear coupled arm has been \emph{linearised}. The blue group closes a PD loop around those integrators: it \emph{stabilises}.
+\begin{twoway}{A. Independent joint PD (W8, p.\,17)}{B. Computed torque (this week)}
+$\tau_i=k_{pi}e_i+k_{vi}\dot e_i$ (plus gravity). Each joint is its own loop; other joints act as unmodelled disturbances. No model needed. Tracking error grows with speed and coupling.
+\tcblower
+$\mathbf Q=\mathbf M\acute{\mathbf Q}+\mathbf C+\mathbf g+\mathbf f$ with the full matrix $\mathbf M$. Needs the model. With an exact model $\ddot{\mathbf E}+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E=\mathbf 0$ along the whole path, fast or slow.
+\end{twoway}
+\begin{worked}[$\boldsymbol\alpha$ is not diagonal: practical 3-link arm at $\mathbf q_0=(0,0,90^\circ)$]
+$\mathbf M(\mathbf q_0)=\begin{bmatrix}103&31&1\\31&13&1\\1&1&1\end{bmatrix}$ kg\,m$^2$ (derived in the practical, p.\,\pageref{w9:prac}). To command $\acute{\mathbf Q}=(1,0,0)$ rad/s$^2$ the law needs $\boldsymbol\alpha\acute{\mathbf Q}=(103,31,1)$ N\,m: the $31$ and $1$ N\,m keep joints 2 and 3 \emph{still} while joint 1 accelerates. A diagonal $\boldsymbol\alpha$ would apply only $103$ and let joints 2, 3 swing. \chk
+\end{worked}
+\begin{recipe}[Choose $\mathbf K_p,\mathbf K_v$ for critical damping, joint by joint \added]\label{w9:gain}
+\begin{enumerate}
+\item Each joint: $\ddot e_i+k_{vi}\dot e_i+k_{pi}e_i=0$, characteristic polynomial $s^2+k_vs+k_p$.
+\item Critical damping: double root $s=-\omega_n$: $k_p=\omega_n^2$, $k_v=2\omega_n$ (equal roots when $k_v^2=4k_p$).
+\item Pick $\omega_n$ from a settling time: $e=e_0(1+\omega_nt)e^{-\omega_nt}$ reaches 2\,\% at $\omega_nt=5.83$ and 5\,\% at $4.74$. \chk
+\item Write $\mathbf K_p=\operatorname{diag}(\omega_i^2)$, $\mathbf K_v=\operatorname{diag}(2\omega_i)$. Units: s$^{-2}$ and s$^{-1}$ (they act on accelerations, so they do not depend on the inertia).
+\item Check: roots of $s^2+k_vs+k_p$ equal and negative; no overshoot.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[gains from a settling time]
+Joint 1 must settle to 2\,\% in $0.5$ s: $\omega_n\ge5.83/0.5=11.67$; take $\omega_n=12$: $k_p=144$ s$^{-2}$, $k_v=24$ s$^{-1}$ ($24^2=4\cdot144$ \checkmark). \chk\ For three joints with $\omega=(10,15,20)$ rad/s: $\mathbf K_p=\operatorname{diag}(100,225,400)$, $\mathbf K_v=\operatorname{diag}(20,30,40)$; 2\,\% settling $0.58,\,0.39,\,0.29$ s. \chk\ With $k_p=100,k_v=20$ and $e(0)=0.1$ rad: $e(0.1\,\text{s})=0.1(1+1)e^{-1}=0.0736$ rad. \chk
+\end{worked}
+\begin{trap}
+``$\mathbf K_p,\mathbf K_v$ diagonal $\Rightarrow\boldsymbol\alpha$ diagonal'': false, $\boldsymbol\alpha=\mathbf M$ is full. ``Guarantees $\ddot{\mathbf E}+\dots=\mathbf 0$ for any robot'': only for an exact model and a continuous law. Gains of the \emph{outer-loop} scheme (p.\,25) are torque gains, not these.
+\end{trap}
+
+\hd{Practical issue 1: an imprecise model \pg{22, 26--28}}
+Two practical issues \pg{22}: (1) the model $\mathbf M,\mathbf C,\mathbf g,\mathbf f$ may be inaccurate; (2) the law runs on a computer in discrete time. Why the model is wrong \pg{26}: friction is hard to model; the robot wears down; grasped objects change the weight distribution.
+\begin{fbx}[Law and closed loop with hats \pg{27--28}]
+\[\mathbf Q=\boldsymbol\alpha\acute{\mathbf Q}+\boldsymbol\beta,\quad \boldsymbol\alpha=\hat{\mathbf M}(\mathbf q),\quad \boldsymbol\beta=\hat{\mathbf C}(\mathbf q,\dot{\mathbf q})+\hat{\mathbf g}(\mathbf q)+\hat{\mathbf f}(\mathbf q,\dot{\mathbf q}),\quad \acute{\mathbf Q}=\ddot{\mathbf q}_d+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E\]
+\[\ddot{\mathbf E}+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E=\hat{\mathbf M}^{-1}(\mathbf q)\Big[\big(\mathbf M(\mathbf q)-\hat{\mathbf M}(\mathbf q)\big)\ddot{\mathbf q}+\big(\mathbf C-\hat{\mathbf C}\big)+\big(\mathbf g-\hat{\mathbf g}\big)+\big(\mathbf f-\hat{\mathbf f}\big)\Big]\]
+\begin{symbols}
+hat ($\hat{\ }$) & the controller's estimate of a model quantity; no hat = the true robot & --\\
+$\mathbf M-\hat{\mathbf M}$ & inertia error, multiplies the \emph{actual} acceleration $\ddot{\mathbf q}$ & kg\,m$^2$\\
+$\mathbf C-\hat{\mathbf C}$, $\mathbf g-\hat{\mathbf g}$, $\mathbf f-\hat{\mathbf f}$ & Coriolis, gravity, friction errors & N\,m\\
+\end{symbols}
+\use{the right-hand side is a \emph{forcing term}: if it is non-zero the error does not decay to zero. It vanishes only when every hatted quantity equals the true one.}
+\end{fbx}
+\begin{deriv}[of the error equation \added: the slide prints only the result]
+True plant: $\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g+\mathbf f=\mathbf Q$. Law: $\mathbf Q=\hat{\mathbf M}\acute{\mathbf Q}+\hat{\mathbf C}+\hat{\mathbf g}+\hat{\mathbf f}$. Equate and collect:
+\[\hat{\mathbf M}\acute{\mathbf Q}=\mathbf M\ddot{\mathbf q}+(\mathbf C-\hat{\mathbf C})+(\mathbf g-\hat{\mathbf g})+(\mathbf f-\hat{\mathbf f})\ \Rightarrow\ \acute{\mathbf Q}=\hat{\mathbf M}^{-1}\big[\mathbf M\ddot{\mathbf q}+\boldsymbol\Delta\big],\ \ \boldsymbol\Delta=(\mathbf C-\hat{\mathbf C})+(\mathbf g-\hat{\mathbf g})+(\mathbf f-\hat{\mathbf f}).\]
+Subtract $\ddot{\mathbf q}$ from both sides, using $\acute{\mathbf Q}-\ddot{\mathbf q}=(\ddot{\mathbf q}_d-\ddot{\mathbf q})+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E=\ddot{\mathbf E}+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E$ and $\hat{\mathbf M}^{-1}\mathbf M\ddot{\mathbf q}-\ddot{\mathbf q}=\hat{\mathbf M}^{-1}(\mathbf M-\hat{\mathbf M})\ddot{\mathbf q}$: the boxed equation. \chk
+\end{deriv}
+\begin{fbx}[Single link, only the mass wrong \added]
+With $\hat m$ in both $\hat\alpha=\hat mL^2$ and $\hat\beta=\hat mgL\cos q$ (no friction):
+\[\ddot e+k_v\dot e+k_pe=\frac{m-\hat m}{\hat m}\Big[\ddot q+\frac gL\cos q\Big],\qquad e_{ss}\approx\frac{m-\hat m}{\hat m}\,\frac{g}{L}\,\frac{\cos q}{k_p}\ \ (\text{held at }q)\]
+\use{$\hat m<m$: gravity is under-compensated, the link sags, $e=q_d-q>0$. $e_{ss}=0$ at $q=90^\circ$ (no lever arm). If \emph{every} model quantity is scaled by $\lambda$: right side $=\frac{1-\lambda}{\lambda}\big[\ddot{\mathbf q}+\mathbf M^{-1}(\mathbf C+\mathbf g+\mathbf f)\big]$. \chk}
+\end{fbx}
+\begin{worked}[scenario: the mass is 10\,\% off; $m=2$ kg, $L=0.5$ m, $k_p=100$, $k_v=20$, $g/L=19.62$ s$^{-2}$]\label{w9:ten}
+\textbf{Estimate 10\,\% low}, $\hat m=1.8$ kg: $(m-\hat m)/\hat m=0.2/1.8=1/9$. Held horizontal ($q_d=0$): forcing $=\tfrac19(19.62)=2.18$ rad/s$^2$; $e_{ss}=2.18/100=0.0218$ rad $=1.25^\circ$. At $q_d=30^\circ$: $0.0189$ rad from the formula with $\cos q_d$ (simulation $0.0191$ rad, $1.09^\circ$). At $90^\circ$: $0$. \textbf{Estimate 10\,\% high}, $\hat m=2.2$: ratio $-0.2/2.2=-1/11$, $e_{ss}=-0.0178$ rad $=-1.02^\circ$ (over-compensated, the link rises above the reference). \chk\\
+\textbf{What remains:} the error is \emph{not} zero and does not decay; it is about (forcing)/$k_p$. Raising $k_p$ to $1000$ cuts it ten-fold ($2.18$ mrad) but is limited by the sampling rate (next section); integral action (W8) removes the constant part \added. During motion the term $\frac19\ddot q$ adds a transient. The error stays small because the \emph{ratio} $(m-\hat m)/\hat m$ is small.
+\end{worked}
+\begin{slideerr}[p.\,19 vs p.\,27]
+Friction is written $\mathbf f(\dot{\mathbf q})$ on p.\,19 and $\hat{\mathbf f}(\mathbf q,\dot{\mathbf q})$ in $\hat{\boldsymbol\beta}$ on pp.\,27--28 and on the practical sheet. Treat it as $\mathbf f(\mathbf q,\dot{\mathbf q})$ in general. Notation only; no change to the algebra.
+\end{slideerr}
+
+\hd{Practical issue 2: discretisation, model in the outer loop \pg{22--25}}
+The controller runs on a computer \pg{23}: sensors are read at discrete times, actuator commands update at discrete times, and \emph{computations take finite time}, which limits how often torques are refreshed. The model-based part (the dynamics $\mathbf M,\mathbf C,\mathbf g$, W7) is slow; the servo part (an error and a multiplication by gains) is fast \pg{24}.
+\textbf{Fix \pg{25}:} move the model-based part to the \emph{outer loop}. It is evaluated from the \emph{planned} trajectory $\mathbf q_d,\dot{\mathbf q}_d,\ddot{\mathbf q}_d$ at a slower rate (it can even be tabulated before the motion); the fast inner loop only adds the PD correction $\mathbf K_p\mathbf E+\mathbf K_v\dot{\mathbf E}$ from the measured $\mathbf q,\dot{\mathbf q}$.
+\begin{wnfig}
+\begin{center}\small
+\begin{tikzpicture}[x=0.93cm,y=0.93cm]
+\node[sgn,anchor=east] (a2) at (0,1.5) {$\ddot{\mathbf q}_d$};
+\node[sgn,anchor=east] (a1) at (0,0.9) {$\dot{\mathbf q}_d$};
+\node[sgn,anchor=east] (a0) at (0,0.3) {$\mathbf q_d$};
+\node[mbblk,minimum height=17mm,minimum width=22mm] (dm) at (2.6,0.9) {dynamics\\model};
+\node[sumj] (sq) at (5.9,0.9) {};
+\node[svblk,minimum width=9mm] (kp) at (5.1,-0.5) {$\mathbf K_p$};
+\node[svblk,minimum width=9mm] (kv) at (6.7,-0.5) {$\mathbf K_v$};
+\node[sumj] (sv) at (6.7,-1.7) {};
+\node[sumj] (sp) at (5.1,-2.7) {};
+\node[plant,minimum width=18mm] (rb) at (9.1,0.9) {manipulator};
+\draw[sig] (a2.east) -- (dm.west |- a2);
+\draw[sig] (a1.east) -- (dm.west |- a1);
+\draw[sig] (a0.east) -- (dm.west |- a0);
+\draw[sig] (dm.east) -- node[sgn,above,pos=0.45]{$\mathbf Q_{ff}$} (sq.west); \node[sgn] at (5.45,1.12) {$+$};
+\draw[sig] (kp.north) -- (sq.235); \node[sgn] at (5.3,0.2) {$+$};
+\draw[sig] (kv.north) -- (sq.305); \node[sgn] at (6.5,0.2) {$+$};
+\draw[sig] (sq) -- node[sgn,above]{$\mathbf Q$} (rb);
+\draw[sig] (rb.east) -- (11.2,0.9) node[sgn,right]{$\mathbf q,\dot{\mathbf q}$};
+\draw[line width=0.6pt] (10.5,0.9) -- (10.5,-2.7); \fill (10.5,0.9) circle (0.9pt); \fill (10.5,-1.7) circle (0.9pt);
+\draw[sig] (10.5,-1.7) -- node[sgn,above,pos=0.2]{$\dot{\mathbf q}$} node[sgn,above,pos=0.92]{$-$} (sv.east);
+\draw[sig] (10.5,-2.7) -- node[sgn,above,pos=0.2]{$\mathbf q$} node[sgn,above,pos=0.92]{$-$} (sp.east);
+\fill (1.0,0.9) circle (0.9pt); \fill (0.4,0.3) circle (0.9pt);
+\draw[sig] (1.0,0.9) -- (1.0,0.45) arc[start angle=90,end angle=-90,radius=0.15] -- (1.0,-1.7) -- (4.95,-1.7) arc[start angle=180,end angle=0,radius=0.15] -- (sv.west); \node[sgn] at (6.35,-1.5) {$+$};
+\draw[sig] (0.4,0.3) -- (0.4,-2.7) -- (sp.west); \node[sgn] at (4.6,-2.5) {$+$};
+\draw[sig] (sv.north) -- node[sgn,right]{$\dot{\mathbf E}$} (kv.south);
+\draw[sig] (sp.north) -- node[sgn,left]{$\mathbf E$} (kp.south);
+\node[grpmb,fit=(dm)] (g1) {};
+\node[grplab,text=mbcol,anchor=north west] at (g1.south west) {MODEL (slow rate)};
+\node[grpsv,fit=(sq)(kp)(kv)(sv)(sp)] (g2) {};
+\node[grplab,text=svcol,anchor=south west] at (g2.north west) {SERVO (fast rate)};
+\end{tikzpicture}
+\end{center}
+\cdlegend
+\drawncap{model in the outer loop (slide p.\,25, redrawn; the $\dot{\mathbf q}_d$ line hops over the $\mathbf q_d$ line with no connection). The slide labels the sum output $Q$ and draws no label on the dynamics output; $\mathbf Q_{ff}$ is my name for it. The dynamics model reads \emph{only} the plan.}
+\end{wnfig}
+\begin{wnfig}\slidefig[0.62\linewidth]{w09-lec}{25}{96 81 96 135}{slide p.\,25: red = dynamics model (slow), green = servo (fast)}\end{wnfig}
+\begin{slideerr}[p.\,25: units of $\mathbf K_p,\mathbf K_v$]
+In this scheme the servo terms are added \emph{directly to the torque} $\mathbf Q$, so $\mathbf K_p,\mathbf K_v$ are torque gains (N\,m/rad, N\,m\,s/rad), not the accelerations gains ($\mathrm s^{-2}$, $\mathrm s^{-1}$) of p.\,20. They are no longer scaled by $\mathbf M$, so the error is only approximately decoupled. The slide does not say this; I add it. E.g.\ link 1 of the practical ($\alpha=27$ kg\,m$^2$): equal behaviour needs $27\cdot100=2700$ N\,m/rad and $27\cdot20=540$ N\,m\,s/rad. \chk
+\end{slideerr}
+\textbf{Numbers (site check script).} Practical link~1 ($\alpha=27$, $\beta=88.29\cos q$, $k_p=100$, $k_v=20$), exact model, cubic $0\to\pi/2$ in $T=2$ s: continuous law $|e|<10^{-10}$ rad; torque refreshed every $10$ ms: peak error $0.26$ mrad; every $50$ ms: $1.13$ mrad. The slower the refresh, the larger the error. \chk
+
+\hd{Cartesian-space control \pg{29--33}}
+\premise[Cartesian controller]{a desired tool path $\mathbf x_d(t),\dot{\mathbf x}_d,\ddot{\mathbf x}_d$ in the base frame $\{0\}$; the arm's FK $\mathcal K$, Jacobian $\mathbf J(\mathbf q)$ and dynamics}{joint torques $\mathbf Q$ that make the \emph{tool} follow the path}
+\textbf{The joint-space route \pg{30}.} A trajectory generator converts $\mathbf x_d,\dot{\mathbf x}_d,\ddot{\mathbf x}_d$ into $\mathbf q_d,\dot{\mathbf q}_d,\ddot{\mathbf q}_d$, then a joint-space servo (``Gains'') uses $\delta\mathbf q=\mathbf q_d-\mathbf q$.
+\begin{wnfig}\slidefig[0.62\linewidth]{w09-lec}{30}{67 97 115 297}{slide p.\,30: Cartesian reference converted to joint space by a trajectory generator}\end{wnfig}
+\begin{fbx}[Cost of that conversion \pg{31}]
+\[\mathbf q=\mathcal K^{-1}(\mathbf x),\qquad \dot{\mathbf q}=\mathbf J^{-1}(\mathbf q)\,\dot{\mathbf x},\qquad \ddot{\mathbf q}=\tfrac{d}{dt}\big(\mathbf J^{-1}(\mathbf q)\big)\dot{\mathbf x}+\mathbf J^{-1}(\mathbf q)\ddot{\mathbf x}\]
+\use{``All these are computationally intensive'' \pg{31}: inverse kinematics (possibly multi-valued or iterative), $\mathbf J^{-1}$ and its derivative at every point of the path, and $\mathbf J^{-1}$ does not exist at a singularity.}
+\end{fbx}
+\begin{slideerr}[p.\,31]
+The slide prints $\dot J^{-1}(\mathbf q)\,\dot{\mathbf x}$ (a dot over $J$). The correct derivative is $\tfrac d{dt}(\mathbf J^{-1})=-\mathbf J^{-1}\dot{\mathbf J}\mathbf J^{-1}$, so $\ddot{\mathbf q}=\mathbf J^{-1}(\ddot{\mathbf x}-\dot{\mathbf J}\dot{\mathbf q})$ (from $\dot{\mathbf x}=\mathbf J\dot{\mathbf q}$, $\ddot{\mathbf x}=\mathbf J\ddot{\mathbf q}+\dot{\mathbf J}\dot{\mathbf q}$). Checked numerically. \chk
+\end{slideerr}
+\textbf{Alternative \pg{32}:} write the equation of motion \emph{in Cartesian space}, solve for the Cartesian control force $\mathcal F$ for the desired tool trajectory, and only then convert to torques.
+\begin{fbx}[Cartesian computed-torque law \pg{32--33}]\label{w9:cart}
+\[\mathcal F=\mathbf M_x(\mathbf q)\,\ddot{\mathbf x}+\mathbf c_x(\mathbf q,\dot{\mathbf q})+\mathbf g_x(\mathbf q)\ \ \text{(plant)},\qquad \mathbf Q=\mathbf J^\top(\mathbf q)\,\mathcal F\]
+\[\mathcal F=\mathbf M_x(\mathbf q)\big(\ddot{\mathbf x}_d+\mathbf K_v\dot{\mathbf E}_x+\mathbf K_p\mathbf E_x\big)+\mathbf c_x+\mathbf g_x\ \ \text{(control law)}\]
+\begin{symbols}
+$\mathcal F$ & Cartesian force (and moment) the tool must exert, in $\{0\}$ & N, N\,m\\
+$\mathbf x,\dot{\mathbf x}$ & tool position (and orientation), velocity: $\mathbf x=\mathcal K(\mathbf q)$, $\dot{\mathbf x}=\mathbf J(\mathbf q)\dot{\mathbf q}$ & m, m/s\\
+$\mathbf M_x(\mathbf q)$ & inertia seen at the tool & kg\\
+$\mathbf c_x,\mathbf g_x$ & velocity-dependent and gravity terms at the tool & N\\
+$\mathbf E_x,\dot{\mathbf E}_x$ & $\mathbf x_d-\mathbf x$, $\dot{\mathbf x}_d-\dot{\mathbf x}$ & m, m/s\\
+$\mathbf K_p,\mathbf K_v$ & Cartesian gains & s$^{-2}$, s$^{-1}$\\
+$\mathbf J^\top(\mathbf q)$ & transpose of the Jacobian: maps $\mathcal F$ to joint torques & m (N\,m per N)\\
+\end{symbols}
+\use{the task is given as a path of the tool. The loop closes on $\mathbf x$ (from $\mathcal K$) and $\dot{\mathbf x}$ (from $\mathbf J\dot{\mathbf q}$): no IK, no $\mathbf J^{-1}$ along the path, and the closed loop is $\ddot{\mathbf E}_x+\mathbf K_v\dot{\mathbf E}_x+\mathbf K_p\mathbf E_x=\mathbf 0$. $\mathbf M_x$ blows up near a singularity.}
+\end{fbx}
+\begin{deriv}[where $\mathbf M_x,\mathbf c_x,\mathbf g_x$ and $\mathbf Q=\mathbf J^\top\mathcal F$ come from \added]
+\emph{Statics (virtual work).} A small joint motion $\delta\mathbf q$ moves the tool by $\delta\mathbf x=\mathbf J\delta\mathbf q$. Work of the torques $=$ work of the tool force: $\mathbf Q^\top\delta\mathbf q=\mathcal F^\top\mathbf J\delta\mathbf q$ for every $\delta\mathbf q$, so $\mathbf Q=\mathbf J^\top\mathcal F$.\\
+\emph{Dynamics.} Put $\mathbf Q=\mathbf J^\top\mathcal F$ into $\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g=\mathbf Q$ and use $\ddot{\mathbf q}=\mathbf J^{-1}(\ddot{\mathbf x}-\dot{\mathbf J}\dot{\mathbf q})$ (no friction):
+\[\mathcal F=\underbrace{\mathbf J^{-\top}\mathbf M\mathbf J^{-1}}_{\mathbf M_x}\ddot{\mathbf x}+\underbrace{\mathbf J^{-\top}\big(\mathbf C-\mathbf M\mathbf J^{-1}\dot{\mathbf J}\dot{\mathbf q}\big)}_{\mathbf c_x}+\underbrace{\mathbf J^{-\top}\mathbf g}_{\mathbf g_x}.\]
+Needs $\mathbf J$ square and invertible. \chk
+\end{deriv}
+\begin{wnfig}
+\begin{center}\small
+\begin{tikzpicture}[x=0.93cm,y=0.93cm]
+\node[sgn,anchor=east] (i2) at (0,0) {$\ddot{\mathbf x}_d$};
+\node[sgn,anchor=east] (i1) at (0,-2.5) {$\dot{\mathbf x}_d$};
+\node[sgn,anchor=east] (i0) at (0,-3.5) {$\mathbf x_d$};
+\node[sumj] (ss) at (2.1,0) {};
+\node[svblk,minimum width=9mm] (kp) at (1.2,-1.3) {$\mathbf K_p$};
+\node[svblk,minimum width=9mm] (kv) at (2.8,-1.3) {$\mathbf K_v$};
+\node[sumj] (sv) at (2.8,-2.5) {};
+\node[sumj] (sp) at (1.2,-3.5) {};
+\node[mbblk] (mx) at (4.7,0) {$\mathbf M_x(\mathbf q)$};
+\node[sumj] (sb) at (5.9,0) {};
+\node[mbblk,minimum width=11mm] (jt) at (7.3,0) {$\mathbf J^\top(\mathbf q)$};
+\node[plant,minimum width=16mm] (rb) at (9.3,0) {manipulator};
+\node[mbblk] (be) at (7.7,-1.3) {$\mathbf c_x(\mathbf q,\dot{\mathbf q}){+}\mathbf g_x(\mathbf q)$};
+\node[mbblk,minimum width=10mm] (jf) at (9.6,-2.5) {$\mathbf J(\mathbf q)$};
+\node[mbblk,minimum width=10mm] (kk) at (9.6,-3.5) {$\mathcal K(\ )$};
+\draw[sig] (i2.east) -- (ss.west); \node[sgn] at (1.6,0.22) {$+$};
+\draw[sig] (kp.north) -- (ss.235); \node[sgn] at (1.35,-0.55) {$+$};
+\draw[sig] (kv.north) -- (ss.305); \node[sgn] at (2.65,-0.55) {$+$};
+\draw[sig] (ss) -- (mx);
+\draw[sig] (mx) -- node[sgn,pos=0.45,above]{$+$} (sb);
+\draw[sig] (be.west) -- (5.9,-1.3) -- (sb.south); \node[sgn] at (6.12,-0.55) {$+$};
+\draw[sig] (sb) -- node[sgn,above]{$\mathcal F$} (jt);
+\draw[sig] (jt) -- node[sgn,above]{$\mathbf Q$} (rb);
+\draw[sig] (rb.east) -- (11.9,0) node[sgn,right]{$\mathbf q,\dot{\mathbf q}$};
+\draw[line width=0.6pt] (11.0,0) -- (11.0,-3.5);
+\fill (11.0,0) circle (0.9pt); \fill (11.0,-1.3) circle (0.9pt); \fill (11.0,-2.5) circle (0.9pt); \fill (11.0,-3.5) circle (0.9pt);
+\draw[sig] (11.0,-1.3) -- (be.east);
+\draw[sig] (11.0,-2.5) -- (jf.east); \draw[sig] (jf.west) -- node[sgn,above,pos=0.2]{$\dot{\mathbf x}$} node[sgn,above,pos=0.93]{$-$} (sv.east);
+\draw[sig] (11.0,-3.5) -- (kk.east); \draw[sig] (kk.west) -- node[sgn,above,pos=0.1]{$\mathbf x$} node[sgn,above,pos=0.96]{$-$} (sp.east);
+\draw[sig] (i1.east) -- (1.05,-2.5) arc[start angle=180,end angle=0,radius=0.15] -- (sv.west); \node[sgn] at (2.35,-2.28) {$+$};
+\draw[sig] (i0.east) -- (sp.west); \node[sgn] at (0.8,-3.28) {$+$};
+\draw[sig] (sv.north) -- node[sgn,right]{$\dot{\mathbf E}$} (kv.south);
+\draw[sig] (sp.north) -- node[sgn,left]{$\mathbf E$} (kp.south);
+\draw[sig] (11.0,0) -- (11.0,1.0) -- (4.7,1.0) -- (mx.north); \fill (7.3,1.0) circle (0.9pt); \draw[sig] (7.3,1.0) -- (jt.north); \node[sgn,above] at (9.0,1.0) {$\mathbf q$};
+\node[grpsv,fit=(ss)(kp)(kv)(sv)(sp)] (gsv) {};
+\node[grplab,text=svcol,anchor=south west] at (gsv.north west) {SERVO};
+\end{tikzpicture}
+\end{center}
+\cdlegend
+\drawncap{Cartesian-based controller (slide p.\,33, redrawn). Orange here also includes the kinematic model ($\mathcal K$, $\mathbf J$, $\mathbf J^\top$) besides $\mathbf M_x,\mathbf c_x,\mathbf g_x$. Feedback: $\mathbf q\to\mathcal K\to\mathbf x$ and $\dot{\mathbf q}\to\mathbf J\to\dot{\mathbf x}$. The slide's red ``$\mathcal Q$'' labels the torque after $\mathbf J^\top$. $\mathbf M_x$, $\mathbf J^\top$ and $\mathbf J$ also read $\mathbf q$ (line added).}
+\end{wnfig}
+\begin{wnfig}\slidefig[0.7\linewidth]{w09-lec}{33}{38 97 48 151}{slide p.\,33: the Cartesian controller}\end{wnfig}
+\begin{worked}[$\mathbf Q=\mathbf J^\top\mathcal F$: planar 2R, $l_1=l_2=1$ m, $\mathbf q=(30^\circ,60^\circ)$]
+$\mathbf J=\begin{bmatrix}-l_1s_1-l_2s_{12}&-l_2s_{12}\\l_1c_1+l_2c_{12}&l_2c_{12}\end{bmatrix}=\begin{bmatrix}-1.5&-1\\0.8660&0\end{bmatrix}$ ($s_{12}=1$, $c_{12}=0$). $\mathcal F=(3,-4)$ N: $\mathbf Q=\mathbf J^\top\mathcal F=(-1.5(3)+0.8660(-4),\ -1(3)+0)=(-7.9641,\,-3.0)$ N\,m. Check by moments: tool at $(0.8660,1.5)$: $xF_y-yF_x=0.8660(-4)-1.5(3)=-7.9641$; about joint 2 the tool is at $(0,1)$ from it: $0(-4)-1(3)=-3$. \chk
+\end{worked}
+\begin{worked}[Cartesian law gives the same torques as joint space; point masses $m_1=m_2=1$ kg at the link ends, same pose, at rest]
+$\mathbf M=\begin{bmatrix}4&1.5\\1.5&1\end{bmatrix}$ kg\,m$^2$, $\mathbf g=g(2c_1+c_{12},\,c_{12})=(16.991,\,0)$ N\,m; $\det\mathbf J=l_1l_2s_2=0.866\ne0$. $\mathbf M_x=\mathbf J^{-\top}\mathbf M\mathbf J^{-1}=\operatorname{diag}(1,\,2.333)$ kg, $\mathbf g_x=\mathbf J^{-\top}\mathbf g=(0,\,19.62)$ N (the total weight, $2g$). Error $\mathbf E_x=(0.02,-0.01)$ m, $\dot{\mathbf E}_x=\ddot{\mathbf x}_d=\mathbf 0$, $\mathbf K_p=400$: $\mathcal F=\mathbf M_x(8,-4)^\top+\mathbf g_x=(8,\,10.287)$ N, $\mathbf Q=\mathbf J^\top\mathcal F=(-3.0915,\,-8.0)$ N\,m. Joint-space route: $\ddot{\mathbf q}=\mathbf J^{-1}(8,-4)^\top$, $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf g=(-3.0915,-8.0)$: identical. \chk
+\end{worked}
+\begin{recipe}[Cartesian controller on paper]
+\begin{enumerate}
+\item State the frame: $\mathbf x,\mathbf J,\mathcal F$ all in $\{0\}$ (base).
+\item Feedback: $\mathbf x=\mathcal K(\mathbf q)$, $\dot{\mathbf x}=\mathbf J\dot{\mathbf q}$; errors $\mathbf E_x=\mathbf x_d-\mathbf x$, $\dot{\mathbf E}_x=\dot{\mathbf x}_d-\dot{\mathbf x}$.
+\item $\mathcal F=\mathbf M_x(\ddot{\mathbf x}_d+\mathbf K_v\dot{\mathbf E}_x+\mathbf K_p\mathbf E_x)+\mathbf c_x+\mathbf g_x$.
+\item $\mathbf Q=\mathbf J^\top\mathcal F$ (transpose, not inverse; $\mathbf J$ of the right pose).
+\item Check: static pose $\Rightarrow\mathbf Q=\mathbf g$; torque about each joint $=\mathbf r\times\mathcal F$ (moment check); note singular poses.
+\end{enumerate}
+\end{recipe}
+\begin{trap}
+$\mathbf Q=\mathbf J\mathcal F$ or $\mathbf J^{-1}\mathcal F$ (wrong map, wrong shape of units); $\mathbf J$ evaluated at the wrong $\mathbf q$; forgetting that the slide's Cartesian $\mathcal F$ may include moments for a 6-DoF arm (then $\mathbf J$ is $6\times n$ and $\mathbf J^\top\mathcal F$ is still $n\times1$).
+\end{trap}
+
+\hd{Force control \pg{34--44}}
+\premise[force control]{a mass $m$ in contact with a wall (stiffness $k_e$, an unknown disturbance $f_{dist}$ acts); desired contact force $f_d(t)$; measured $f_e$ and $\dot x$}{the actuator force $f(t)$ so that the interaction force $f_e\to f_d$}
+\begin{wnfig}\slidefig[0.62\linewidth]{w09-lec}{36}{48 119 48 108}{slide p.\,36: mass $m$, wall, contact force $f_e$, disturbance $f_{dist}$; right: the wall as a spring $k_e$, $f_e=k_ex$; handwritten $f-f_e-f_{dist}=m\ddot x$}\end{wnfig}
+\begin{deriv}[plant and partitioned law, every line \pg{36--37}]\label{w9:force}
+Wall as a spring: $f_e=k_ex\Leftrightarrow x=k_e^{-1}f_e$, so $\ddot x=k_e^{-1}\ddot f_e$. Forces on the mass \pg{36}: $f-f_e-f_{dist}=m\ddot x$, i.e.
+\[f=m\ddot x+f_{dist}+f_e=mk_e^{-1}\ddot f_e+f_{dist}+f_e.\]
+Now the \emph{force} $f_e$ is the controlled variable: $\alpha=mk_e^{-1}$, $\beta=f_{dist}+f_e$, with $f_d$ the desired force and $E=f_d-f_e$:
+\[f=mk_e^{-1}\big[\ddot f_d+k_v\dot E+k_pE\big]+f_{dist}+f_e\ \Rightarrow\ \ddot E+k_v\dot E+k_pE=0\ \pg{38}.\]
+\textbf{Problem:} the law contains $f_{dist}$, which we do not know: the law is infeasible \pg{38}.
+\end{deriv}
+\begin{fbx}[The two feasible options \pg{39--40}]
+\[\text{Option 1 (drop }f_{dist}):\quad f=mk_e^{-1}[\ddot f_d+k_v\dot E+k_pE]+f_e\]
+\[\ddot E+k_v\dot E+k_pE=\frac{f_{dist}}{mk_e^{-1}},\qquad E_{ss}=\frac{f_{dist}}{mk_e^{-1}k_p}\]
+\[\text{Option 2 (use }f_d\text{ for }f_{dist}{+}f_e):\quad f=mk_e^{-1}[\ddot f_d+k_v\dot E+k_pE]+f_d\]
+\[\ddot E+k_v\dot E+\Big(\frac1{mk_e^{-1}}+k_p\Big)E=\frac{f_{dist}}{mk_e^{-1}},\qquad E_{ss}=\frac{f_{dist}}{1+mk_e^{-1}k_p}\]
+\begin{symbols}
+$f_e=k_ex$ & contact force the environment exerts, measured & N\\
+$f_d$ & desired interaction force & N\\
+$E=f_d-f_e$ & force error & N\\
+$f_{dist}$ & unknown disturbance force on the mass & N\\
+$k_e$ & environment (wall) stiffness & N/m\\
+$mk_e^{-1}$ & $\alpha$: mass divided by stiffness & s$^2$\\
+$X=mk_e^{-1}k_p$ & dimensionless gain product & --\\
+\end{symbols}
+\use{$E_2/E_1=X/(1+X)<1$: Option 2 is always better, most on a stiff wall \pg{40}. Both are non-zero unless $f_{dist}=0$. Option 2 adds $1/(mk_e^{-1})=k_e/m$ to the stiffness of the error equation (a stiffer loop).}
+\end{fbx}
+\begin{deriv}[the two closed loops, every line \added]
+Plant $mk_e^{-1}\ddot f_e+f_{dist}+f_e=f$ with $E=f_d-f_e$, $\ddot E=\ddot f_d-\ddot f_e$, $\alpha=mk_e^{-1}$.\\
+\emph{Option 1:} $\alpha\ddot f_e+f_{dist}+f_e=\alpha[\ddot f_d+k_v\dot E+k_pE]+f_e\Rightarrow\alpha(\ddot f_d-\ddot f_e)+\alpha k_v\dot E+\alpha k_pE=f_{dist}\Rightarrow\ddot E+k_v\dot E+k_pE=f_{dist}/\alpha$. Static: $k_pE=f_{dist}/\alpha$.\\
+\emph{Option 2:} $\alpha\ddot f_e+f_{dist}+f_e=\alpha[\dots]+f_d\Rightarrow\alpha\ddot E+\alpha k_v\dot E+\alpha k_pE=f_{dist}+f_e-f_d=f_{dist}-E\Rightarrow\ddot E+k_v\dot E+(k_p+1/\alpha)E=f_{dist}/\alpha$. Static: $E=\dfrac{f_{dist}/\alpha}{k_p+1/\alpha}=\dfrac{f_{dist}}{1+\alpha k_p}$.
+\end{deriv}
+\begin{wnfig}
+\begin{center}\small
+\begin{tikzpicture}[x=0.9cm,y=0.93cm]
+\node[sgn,anchor=east] (i2) at (0,0) {$\ddot f_d$};
+\node[sgn,anchor=east] (i1) at (0,-2.5) {$\dot f_d$};
+\node[sgn,anchor=east] (i0) at (0,-3.5) {$f_d$};
+\node[sumj] (ss) at (2.1,0) {};
+\node[svblk,minimum width=9mm] (kp) at (1.2,-1.3) {$k_p$};
+\node[svblk,minimum width=9mm] (kv) at (2.8,-1.3) {$k_v$};
+\node[sumj] (sv) at (2.8,-2.5) {};
+\node[sumj] (sp) at (1.2,-3.5) {};
+\node[mbblk] (al) at (4.5,0) {$mk_e^{-1}$};
+\node[sumj] (sb) at (5.9,0) {};
+\node[plant,minimum width=31mm] (rb) at (8.7,0) {\footnotesize$f=m\ddot x{+}f_{dist}{+}k_ex$};
+\node[blk,minimum width=10mm] (dd) at (8.7,-2.5) {$\tfrac{d}{dt}(\ )$};
+\draw[sig] (i2.east) -- (ss.west); \node[sgn] at (1.6,0.22) {$+$};
+\draw[sig] (kp.north) -- (ss.235); \node[sgn] at (1.35,-0.55) {$+$};
+\draw[sig] (kv.north) -- (ss.305); \node[sgn] at (2.65,-0.55) {$+$};
+\draw[sig] (ss) -- (al);
+\draw[sig] (al) -- node[sgn,pos=0.45,above]{$+$} (sb);
+\draw[sig] (sb) -- node[sgn,above]{$f$} (rb);
+\draw[sig] (rb.east) -- (11.5,0) node[sgn,right]{$f_e$};
+\draw[line width=0.6pt] (10.9,0) -- (10.9,-3.5); \fill (10.9,0) circle (0.9pt); \fill (10.9,-2.5) circle (0.9pt);
+\draw[sig] (10.9,-2.5) -- (dd.east); \draw[sig] (dd.west) -- node[sgn,above,pos=0.3]{$\dot f_e$} node[sgn,above,pos=0.93]{$-$} (sv.east);
+\draw[sig] (10.9,-3.5) -- node[sgn,above,pos=0.25]{$f_e$} node[sgn,above,pos=0.93]{$-$} (sp.east);
+\draw[sig] (i1.east) -- (1.05,-2.5) arc[start angle=180,end angle=0,radius=0.15] -- (sv.west); \node[sgn] at (2.35,-2.28) {$+$};
+\draw[sig] (i0.east) -- (sp.west); \node[sgn] at (0.8,-3.28) {$+$};
+\fill (0.5,-3.5) circle (0.9pt);
+\draw[sig] (0.5,-3.5) -- (0.5,-2.65) arc[start angle=-90,end angle=90,radius=0.15] -- (0.5,-0.15) arc[start angle=-90,end angle=90,radius=0.15] -- (0.5,1.0) -- (5.9,1.0) -- (sb.north); \node[sgn] at (6.12,0.45) {$+$}; \node[sgn,above] at (3.2,1.0) {$f_d$ (Option 2)};
+\draw[sig] (sv.north) -- node[sgn,right]{$\dot E$} (kv.south);
+\draw[sig] (sp.north) -- node[sgn,left]{$E$} (kp.south);
+\node[grpsv,fit=(ss)(kp)(kv)(sv)(sp)] (gsv) {};
+\node[grplab,text=svcol,anchor=south west] at (gsv.north west) {SERVO};
+\end{tikzpicture}
+\end{center}
+\cdlegend
+\drawncap{force controller (slide p.\,41, redrawn). The top path adds $f_d$ at the final sum: this is Option 2; for Option 1 that path carries the measured $f_e$ instead. The $\tfrac{d}{dt}$ block is the one the slide flags as ``not a good idea'' on p.\,42.}
+\end{wnfig}
+\begin{wnfig}\slidefig[0.62\linewidth]{w09-lec}{41}{96 119 96 135}{slide p.\,41: force-control block diagram}\end{wnfig}
+On p.\,42 the same diagram has $\ddot f_d$ and $\dot f_d$ set to $0$ (constant $f_d$) and the $\tfrac d{dt}$ block flagged ``Not a good idea'': differentiating a noisy force measurement amplifies the noise.
+\textbf{Why this is the same law.} For constant $f_d$, $\dot E=-\dot f_e=-k_e\dot x$, so Option 2's $mk_e^{-1}k_v\dot E=-mk_v\dot x$ and $mk_e^{-1}k_pE=m[k_e^{-1}k_pE]$: the practical law \emph{is} Option 2 with $\dot f_e$ replaced by $k_e\dot x$. \added\ \textbf{Stiffness unknown \pg{44}:} $k_e$ is usually chosen as a high value, and the controller is designed to be robust to small changes in $k_e$.
+\begin{wnfig}
+\begin{center}\small
+\begin{tikzpicture}[x=0.9cm,y=0.93cm]
+\node[sgn,anchor=east] (fd) at (0,0) {$f_d$};
+\node[sumj] (s1) at (1.4,0) {};
+\node[mbblk,minimum width=11mm] (g1) at (3.1,0) {$\tfrac{k_p}{k_e}$};
+\node[sumj] (s2) at (4.8,0) {};
+\node[mbblk,minimum width=9mm] (m) at (6.0,0) {$m$};
+\node[sumj] (s3) at (7.3,0) {};
+\node[plant,minimum width=31mm] (rb) at (9.6,0) {\footnotesize$f=m\ddot x{+}f_{dist}{+}k_ex$};
+\node[svblk,minimum width=9mm] (kv) at (4.8,-1.4) {$k_v$};
+\draw[sig] (fd.east) -- (s1.west); \node[sgn] at (0.95,0.22) {$+$};
+\draw[sig] (s1) -- node[sgn,above]{$E$} (g1);
+\draw[sig] (g1) -- (s2); \node[sgn] at (4.3,0.22) {$+$};
+\draw[sig] (s2) -- (m);
+\draw[sig] (m) -- (s3); \node[sgn] at (6.85,0.22) {$+$};
+\draw[sig] (s3) -- node[sgn,above]{$f$} (rb);
+\draw[sig] (rb.east) -- (12.0,0) node[sgn,right]{$f_e$};
+\fill (0.4,0) circle (0.9pt); \draw[sig] (0.4,0) -- (0.4,1.0) -- (7.3,1.0) -- (s3.north); \node[sgn] at (7.55,0.45) {$+$};
+\draw[sig] (11.4,0) -- (11.4,-2.4) -- (1.4,-2.4) -- (s1.south); \fill (11.4,0) circle (0.9pt); \node[sgn] at (1.65,-0.5) {$-$}; \node[sgn,above] at (9,-2.4) {$f_e$};
+\draw[sig] (10.3,-0.38) -- (10.3,-1.4) -- (kv.east); \node[sgn,right] at (10.3,-0.95) {$\dot x$};
+\draw[sig] (kv.north) -- (s2.south); \node[sgn] at (5.05,-0.55) {$-$};
+\end{tikzpicture}
+\end{center}
+\cdlegend
+\drawncap{the practical force controller (slide p.\,43, redrawn): $f=m\big[k_e^{-1}k_pE-k_v\dot x\big]+f_d$. Velocity $\dot x$ is measured directly, so $f_e$ is never differentiated. Here the gains $k_p/k_e$ and $m$ are model-based (orange), $k_v$ is servo (blue).}
+\end{wnfig}
+\begin{wnfig}\slidefig[0.62\linewidth]{w09-lec}{43}{96 65 96 135}{slide p.\,43: the practical block diagram}\end{wnfig}
+\begin{worked}[numbers: $m=2$ kg, $f_{dist}=5$ N, $k_p=100$ s$^{-2}$]\label{w9:fnum}
+$k_e=1000$ N/m: $mk_e^{-1}=0.002$ s$^2$, $X=0.2$; $E_1=5/0.2=25$ N, $E_2=5/1.2=4.17$ N. Soft wall $k_e=20$: $X=10$, $E_1=0.5$, $E_2=0.455$ N. For $E_2=1\,\%$ of $f_{dist}$ on the stiff wall: $1+X=100$, $k_p=49\,500$ s$^{-2}$. Practical law at $f_d=10$ N, $f_e=7$ N, $\dot x=0.003$ m/s ($k_v=20$, $k_e=1000$): $E=3$; $f=2[0.001(100)(3)-20(0.003)]+10=2(0.3-0.06)+10=10.48$ N; Option 2 gives $0.002[20(-3)+100(3)]+10=10.48$ N: identical. Option 2 error loop: $\omega_n^2=k_p+k_e/m=600$, critical $k_v=2\sqrt{600}=49.0$ s$^{-1}$. \chk
+\end{worked}
+\begin{trap}
+$E_{ss}$ of Option 1 quoted for Option 2 (missing ``$1+$''); ``Option 2 improves on a stiffer wall'' (both errors grow as $k_e$ rises; Option 2 saturates at $f_{dist}$ while Option 1 grows without limit); differentiating the measured force; $E=f_e-f_d$; using the Option-1 critical $k_v=2\sqrt{k_p}$ for Option 2's loop.
+\end{trap}
+
+\hd{Hybrid force/position control \pg{45--47}}\label{w9:hyb}
+\premise[hybrid control]{a task with some directions blocked by a surface or hole (force control) and the others free (position control); desired motion $\ddot{\mathbf x}_d,\dot{\mathbf x}_d,\mathbf x_d$ and desired force $\mathcal F_d$; the constraint description}{the Cartesian force $\mathcal F$ to command, then $\mathbf Q=\mathbf J^\top\mathcal F$}
+\pg{46}: a humanoid wiping or pressing a wall needs both: slide along the wall under position control, push \emph{into} it under force control.
+\begin{fbx}[Selection matrices \pg{47}]
+\[\mathcal F=\mathbf S\,\mathcal F_{pos}+\mathbf S'\,\mathcal F_{force},\qquad \mathbf S'=\mathbf I-\mathbf S\ \ (\text{complementary}),\qquad \mathbf Q=\mathbf J^\top\mathcal F\]
+\begin{symbols}
+$\mathcal F_{pos}$ & output of the position control law (inputs $\ddot{\mathbf x}_d,\dot{\mathbf x}_d,\mathbf x_d$, feedback $\mathbf x$) & N\\
+$\mathcal F_{force}$ & output of the force control law (input $\mathcal F_d$, feedback $\mathcal F_E$, the measured force) & N\\
+$\mathbf S$ & diagonal, entries 0 or 1: \textbf{1 = this axis is position-controlled} & --\\
+$\mathbf S'$ & diagonal, entries 0 or 1: \textbf{1 = this axis is force-controlled}; $\mathbf S+\mathbf S'=\mathbf I$ & --\\
+``constraints'' & tell the controller which axes are blocked; they set $\mathbf S,\mathbf S'$ & --\\
+\end{symbols}
+\use{the slide says S and S$'$ are complementary and ``indicate whether a joint is in force control mode or position control mode''; $\mathbf S'=\mathbf I-\mathbf S$ is my reading of ``complementary'' and the figure is in Cartesian space. Both diagonal matrices are written in the \emph{constraint frame}: if the surface is tilted, rotate $\mathcal F$ into the surface frame first \added.}
+\end{fbx}
+\begin{wnfig}
+\begin{center}\small
+\begin{tikzpicture}[x=0.93cm,y=0.93cm]
+\node[sgn,anchor=east] (a2) at (0,1.4) {$\ddot{\mathbf x}_d$};
+\node[sgn,anchor=east] (a1) at (0,0.9) {$\dot{\mathbf x}_d$};
+\node[sgn,anchor=east] (a0) at (0,0.4) {$\mathbf x_d$};
+\node[svblk,minimum height=14mm,minimum width=18mm] (pl) at (2.2,0.9) {position\\control law};
+\node[svblk,minimum height=12mm,minimum width=18mm] (fl) at (2.2,-1.8) {force\\control law};
+\node[blk,minimum width=9mm] (S) at (5.0,0.9) {$\mathbf S$};
+\node[blk,minimum width=9mm] (Sp) at (5.0,-1.8) {$\mathbf S'$};
+\node[sumj] (sg) at (6.9,-0.45) {};
+\node[plant,minimum height=14mm,minimum width=20mm] (rb) at (9.2,-0.45) {Cartesian\\arm};
+\node[sgn,anchor=east] (cn) at (0.6,-0.45) {constraints};
+\node[sgn,anchor=east] (fd) at (0,-1.8) {$\mathcal F_d$};
+\draw[sig] (a2.east) -- (pl.west |- a2); \draw[sig] (a1.east) -- (pl.west |- a1); \draw[sig] (a0.east) -- (pl.west |- a0);
+\draw[sig] (fd.east) -- (fl.west);
+\draw[sig] (pl.east) -- (S.west); \draw[sig] (fl.east) -- (Sp.west);
+\draw[line width=0.6pt] (cn.east) -- (5.0,-0.45); \fill (5.0,-0.45) circle (0.9pt);
+\draw[sig] (5.0,-0.45) -- (S.south); \draw[sig] (5.0,-0.45) -- (Sp.north);
+\draw[sig] (S.east) -- (sg.north west); \node[sgn] at (6.5,0.1) {$+$};
+\draw[sig] (Sp.east) -- (sg.south west); \node[sgn] at (6.5,-1.0) {$+$};
+\draw[sig] (sg) -- node[sgn,above]{$\mathcal F$} (rb);
+\draw[sig] ($(rb.east)+(0,0.4)$) -- ++(0.8,0) node[sgn,above,pos=0.5]{$\mathbf x$} -- (11.1,2.3) -- (2.2,2.3) -- (pl.north);
+\draw[sig] ($(rb.east)+(0,-0.4)$) -- ++(0.8,0) node[sgn,below,pos=0.5]{$\mathcal F_E$} -- (11.1,-3.1) -- (2.2,-3.1) -- (fl.south);
+\node[sgn,above] at (5.0,1.35) {\scriptsize(1 = position)};
+\node[sgn,below] at (5.0,-2.2) {\scriptsize(1 = force)};
+\end{tikzpicture}
+\end{center}
+\cdlegend
+\drawncap{hybrid position/force controller (slide p.\,47, after Craig, redrawn). Both control laws are servo laws (blue); $\mathbf S$ and $\mathbf S'$ pick, axis by axis, which law reaches the arm. The signals $\mathbf x$ and $\mathcal F_E$ are measured on the arm.}
+\end{wnfig}
+\begin{wnfig}\slidefig[0.55\linewidth]{w09-lec}{47}{38 97 365 135}{slide p.\,47: hybrid force and position controller}\end{wnfig}
+\sh{Which entries of $\mathbf S$ are 1? \added}
+Rule: \textbf{a direction the environment blocks $\to$ force control} ($\mathbf S$ entry 0, $\mathbf S'$ entry 1); a direction in which the tool is free to move $\to$ position control ($\mathbf S$ entry 1, $\mathbf S'$ entry 0). Translations $(x,y,z)$ unless stated.
+\begin{center}\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.27\linewidth}@{}}
+\toprule task & blocked / free & $\mathbf S$ (position)\\\midrule
+wipe a table, $z$ normal (slide p.\,46 idea) & $z$ blocked; $x,y$ free & $\operatorname{diag}(1,1,0)$\\
+push on a wall with normal $x$ & $x$ blocked; $y,z$ free & $\operatorname{diag}(0,1,1)$\\
+whiteboard eraser, normal = tool $z$ & $z$ blocked; $x,y$ free & $\operatorname{diag}(1,1,0)$\\
+pull a drawer open along $x$ \added & rails block $y,z$ & $\operatorname{diag}(1,0,0)$\\
+insert a peg in a vertical hole, 6 axes $(x,y,z,\theta_x,\theta_y,\theta_z)$ \added & walls block $x,y,\theta_x,\theta_y$ (force/torque $0$); $z$ and $\theta_z$ free & $\operatorname{diag}(0,0,1,0,0,1)$\\
+\bottomrule
+\end{tabularx}
+\end{center}
+\begin{worked}[wipe a table, $z$ normal; $\mathcal F_{pos}=(12,-3,9)$ N, $\mathcal F_{force}=(1,2,10)$ N]
+$\mathbf S=\operatorname{diag}(1,1,0)$, $\mathbf S'=\operatorname{diag}(0,0,1)$: $\mathcal F=(12,-3,0)+(0,0,10)=(12,-3,10)$ N. The position law's $9$ N along $z$ and the force law's $1,2$ N along $x,y$ are discarded. Wall normal $x$: $\mathbf S=\operatorname{diag}(0,1,1)$ gives $\mathcal F=(1,-3,9)$ N. Peg (6 axes): position law $(1,2,-15,0.3,-0.2,0.8)$, force law $(-3,4,2,0.5,-0.6,0.1)$, $\mathbf S=\operatorname{diag}(0,0,1,0,0,1)$: $\mathcal F=(-3,4,-15,0.5,-0.6,0.8)$ (N, N\,m). \chk
+\end{worked}
+\begin{trap}
+$\mathbf S$ and $\mathbf S'$ swapped (the eraser slides freely and ignores the press); both entries 1 on one axis (two laws fighting); using the \emph{world} axes when the surface is tilted; forgetting $\mathbf Q=\mathbf J^\top\mathcal F$ at the end.
+\end{trap}
+
+\hd{How this is examined: worked solutions}
+The W9 practical sheet is the only lecturer-written question on this week (no W13 sample question covers it, but Q4 ``derive the equations of motion'' is the stepping stone: derive the EoM, then partition it). Below: the practical sheet as an exam question (times and numbers fixed where the sheet gives none), then five exam-style questions. Marks are not published; indicative marks are ``about one per step''.
+
+\begin{examq}[Practical sheet (a)--(c): trajectory and the model \ \mk{marks assumed}]\label{w9:prac}
+\begin{wnfig}\slidefig[0.3\linewidth]{w09-prac}{1}{226 530 226 152}{the practical's 3-link planar arm: $L_1=3$, $L_2=2$, $L_3=1$ m, joint angles $\theta_1,\theta_2,\theta_3$ measured as relative angles}\end{wnfig}
+A planar 3-link arm ($L_1=3$, $L_2=2$, $L_3=1$ m; point masses $m_1=3$, $m_2=2$, $m_3=1$ kg at the \emph{distal} ends of the links) starts at rest at the end-effector pose $(x,y,\varphi)=(5,1,90^\circ)$ and must stop at $(-3,3,180^\circ)$. (a) Find the joint angles at both poses and the cubic joint trajectories ($T=2$ s assumed: the sheet gives no time). (b) Use Lagrange to get $\mathbf Q=\mathbf M(\mathbf q)\ddot{\mathbf q}+\mathbf C(\mathbf q,\dot{\mathbf q})+\mathbf g(\mathbf q)$. (c) Evaluate $\mathbf M,\mathbf C,\mathbf g$ in the initial configuration.
+\solution
+\textbf{(a) Joint angles} (frame $\{0\}$ at the base, $\theta_i$ relative angles, tool orientation $\varphi=\theta_1+\theta_2+\theta_3$). Remove link 3: wrist $\mathbf w=(x-L_3\cos\varphi,\ y-L_3\sin\varphi)$; then a planar 2R.\\
+Start: $\mathbf w=(5-0,\ 1-1)=(5,0)$; $\cos\theta_2=(25-9-4)/12=1\Rightarrow\theta_2=0$; $\theta_1=\operatorname{atan2}(0,5)=0$; $\theta_3=90^\circ-0-0$. $\mathbf q_0=(0,0,90^\circ)$ (arm stretched along $x$, last link up). Check FK: $(3+2,\,0+1)=(5,1)$ \checkmark.\\
+Goal: $\mathbf w=(-3-\cos180^\circ,\ 3-\sin180^\circ)=(-2,3)$, $|\mathbf w|^2=13$; $\cos\theta_2=(13-9-4)/12=0\Rightarrow\theta_2=90^\circ$ (elbow branch $+$); $\theta_1=\operatorname{atan2}(3,-2)-\operatorname{atan2}(2,3)=123.69^\circ-33.69^\circ=90^\circ$; $\theta_3=180^\circ-90^\circ-90^\circ=0$. $\mathbf q_f=(90^\circ,90^\circ,0)$. (Other branch $\theta_2=-90^\circ$: $(157.38^\circ,-90^\circ,112.62^\circ)$; the sheet does not say; the integers favour the first.) \chk\\
+\end{examq}
+\begin{examq}[Practical sheet (a), continued: the cubics]
+\textbf{Cubics} (rest to rest, $q=q_0+a_2t^2+a_3t^3$, $a_2=3\Delta/T^2$, $a_3=-2\Delta/T^3$), $\Delta=(\pi/2,\pi/2,-\pi/2)$, $T=2$:
+\[\text{joints 1, 2: }a_2=1.1781,\ a_3=-0.3927;\qquad \text{joint 3: }a_2=-1.1781,\ a_3=+0.3927\]
+(units rad/s$^2$ and rad/s$^3$).
+Peak speed $1.5\Delta/T=1.1781$ rad/s at $t=1$ s (not $\Delta/T=0.785$); peak acceleration $6\Delta/T^2=2.3562$ rad/s$^2$ at $t=0$. Plot: $q(t)$ an S-curve $0\to90^\circ$; $\dot q$ a parabola with peak $1.18$; $\ddot q$ a straight line from $+2.36$ to $-2.36$. \chk\ Note: a joint-space cubic does \emph{not} move the tool in a line: at $t=1$ the joints are $(45^\circ,45^\circ,45^\circ)$, tool $(1.414,4.828)$. \chk
+\end{examq}
+\begin{examq}[Practical sheet (b): the model by Lagrange]
+\textbf{(b) Model by Lagrange.} Mass positions ($c_{12}=\cos(\theta_1+\theta_2)$ etc.): $\mathbf p_1=L_1(c_1,s_1)$, $\mathbf p_2=\mathbf p_1+L_2(c_{12},s_{12})$, $\mathbf p_3=\mathbf p_2+L_3(c_{123},s_{123})$. $K=\sum\tfrac12m_i|\dot{\mathbf p}_i|^2$, $P=g\sum m_iy_i$, so $M_{ij}=\partial^2K/\partial\dot q_i\partial\dot q_j$ and $g_i=\partial P/\partial q_i$. With $A=(m_2{+}m_3)L_1L_2=18$, $B=m_3L_1L_3=3$, $D=m_3L_2L_3=2$ (kg\,m$^2$):
+\end{examq}
+\begin{examq}[Practical sheet (b), continued, and (c)]
+\[\begin{aligned}
+M_{11}&=67+36c_2+6c_{23}+4c_3, & M_{12}&=13+18c_2+3c_{23}+4c_3, & M_{13}&=1+3c_{23}+2c_3,\\
+M_{22}&=13+4c_3, & M_{23}&=1+2c_3, & M_{33}&=1\quad(\mathbf M=\mathbf M^\top)
+\end{aligned}\]
+\[\begin{aligned}
+C_1&=-As_2(2\dot q_1\dot q_2+\dot q_2^2)-Bs_{23}\big(2\dot q_1(\dot q_2{+}\dot q_3)+(\dot q_2{+}\dot q_3)^2\big)-Ds_3\big(2(\dot q_1{+}\dot q_2)\dot q_3+\dot q_3^2\big)\\
+C_2&=(As_2+Bs_{23})\dot q_1^2-Ds_3\big(2(\dot q_1{+}\dot q_2)\dot q_3+\dot q_3^2\big),\qquad C_3=Bs_{23}\dot q_1^2+Ds_3(\dot q_1+\dot q_2)^2
+\end{aligned}\]
+\[g_1=g\,[18c_1+6c_{12}+c_{123}],\qquad g_2=g\,[6c_{12}+c_{123}],\qquad g_3=g\,c_{123}\]
+($g=9.81$ m/s$^2$, arm in a vertical plane.)
+(The last-link weight $g_3$ has lever arm $L_3c_{123}$ about joint 3.) These were checked against a symbolic Lagrangian at random poses. \chk\\
+\textbf{(c) At the start} $\mathbf q_0=(0,0,90^\circ)$, $\dot{\mathbf q}=\mathbf 0$: $c_2=1$, $c_3=0$, $c_{23}=0$, $c_1=1$, $c_{12}=1$, $c_{123}=0$:
+\[\mathbf M=\begin{bmatrix}103&31&1\\31&13&1\\1&1&1\end{bmatrix}\ \text{kg\,m}^2,\quad\mathbf C=\mathbf 0,\quad\mathbf g=9.81\begin{bmatrix}18+6+0\\6+0\\0\end{bmatrix}=\begin{bmatrix}235.44\\58.86\\0\end{bmatrix}\ \text{N\,m}.\]
+Sanity: $g_1$ is the moment of all three weights about joint 1, lever arms $3,5,5$ m: $9.81(3\cdot3+2\cdot5+1\cdot5)=9.81\cdot24$ \checkmark; $g_3=0$ as link 3 points straight up. Inverse dynamics at $t=0$ on the cubic: $\mathbf Q=\mathbf M\ddot{\mathbf q}_d+\mathbf g=(548.8,\,160.2,\,2.4)$ N\,m. At the goal: $\mathbf M=\begin{bmatrix}71&17&3\\17&17&3\\3&3&1\end{bmatrix}$, $\mathbf g=(-68.67,-68.67,-9.81)$. \chk
+\end{examq}
+\begin{examq}[Practical sheet (d)--(i): controller, simulator, imprecise mass \ \mk{marks assumed}]
+(d)--(e) For the first link at the first instant, ignoring friction, write a partitioned law. (f) Describe a forward-dynamics simulator. (g) What does the position error look like along the trajectory? (h) The controller uses $\hat m=2.8$ kg. (i) Extend to all joints.
+\solution
+\textbf{(d)} The reference supplies $q_d,\dot q_d,\ddot q_d$ at every servo step ($q_d$ is the cubic sampled at the \emph{next} time step); the servo uses $E=q_d-q$, $\dot E=\dot q_d-\dot q$, and $\ddot q_d$ as feed-forward.\\
+\textbf{(e)} Link 1 alone ($m_1=3$ kg at the tip, $L_1=3$ m): $\tau=m_1L_1^2\ddot q+m_1gL_1\cos q$. $\alpha=27$ kg\,m$^2$, $\beta=88.29\cos q$ N\,m (radians). With $k_p=100$, $k_v=20$ ($\omega_n=10$, critical):
+\[\tau=27\big(\ddot q_d+20\dot E+100E\big)+88.29\cos q.\]
+At $t=0$: $q=0$, $E=\dot E=0$, $\ddot q_d=2.3562$: $\tau(0)=27(2.3562)+88.29=63.62+88.29=151.91$ N\,m. (Reading B: joint 1 of the full arm with joints 2, 3 held: $\alpha=M_{11}=103$, $\beta=g_1=235.44$ N\,m. Same structure.) \chk\\
+\textbf{(f)} Forward dynamics for the \emph{plant} (it maps torque to motion), inverse dynamics inside the \emph{controller} (it asks which torque gives an acceleration). Loop: $\mathbf Q=$ controller$(t_k,\mathbf q_k,\dot{\mathbf q}_k)$; $\ddot{\mathbf q}=\mathbf M_{true}^{-1}(\mathbf Q-\mathbf C-\mathbf g-\mathbf f)$ (solve, do not invert); integrate (RK4) to $\mathbf q_{k+1},\dot{\mathbf q}_{k+1}$; log $E=q_d-q$. Keep the controller's model and the simulator's ``true'' model separate. At $t=0$: $\ddot q=(151.91-88.29)/27=2.3562=\ddot q_d$. \chk\\
+\textbf{(g)} Exact model: $\ddot E+20\dot E+100E=0$, roots $-10,-10$. Starting on the path, $E\equiv0$ (a flat line: the plot is not broken). Starting $0.1$ rad behind: $E=0.1(1+10t)e^{-10t}$, $E(0.1)=0.0736$ rad, no overshoot, settled by about $0.5$ s. If the torque is refreshed only every $10$ ms or $50$ ms the cancellation is imperfect: peak error $0.26$ mrad or $1.13$ mrad. \chk
+\end{examq}
+\begin{examq}[Practical sheet (h), (i) \ \mk{marks assumed}]
+\textbf{(h)} Scalar link 1 with $m=3$, $\hat m=2.8$, $L=3$, $k_p=100$, $k_v=20$: $\ddot E+20\dot E+100E=\dfrac{m-\hat m}{\hat m}\Big[\ddot q+\dfrac gL\cos q\Big]=\dfrac1{14}\big[\ddot q+3.27\cos q\big]$. Held horizontal ($q_d=0$): $E_{ss}=\tfrac1{14}(3.27)/100=2.34$ mrad ($0.134^\circ$); held vertical: $\cos q=0$, no static error. Sign: $\hat m<m$, gravity under-compensated, link sags, $E>0$. On the cubic: forcing at $t=0$ is $\tfrac1{14}(2.3562+3.27)=0.402$ rad/s$^2$; simulated peak error $3.35$ mrad ($0.19^\circ$) at $t\approx0.47$ s, $-1.21$ mrad at $t=2$ s (deceleration term), then dies out. Full-arm reading ($m_1=2.8$ in joint~1 of the 3-link model): $\hat M_{11}=103-0.2(9)=101.2$, $\hat g_1=235.44-0.2(9.81)(3)=229.554$ N\,m. \chk\\
+\textbf{(i) All joints.} $\mathbf Q=\mathbf M(\mathbf q)(\ddot{\mathbf q}_d+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E)+\mathbf C(\mathbf q,\dot{\mathbf q})+\mathbf g(\mathbf q)$ with $\mathbf K_p=100\mathbf I$, $\mathbf K_v=20\mathbf I$ and $\mathbf M,\mathbf C,\mathbf g$ from (b) re-evaluated every step; closed loop $\ddot{\mathbf E}+20\dot{\mathbf E}+100\mathbf E=\mathbf 0$, three decoupled critically damped loops. New compared with one joint: $\boldsymbol\alpha$ is a full matrix; $\mathbf C,\mathbf g$ depend on the whole pose; the model must be recomputed each step (hence the outer-loop idea). If a student used $\boldsymbol\alpha=\operatorname{diag}(\mathbf M)$: at $t=0$ row 1 gives forcing $\big(31(2.3562)+1(-2.3562)\big)/103=0.6863$ rad/s$^2$, 29\,\% of the commanded $2.36$, an error of order $6.9$ mrad. \chk
+\end{examq}
+
+\begin{examq}[EQ1: cubic spring (derive, calculate) \ \mk{marks assumed: 8}]
+A mass obeys $m\ddot x+b\dot x+kx^3=f$ with $m=2$ kg, $b=0.5$ N\,s/m, $k=4$ N/m$^3$. (a) Write a partitioned control law for trajectory following and show the closed-loop error equation [3]. (b) Choose $k_p,k_v$ for critical damping with $\omega_n=8$ rad/s [1]. (c) Find $f$ at $x=0.10$ m, $\dot x=-0.20$ m/s when $x_d=0.15$ m, $\dot x_d=\ddot x_d=0$ [2]. (d) An unmodelled constant force of $5$ N pushes the mass in the $+x$ direction. Find the steady-state error and say how to remove it [2].
+\end{examq}
+\begin{examq}[EQ1: solution]
+\solution
+(a) $\alpha=m$, $\beta=b\dot x+kx^3$, $\acute f=\ddot x_d+k_v\dot E+k_pE$, $E=x_d-x$; $f=m\acute f+b\dot x+kx^3$. Insert in the plant: $m\ddot x=m\acute f\Rightarrow\ddot x=\acute f\Rightarrow\boxed{\ddot E+k_v\dot E+k_pE=0}$ [3].\\
+(b) $k_p=\omega_n^2=64$ s$^{-2}$, $k_v=2\omega_n=16$ s$^{-1}$ [1].\\
+(c) $E=0.15-0.10=0.05$, $\dot E=0-(-0.20)=0.20$. $\acute f=0+16(0.20)+64(0.05)=6.4$ m/s$^2$. $\beta=0.5(-0.20)+4(0.10)^3=-0.1+0.004=-0.096$ N. $f=2(6.4)-0.096=\boxed{12.704\text{ N}}$ [2]. Check: plant $\ddot x=(12.704+0.096)/2=6.4=\acute f$ \checkmark.\\
+(d) Plant becomes $m\ddot x+\dots=f+5$, so $\ddot x=\acute f+5/m$ and $\ddot E+k_v\dot E+k_pE=-5/m$. Steady state: $E_{ss}=-5/(mk_p)=-5/(2\cdot64)=\boxed{-0.0391\text{ m}}$: the mass sits $3.9$ cm past the target (in the direction of the push). Remove it with integral action (W8: $\acute f$ gets $+k_i\!\int\!E\,dt$, stable for $k_i<k_vk_p$) or by measuring and cancelling the force [2]. \chk
+\end{examq}
+
+\begin{examq}[EQ2: imprecise gravity term (derive, calculate) \ \mk{marks assumed: 7}]
+A single link (point mass $m$ at the tip, length $L$, angle $q$ from the horizontal) obeys $mL^2\ddot q+mgL\cos q=\tau$. The controller uses $\tau=\alpha\acute\tau+\beta$ with the correct $\alpha=mL^2$ but $\beta=\hat mgL\cos q$, and $\acute\tau=\ddot q_d+k_v\dot E+k_pE$. (a) Derive the error equation [3]. (b) For $m=3$ kg, $\hat m=2.5$ kg, $L=0.6$ m, $k_p=81$ s$^{-2}$, find $E_{ss}$ with the link held at $q=20^\circ$ [2]. (c) Say what changes if $q=90^\circ$ and why raising $k_p$ never gives zero error [2].
+\end{examq}
+\begin{examq}[EQ2: solution]
+\solution
+(a) Equate: $mL^2\ddot q+mgL\cos q=mL^2\acute\tau+\hat mgL\cos q$. Divide by $mL^2$: $\ddot q=\acute\tau-\dfrac{(m-\hat m)g\cos q}{mL}$. With $\ddot E=\ddot q_d-\ddot q$:
+\[\boxed{\ddot E+k_v\dot E+k_pE=\frac{(m-\hat m)\,g\cos q}{mL}}\ \ [3].\]
+(b) Static: $E_{ss}=\dfrac{(m-\hat m)g\cos q}{mLk_p}=\dfrac{0.5(9.81)(0.9397)}{3(0.6)(81)}=\dfrac{4.609}{145.8}=\boxed{0.0316\text{ rad}}=1.81^\circ$; positive: $\hat m<m$ so the link sags [2]. Wrong answer to avoid: omitting $\cos q$ gives $0.0336$.\\
+(c) At $q=90^\circ$, $\cos q=0$: the gravity mismatch has no lever arm, $E_{ss}=0$. Raising $k_p$ shrinks the error ($\propto1/k_p$) but never removes it: the right side is a constant forcing, and $k_p$ is limited by the sampling rate [2]. \chk
+\end{examq}
+
+\begin{examq}[EQ3: computed torque for a 2R arm (calculate, explain) \ \mk{marks assumed: 8}]
+A planar 2R arm ($l_1=l_2=1$ m) has point masses $m_1=m_2=1$ kg at the link ends; its dynamics are $\mathbf M=\begin{bmatrix}3+2c_2&1+c_2\\1+c_2&1\end{bmatrix}$, $\mathbf C=\begin{bmatrix}-s_2(2\dot q_1\dot q_2+\dot q_2^2)\\s_2\dot q_1^2\end{bmatrix}$, $\mathbf g=g\begin{bmatrix}2c_1+c_{12}\\c_{12}\end{bmatrix}$. At $\mathbf q=(30^\circ,60^\circ)$, $\dot{\mathbf q}=(1,-0.5)$ rad/s the reference has $\ddot{\mathbf q}_d=(0.5,0)$, $\mathbf E=(0.02,-0.01)$ rad, $\dot{\mathbf E}=\mathbf 0$; gains $\mathbf K_p=100\mathbf I$, $\mathbf K_v=20\mathbf I$. (a) Write the law [2]. (b) Evaluate $\mathbf M,\mathbf C,\mathbf g$ [3]. (c) Find $\mathbf Q$ [2]. (d) If only joint 1 is to accelerate ($\acute{\mathbf Q}=(0.5,0)$), what torque does joint 2 still receive, and why [1].
+\end{examq}
+\begin{examq}[EQ3: solution]
+\solution
+(a) $\mathbf Q=\mathbf M\acute{\mathbf Q}+\mathbf C+\mathbf g$, $\acute{\mathbf Q}=\ddot{\mathbf q}_d+\mathbf K_v\dot{\mathbf E}+\mathbf K_p\mathbf E$ [2].\\
+(b) $c_2=0.5$, $s_2=0.866$, $c_1=0.866$, $c_{12}=\cos90^\circ=0$. $\mathbf M=\begin{bmatrix}4&1.5\\1.5&1\end{bmatrix}$. $C_1=-0.866\big(2(1)(-0.5)+0.25\big)=0.6495$, $C_2=0.866(1)=0.866$. $\mathbf g=9.81(1.732,\,0)=(16.991,\,0)$ N\,m [3].\\
+(c) $\acute{\mathbf Q}=(0.5+100(0.02),\ 0+100(-0.01))=(2.5,\,-1.0)$. $\mathbf M\acute{\mathbf Q}=(4(2.5)+1.5(-1),\ 1.5(2.5)+(-1))=(8.5,\,2.75)$. $\mathbf Q=(8.5+0.6495+16.991,\ 2.75+0.866+0)=\boxed{(26.14,\ 3.62)\text{ N\,m}}$ [2].\\
+(d) $\mathbf M(0.5,0)^\top=(2.0,\ 0.75)$: joint 2 still gets $0.75$ N\,m, because $\boldsymbol\alpha=\mathbf M$ is not diagonal: this torque cancels the inertial coupling $M_{21}\ddot q_1$ so that joint 2 stays on its path [1]. \chk
+\end{examq}
+
+\begin{examq}[EQ6: explain and spot the errors \ \mk{marks assumed: 6}]
+(a) In 2--3 sentences: why does the slide move the model-based part to the outer loop, and what is the cost? [2] (b) A student writes: ``$\boldsymbol\alpha=\operatorname{diag}(\mathbf M)$ is enough because $\mathbf K_p,\mathbf K_v$ are diagonal; with a 10\,\% mass error the error still goes to zero; for the Cartesian law $\mathbf Q=\mathbf J\mathcal F$.'' Find three errors [3]. (c) Why can the Cartesian controller not start at the 3-link practical's start pose $(5,1,90^\circ)$? [1]
+\end{examq}
+\begin{examq}[EQ6: solution]
+\solution
+(a) The dynamics (computing $\mathbf M,\mathbf C,\mathbf g$) takes time and limits how often torques can be updated; the servo part is cheap. Evaluating the model along the plan at a slow rate and keeping only the PD correction fast allows a faster servo loop. Cost: the model no longer reacts to the measured state, so decoupling is only approximate and the gains become torque gains [2].\\
+(b) (i) $\boldsymbol\alpha=\mathbf M(\mathbf q)$ is a full matrix; its off-diagonals cancel the inertial coupling; a diagonal $\boldsymbol\alpha$ leaves forcing $\hat{\mathbf M}^{-1}(\mathbf M-\hat{\mathbf M})\ddot{\mathbf q}\ne0$ (e.g.\ $0.686$ rad/s$^2$ on joint 1 of the practical). (ii) With a mass error the right-hand side of the error equation is non-zero, so $E_{ss}\approx(\text{forcing})/k_p\ne0$. (iii) $\mathbf Q=\mathbf J^\top\mathcal F$ (transpose) [3].\\
+(c) The start is fully stretched ($\theta_2=0$), a singularity: $\det\mathbf J\propto\sin\theta_2=0$, so $\mathbf J^{-1}$ and $\mathbf M_x$ do not exist there [1]. \chk
+\end{examq}
+
+
+\begin{examq}[EQ4: force control against a wall (calculate, explain) \ \mk{marks assumed: 7}]
+A mass $m=1.5$ kg presses on a wall modelled as a spring $k_e=300$ N/m; an unknown disturbance $f_{dist}=8$ N acts; $k_p=64$ s$^{-2}$. (a) Why is the law with $f_{dist}$ infeasible? [1] (b) Find the steady-state force error for Option 1 and Option 2 [3]. (c) Which would you build, and what is the practical form of the law? [2] (d) Give $k_v$ for critical damping of the Option 2 loop [1].
+\end{examq}
+\begin{examq}[EQ4: solution]
+\solution
+(a) The ideal law contains $f_{dist}$, which is not measured [1].\\
+(b) $mk_e^{-1}=1.5/300=0.005$ s$^2$; $X=0.005(64)=0.32$. $E_1=f_{dist}/X=8/0.32=\boxed{25\text{ N}}$; $E_2=f_{dist}/(1+X)=8/1.32=\boxed{6.06\text{ N}}$ [3]; ratio $X/(1+X)=0.24$. Option 1 leaves an error three times the disturbance.\\
+(c) Option 2 (it uses the desired force and always has the smaller error). Practical form: $f=m\big[k_e^{-1}k_pE-k_v\dot x\big]+f_d$, which avoids differentiating the noisy force [2].\\
+(d) Option 2 loop: $\ddot E+k_v\dot E+(k_p+k_e/m)E=\dots$, $\omega_n^2=64+200=264$, $k_v=2\sqrt{264}=\boxed{32.5\text{ s}^{-1}}$ [1]. \chk
+\end{examq}
+
+\begin{examq}[EQ5: Cartesian torques and hybrid control (calculate, sketch, explain) \ \mk{marks assumed: 8}]
+(a) Show with virtual work that $\mathbf Q=\mathbf J^\top\mathcal F$ [2]. (b) A planar 2R arm ($L_1=0.5$, $L_2=0.4$ m) is at $\mathbf q=(60^\circ,-30^\circ)$; the Cartesian controller asks for the tool force $\mathcal F=(-2,6)$ N. Find $\mathbf Q$ [3]. (c) A robot erases a whiteboard (normal $=$ tool $z$), following a circle and pressing with $10$ N. Give $\mathbf S,\mathbf S'$; the position law outputs $(2,-1,6)$ N and the force law $(0.5,0.3,12)$ N: find $\mathcal F$ [3]. Sketch the block diagram.
+\end{examq}
+\columnbreak
+\begin{examq}[EQ5: solution]
+\solution
+(a) $\delta\mathbf x=\mathbf J\delta\mathbf q$; work of torques $\mathbf Q^\top\delta\mathbf q$ equals work of the tool force $\mathcal F^\top\mathbf J\delta\mathbf q$ for all $\delta\mathbf q$, so $\mathbf Q=\mathbf J^\top\mathcal F$ [2].\\
+(b) $s_1=0.866$, $c_1=0.5$, $s_{12}=\sin30^\circ=0.5$, $c_{12}=0.866$. $\mathbf J=\begin{bmatrix}-0.5(0.866)-0.4(0.5)&-0.4(0.5)\\0.5(0.5)+0.4(0.866)&0.4(0.866)\end{bmatrix}=\begin{bmatrix}-0.633&-0.2\\0.5964&0.3464\end{bmatrix}$. $\mathbf Q=\mathbf J^\top\mathcal F=(-0.633(-2)+0.5964(6),\ -0.2(-2)+0.3464(6))=\boxed{(4.845,\ 2.478)\text{ N\,m}}$ [3]. Moments: tool $(0.5964,0.633)$: $0.5964(6)-0.633(-2)=4.845$ \checkmark.\\
+(c) The board blocks $z$: $\mathbf S'=\operatorname{diag}(0,0,1)$ (force), $\mathbf S=\operatorname{diag}(1,1,0)$ (position). $\mathcal F=(2,-1,0)+(0,0,12)=\boxed{(2,-1,12)\text{ N}}$ [3]; the $6$ N and the $0.5,0.3$ N are discarded. Swapped matrices would give $(0.5,0.3,6)$: the eraser would ignore the press. Diagram: the hybrid controller above with $\mathcal F_d=(0,0,10)$ N. \chk
+\end{examq}
+
+\end{multicols}

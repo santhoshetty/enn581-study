@@ -9,11 +9,12 @@ A single-page study site and a printable revision booklet for QUT ENN581 (W1–W
 | Path | Contents |
 |---|---|
 | `index.html` | The site: study plan, 12 topic tabs (with 3D widgets and a PDF viewer), the W13 sample questions solved, two mock exams, 72 practice questions, and the booklet |
-| `booklet.pdf` | 25-page A4 landscape revision booklet (print at 100 %, double-sided, flip on the short edge) |
+| `booklet.pdf` | 44-page A4 landscape revision booklet, three columns (print at 100 %, double-sided, flip on the short edge) |
+| `booklet-long.pdf` | 159-page long edition of the same booklet, for reading on screen |
 | `mock-*-questions.pdf`, `mock-*-solutions.pdf` | Two mock papers to do on paper, with solutions |
 | `notes/` | Lecture decks and practical sheets (metadata stripped) |
 | `src/` | Build scripts, page fragments, weekly digests, `checks/` (Python scripts that verify every number), and `tests/` (Playwright) |
-| `booklet/` | LaTeX source of the booklet (`tectonic -X compile main.tex`) and its check scripts |
+| `booklet/` | LaTeX source of the booklet (`tectonic -X compile main.tex`; slide figures are cropped from `../dist/notes/`, so set `\notesdir` to `../notes/` when building inside this repo), `vcheck/` check scripts, `v2long/` source of the long edition, `v1/` the first 25-page version |
 
 ## Conventions
 

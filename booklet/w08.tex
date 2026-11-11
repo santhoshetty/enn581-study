@@ -1,129 +1,412 @@
-\week{W8}{Control 1: second-order error dynamics, PD/PID}{8}
+% W8 Control 1 (v3, condensed). Numbers: vcheck/v2_w08.py and src/checks/w08.py. Slide notation: m xdd + b xd + k x = f; E = x_d - x; f = alpha f' + beta; f' = xdd_d + k_v Edot + k_p E.
+\tikzset{w8hop/.style={preaction={draw=white,line width=2.6pt}},
+  w8grp/.style={draw=g3,dashed,line width=0.6pt,rounded corners=2pt,inner sep=2.5mm},
+  w8dot/.style={circle,fill=black,inner sep=0.9pt}}
+\newcommand{\wdiag}[1]{{\centering\resizebox{\linewidth}{!}{#1}\par}}
+\newcommand{\hdk}[1]{\par\vspace{2pt}\phantomsection\addcontentsline{toc}{subsection}{#1}{\sffamily\bfseries\normalsize\color{seccolor}#1}\par\nobreak\vspace{0.5pt}\nobreak}
+\week{W8}{Control 1: linear, partitioned and PID joint control}{8}
 \begin{multicols}{3}
-\hd{Open vs closed loop, error \pg{8--14}}
-\begin{fbx}[Servo error \pg{13}]
-\[E=\mathbf q_d-\mathbf q,\qquad \dot E=\dot{\mathbf q}_d-\dot{\mathbf q}\quad(\text{desired}-\text{actual})\]
-\use{every later formula assumes this sign. Open loop = inverse dynamics $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g$ with no measurement of the output \pg{11}; closed loop feeds back $\mathbf q,\dot{\mathbf q}$ \pg{12}.}
-\end{fbx}
-Open loop fails: wrong model, outside disturbance, wrong start state. Unit mass: $\ddot E=0\Rightarrow E=E(0)+\dot E(0)t$, so a 0.1 rad offset stays 0.1 rad. \chk\ Independent joint control \pg{14}: $n$ single-joint loops, coupling ignored.
 
-\hd{Spring--mass--damper \pg{16--26}}
-\begin{fbx}[Characteristic equation \pg{16--17}]
-\[m\ddot x+b\dot x+kx=0,\quad ms^2+bs+k=0,\quad s_{1,2}=\frac{-b\pm\sqrt{b^2-4mk}}{2m}\]
-\use{test $b^2-4mk$ with \emph{strict} inequalities; $=0$ is critical.}
-\end{fbx}
-\begin{tabularx}{\linewidth}{@{}lcX@{}}\toprule
-$b^2{-}4mk$ & case & $x(t)$\\\midrule
-$>0$ & over (real, unequal) \pg{18} & $A_1e^{s_1t}{+}A_2e^{s_2t}$\\
-$<0$ & under (complex $\lambda\pm i\mu$) \pg{21} & $e^{\lambda t}(A_1\cos\mu t{+}A_2\sin\mu t)$\\
-$=0$ & critical $s=-\tfrac b{2m}$ \pg{24} & $(A_1{+}A_2t)e^{-bt/2m}$\\\bottomrule
+\hdk{Which controller for which situation \added}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.3\linewidth}X@{}}
+\toprule
+Law & Signal & Fixes / cannot fix\\\midrule
+P & $f=-k_px$ & stiffness only; rings; offset under constant disturbance\\
+PD & $-k_px-k_v\dot x$ & stiffness $k{+}k_p$, damping $b{+}k_v$; gains need $m,b,k$; offset remains\\
+Partitioned & $f=\alpha f'+\beta$, $f'=-k_v\dot x-k_px$ & cancels plant (unit mass): $k_p=\omega_n^2,k_v=2\omega_n$; regulation\\
++ feed-forward & $f'=\ddot x_d+k_v\dot E+k_pE$ & tracking: $\ddot E+k_v\dot E+k_pE=0$\\
+PID & $f'=\ddot x_d+k_v\dot E+k_pE+k_i\!\int\!E$ & removes constant-disturbance offset; stable iff $k_vk_p>k_i$\\
+PI \added & $f'=k_pE+k_i\!\int\!E$ & unstable on unit mass ($s^3+k_ps+k_i$, no $s^2$ term)\\
+\bottomrule
 \end{tabularx}
-$\lambda=-\tfrac b{2m}$, $\mu=\tfrac{\sqrt{4mk-b^2}}{2m}$ \added. Constants from $x(0),\dot x(0)$: unequal $A_1{+}A_2$, $s_1A_1{+}s_2A_2$; complex $A_1$, $\lambda A_1{+}\mu A_2$; equal $A_1$, $sA_1{+}A_2$. \added\ $\omega_n=\sqrt{k/m}$, $\zeta=\tfrac b{2\sqrt{mk}}$ ($>1$ over, $=1$ crit., $<1$ under).
-\begin{worked}[deck examples, $x(0)=-1$, $\dot x(0)=0$ \pg{19, 22, 25}]
-Over $m,b,k=1,3,2$: disc $=1$, $s=-1,-2$, $x=-2e^{-t}+e^{-2t}$, $x(1)=-0.6004$.\\
-Under $1,1,1$: $\lambda=-\tfrac12$, $\mu=\tfrac{\sqrt3}2$, $A_2=-0.5774$; first peak $+0.1630$ at $t=2\pi/\sqrt3=3.628$ s (16.3\%), trough $-0.027$ at 7.26 s.\\
-Critical $1,4,4$: $s=-2$ twice, $x=(-1-2t)e^{-2t}$.\\
-2\% settling: critical $2.92$ s $<$ over $4.60$ s $<$ under $8.08$ s. \chk
-\end{worked}
+\normalsize
+
+%==================================================================
+\hdk{Open loop, closed loop, servo error \pg{8--14}}
+\premise[control]{$\mathbf q_d,\dot{\mathbf q}_d,\ddot{\mathbf q}_d$ (W5); dynamics $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g$ (W7)}{torques $\mathbf Q(t)$ ($N\,m$ R, $N$ P) so that $\mathbf q$ follows $\mathbf q_d$}
+\wdiag{\begin{tikzpicture}[x=0.8cm,y=0.8cm]
+\node[blk] (tg) at (0,0) {Trajectory\\generator};
+\node[mbblk] (id) at (4.4,0) {Inverse dynamics\\ $\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g$};
+\node[plant] (rb) at (8.0,0) {Robot};
+\draw[sig] (tg) -- node[sgn,above]{$\mathbf q_d,\dot{\mathbf q}_d,\ddot{\mathbf q}_d$} (id);
+\draw[sig] (id) -- node[sgn,above]{$\mathbf Q$} (rb);
+\draw[sig] (rb) -- ++(1.5,0) node[sgn,right]{$\mathbf q,\dot{\mathbf q}$};
+\node[font=\scriptsize\itshape,text=tred] at (4.4,-1.0) {no feedback: errors never corrected};
+\end{tikzpicture}}
+\drawncap{(1) open loop \pg{11}}
+\wdiag{\begin{tikzpicture}[x=0.8cm,y=0.8cm]
+\node[blk] (tg) at (0,0) {Trajectory\\generator};
+\node[svblk,dashed,minimum height=10mm] (cs) at (4.4,0) {Control\\system};
+\node[plant] (rb) at (8.0,0) {Robot};
+\draw[sig] (tg) -- node[sgn,above]{$\mathbf q_d,\dot{\mathbf q}_d,\ddot{\mathbf q}_d$} (cs);
+\draw[sig] (cs) -- node[sgn,above]{$\mathbf Q$} (rb);
+\draw[sig] (rb) -- (9.9,0) node[sgn,right]{$\mathbf q,\dot{\mathbf q}$};
+\node[w8dot] (tp) at (9.3,0) {};
+\draw[sig] (tp) |- (4.4,-1.2) -- node[sgn,right,pos=0.2]{$\mathbf q,\dot{\mathbf q}$ (measured)} (cs.south);
+\end{tikzpicture}}
+\drawncap{(2) closed loop \pg{12}; the control-system block is this week's topic. Slide p.\,11 names the trajectory $\mathbf q(t)$; p.\,12--13 $\mathbf q_D,\mathbf q_d$ (same).}
+Open loop, exact model: $\ddot E=0\Rightarrow E(t)=E(0)+\dot E(0)t$: a start error or push is never removed. $E(0)=0.1,\dot E(0)=0.02$: $E(5)=0.2$ rad \chk
+\begin{fbx}[Servo error \pg{13}]
+\[E=\mathbf q_d-\mathbf q,\quad \dot E=\dot{\mathbf q}_d-\dot{\mathbf q}\quad(\text{one joint: }E=x_d-x)\]
+\use{desired $-$ actual; with $E=q-q_d$ every sign flips. Independent joint control \pg{14}: $n$ single-joint loops; coupling in $\mathbf M,\mathbf C$ treated as disturbance.}
+\end{fbx}
+
+%==================================================================
+\hdk{Spring--mass--damper: poles and three cases \pg{16--26}}
+\begin{fbx}[Characteristic equation, $\omega_n$, $\zeta$ \pg{16, 17}]
+\[m\ddot x+b\dot x+kx=0\ \Rightarrow\ ms^2+bs+k=0,\quad s_{1,2}=\frac{-b\pm\sqrt{b^2-4mk}}{2m}\]
+\[\omega_n=\sqrt{k/m},\quad\zeta=\frac{b}{2\sqrt{mk}},\quad s_{1,2}=-\zeta\omega_n\pm\omega_n\sqrt{\zeta^2-1}\ \added\]
+\use{try $x=e^{st}$. $\zeta>1$ over, $=1$ critical, $<1$ under, $=0$ undamped (same test as $b^2-4mk$). Joint: $m\to I$. Slides never name $\zeta,\omega_n$.}
+\end{fbx}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}X@{}}
+\toprule
+Case & Poles & $x(t)$; constants from $x(0),\dot x(0)$\\\midrule
+$b^2{-}4mk>0$ over \pg{18} & real, unequal & $A_1e^{s_1t}{+}A_2e^{s_2t}$; $A_1{+}A_2{=}x_0$, $s_1A_1{+}s_2A_2{=}\dot x_0$\\
+$<0$ under \pg{21} & $\lambda\pm i\mu$ & $e^{\lambda t}(A_1\cos\mu t{+}A_2\sin\mu t)$; $A_1{=}x_0$, $\lambda A_1{+}\mu A_2{=}\dot x_0$\\
+$=0$ critical \pg{24} & $s{=}{-}\frac b{2m}$ twice & $(A_1{+}A_2t)e^{st}$; $A_1{=}x_0$, $sA_1{+}A_2{=}\dot x_0$\\\bottomrule
+\end{tabularx}
+\normalsize
+$\lambda=-\frac b{2m}$, $\mu=\frac{\sqrt{4mk-b^2}}{2m}$ \added. Slips: $\lambda=-b/m$; $A_2=\dot x_0/\mu$ (forgets $\lambda A_1$).
 \begin{recipe}[Classify and solve $x(t)$]
-\label{w8:smd}
 \begin{enumerate}
-\item $ms^2+bs+k=0$; compute $b^2-4mk$; name the case.
-\item Roots ($\lambda\pm i\mu$ if complex); write the matching form.
-\item Two initial-condition equations; solve the $2{\times}2$ for $A_1,A_2$.
-\item Check $x(0),\dot x(0)$ from the final formula and $x\to0$.
+\item $b^2-4mk$ (or $\zeta$): name the case; poles.
+\item Write the matching $x(t)$; two equations from $x_0,\dot x_0$.
+\item Check: returns $x_0,\dot x_0$; $x\to0$.
 \end{enumerate}
 \end{recipe}
-\begin{worked}[P8.1]
-$m,b,k=1,5,6$, $x(0)=2$: disc $=1$, $s=-2,-3$; $A_1{+}A_2=2$, $-2A_1{-}3A_2=0$ $\Rightarrow$ $A_1=6$, $A_2=-4$, $x(1)=0.6129$. \chk
+\begin{worked}[slide examples, $x(0){=}{-}1$, $\dot x(0){=}0$ \pg{19--26}]
+\textbf{Over} $m,b,k{=}1,3,2$: $s=-1,-2$; $A_1{+}A_2{=}{-}1$, $-A_1{-}2A_2{=}0\Rightarrow x=-2e^{-t}+e^{-2t}$, $x(1)=-0.6004$; $\zeta=1.061$.\\
+\textbf{Under} $1,1,1$: $s=-\tfrac12\pm i\tfrac{\sqrt3}2$; $A_1{=}{-}1$, $\tfrac12+\tfrac{\sqrt3}2A_2{=}0\Rightarrow A_2{=}{-}\tfrac1{\sqrt3}$; $x=-e^{-t/2}[\cos\tfrac{\sqrt3}2t+\tfrac1{\sqrt3}\sin\tfrac{\sqrt3}2t]$; peak $+0.1630$ at $3.628$ s; $\zeta=0.5$.\\
+\textbf{Critical} $1,4,4$: $s=-2$; $A_1{=}{-}1$, $2{+}A_2{=}0\Rightarrow x=(-1-2t)e^{-2t}$, $x(1)=-0.4060$. \chk
 \end{worked}
-\begin{trap}
-$\lambda=-b/m$ (it is $-b/2m$). $\dot x(0)=0\Rightarrow A_2=0$ (only if $\lambda=0$). Slide p.26's hand sketch shows over-damped slowest; the exact solutions say under-damped is slowest here. Trust the equations: only ``critical is fastest without overshoot'' is safe.
-\end{trap}
-
-\columnbreak
-\hd{PD control \pg{27--32}}
-\begin{fbx}[PD on the raw plant \pg{29, 32}]
-\[m\ddot x+b\dot x+kx=f,\ f=-k_px-k_v\dot x\ \Rightarrow\ m\ddot x+\underbrace{(b{+}k_v)}_{b'}\dot x+\underbrace{(k{+}k_p)}_{k'}x=0\]
-\use{critical when $b'^2=4mk'$. Never forget the plant's own $b$ and $k$. $k_p$: N/m, $k_v$: N\,s/m.}
-\end{fbx}
-\begin{worked}
-$m=2,b=3,k=8$ (under: $9-64<0$), $k_p=10$: $k'=18$, $b'=\sqrt{4\cdot2\cdot18}=12$, $k_v=9$, double pole $-3$. Trap: $2\sqrt{k_p}=6.32$ stays under-damped (disc $-57.05$); wrong answers 12, 6.32. \chk
-\end{worked}
-
-\hd{Control-law partitioning \pg{33--37}}
-\begin{fbx}[Model-based + servo \pg{33--36}]
-\[f=\alpha f'+\beta,\ \ \alpha=m,\ \beta=b\dot x+kx\ \Rightarrow\ \ddot x=f'\ \ (\text{unit mass})\]
-\[f'=-k_v\dot x-k_px\ \Rightarrow\ \ddot x+k_v\dot x+k_px=0,\quad s^2+k_vs+k_p=0\]
-\[\textbf{critical: } k_v^2=4k_p\ \Longleftrightarrow\ k_v=2\sqrt{k_p}\]
-\use{regulation to 0. After partitioning $f'$ is an acceleration: $k_p$ in s$^{-2}$, $k_v$ in s$^{-1}$. Poles $p_1,p_2$: $k_v=-(p_1{+}p_2)$, $k_p=p_1p_2$ \added.}
-\end{fbx}
-\begin{slideerr}[p.36 critical damping]
-Slide p.36 prints $k_p^2=4k_v$: subscripts swapped. Correct: $k_v^2=4k_p$ (agrees with p.32's $b'^2=4mk'$). With the slide's rule $k_p=16\Rightarrow k_v=64$ gives roots $-63.75,-0.25$ (heavily over-damped); correct $k_v=8$, double root $-4$. Test: $s^2+2s+1$ has $k_v=2,k_p=1$; $k_p^2=4k_v$ would need $1=8$. \chk
+\wdiag{\begin{tikzpicture}[x=1.0cm,y=1.9cm,>=Latex]
+\draw[->,line width=0.5pt] (0,0) -- (8.4,0) node[right,font=\scriptsize]{$t$ (s)};
+\draw[->,line width=0.5pt] (0,-1.1) -- (0,0.28) node[above,font=\scriptsize]{$x$ (m)};
+\foreach \a in {2,4,6,8}{\draw (\a,0.02)--(\a,-0.02) node[below,font=\tiny]{\a};}
+\foreach \b in {-1,-0.5}{\draw (0.1,\b)--(-0.1,\b) node[left,font=\tiny]{\b};}
+\draw[line width=0.9pt,dashed,samples=80,domain=0:8] plot (\x,{-2*exp(-\x)+exp(-2*\x)});
+\draw[line width=0.9pt,samples=120,domain=0:8] plot (\x,{-exp(-\x/2)*(cos(\x*0.866025 r)+sin(\x*0.866025 r)/1.7320508)});
+\draw[line width=1.3pt,dotted,samples=80,domain=0:8] plot (\x,{(-1-2*\x)*exp(-2*\x)});
+\node[font=\scriptsize,anchor=west] at (3.9,0.2) {under ($\zeta=0.5$)};
+\node[font=\scriptsize,anchor=west] at (3.0,-0.43) {over ($\zeta=1.06$), dashed};
+\node[font=\scriptsize,anchor=west] at (1.3,-0.8) {critical, dotted};
+\end{tikzpicture}}
+\drawncap{the three examples from the exact formulas. Real poles: farther left $=$ faster; complex: $\mathrm{Re}$ sets decay, $\mathrm{Im}$ the frequency.}
+\begin{slideerr}[p.26 sketch]
+Red hand sketch (large late bump for ``complex''; ``real, unequal'' slowest) is not to scale. Exact 2\% settling: critical $2.92$ s $<$ over $4.60$ s $<$ under $8.08$ s. Only ``critical is fastest without overshoot'' is safe in general. \chk
 \end{slideerr}
-\begin{recipe}[Partitioned force at a state (P8.3)]
-\label{w8:part}
-\begin{enumerate}
-\item Plant $m\ddot x+b\dot x+kx=f$; set $f=\alpha f'+\beta$; $\alpha=m$, $\beta=b\dot x+kx$.
-\item Servo $f'=-k_v\dot x-k_px$ (tracking: section below).
-\item Closed loop $\ddot x+k_v\dot x+k_px=0$; critical $k_v^2=4k_p$.
-\item Force $f=mf'+b\dot x+kx$. Label both portions on the block diagram.
-\item Check: $\ddot x=(f-b\dot x-kx)/m$ must equal $f'$.
-\end{enumerate}
-\end{recipe}
-\begin{worked}
-$m,b,k=2,3,8$; $k_p=25$, $k_v=10$ (critical, pole $-5$); $x=0.5$, $\dot x=1$: $f'=-10-12.5=-22.5$; $f=2(-22.5)+3+4=-38$ N; plant $\ddot x=(-38-3-4)/2=-22.5$ \checkmark. \chk
+
+%==================================================================
+\hdk{Actuated system and PD control \pg{27--32}}
+\premise[PD regulation]{$m\ddot x+b\dot x+kx=f$; $x,\dot x$ measured}{$k_p,k_v$ for critical damping}
+\begin{fbx}[PD law \pg{28--32}]
+\[f=-k_px-k_v\dot x\ \Rightarrow\ m\ddot x+\underbrace{(b{+}k_v)}_{b'}\dot x+\underbrace{(k{+}k_p)}_{k'}x=0\]
+\use{critical iff $b'^2=4mk'$, i.e.\ $(b+k_v)^2=4m(k+k_p)$. Always include the plant's own $b,k$. $k_p$ [N/m], $k_v$ [N\,s/m].}
+\end{fbx}
+\wdiag{\begin{tikzpicture}[x=1.2cm,y=0.62cm]
+\node[sumj] (s) at (0,0) {};
+\node[svblk] (kv) at (0,1.45) {$k_v$};
+\node[svblk] (kp) at (0,-1.45) {$k_p$};
+\node[plant,minimum width=28mm] (pl) at (3.5,0) {Plant\\$m\ddot x+b\dot x+kx=f$};
+\node[w8dot] (T) at (5.7,0) {};
+\draw[sig] (s) -- node[sgn,above]{$f$} (pl);
+\draw[sig] (pl) -- (T) -- (6.5,0) node[sgn,right]{$x$};
+\draw[sig] (T) -- (5.7,1.45) -- node[sgn,above,pos=0.7]{$\dot x$} (kv.east);
+\draw[sig] (T) -- (5.7,-1.45) -- node[sgn,below,pos=0.7]{$x$} (kp.east);
+\draw[sig] (kv.south) -- node[sgn,left,pos=0.5]{$-$} (s.north);
+\draw[sig] (kp.north) -- node[sgn,left,pos=0.5]{$-$} (s.south);
+\node[grpsv,fit=(s)(kv)(kp)] (g) {};
+\node[grplab,text=svcol,anchor=south west] at (g.north west) {SERVO-BASED};
+\node[font=\scriptsize,anchor=east] at (-0.8,0) {$x_d=0$};
+\end{tikzpicture}}
+\cdlegend
+\drawncap{PD regulation (after slide p.\,30): both signs minus, target $x=0$.}
+\begin{worked}[critical damping of the raw plant \pg{32}]
+$m{=}2,b{=}3,k{=}8$; choose $k_p{=}10$: $k'=18$, $b'=\sqrt{4mk'}=12$, $k_v=b'-b=9$; double pole $-3$. Trap: $k_v=2\sqrt{k_p}=6.32$ stays under-damped (needs partitioning). \chk
 \end{worked}
-\begin{fbx}[Wrong model \added]
-$\hat b\ne b$: $\ddot x+\big(k_v+\tfrac{b-\hat b}m\big)\dot x+k_px=0$. $\hat m\ne m$: both gains scaled by $\hat m/m$.\\
-$\hat b=1$ (true 3), $m=2$: $k_v^{eff}=11$, $121>100$: slightly over-damped. $\hat m=1.5$: $s^2+7.5s+18.75$, $56.25-75<0$: under-damped. \chk
-\end{fbx}
 
-\hd{Choosing gains \added}
-\begin{fbx}[$\omega_n,\zeta$ \added]
-\[\omega_n=\sqrt{k_p},\ \ \zeta=\frac{k_v}{2\sqrt{k_p}},\ \ s=-\zeta\omega_n\pm\omega_n\sqrt{\zeta^2-1}\]
-\[\text{overshoot (}0<\zeta<1\text{)}=\exp\!\big(-\pi\zeta/\sqrt{1-\zeta^2}\big)\]
-\use{critical, speed $\omega_n$: $k_p=\omega_n^2$, $k_v=2\omega_n$. Given $\zeta$: $k_v=2\zeta\omega_n$. Doubling $k_p$ (fixed $k_v$): $\zeta\to\zeta/\sqrt2$, $\omega_n\to\sqrt2\,\omega_n$.}
+%==================================================================
+\hdk{Control-law partitioning \pg{33--37}}
+\premise[partitioning]{model $m,b,k$; measured $x,\dot x$}{$f=\alpha f'+\beta$ with $\ddot x=f'$ (unit mass) and servo gains independent of $m,b,k$}
+\begin{fbx}[Partitioned law \pg{33--36}]
+\[f=\alpha f'+\beta,\ \ \alpha=m,\ \beta=b\dot x+kx\ \Rightarrow\ \ddot x=f'\]
+\[f'=-k_v\dot x-k_px\ \Rightarrow\ \ddot x+k_v\dot x+k_px=0,\quad k_v=2\sqrt{k_p}\ \text{(critical)}\]
+where $f'$ = servo output, a desired \emph{acceleration} [m/s$^2$]; $\alpha$ model gain [kg]; $\beta$ model force [N]; $k_p,k_v$ in s$^{-2}$, s$^{-1}$.
+\use{model part cancels the physics, servo part sees a double integrator. Poles $p_{1,2}$: $k_v=-(p_1{+}p_2)$, $k_p=p_1p_2$ \added.}
 \end{fbx}
-(a) $\omega_n=10$ crit.: $k_p=100$, $k_v=20$. (b) $\zeta=0.7,\omega_n=8$: $64$, $11.2$. (c) $k_p=25,k_v=6$: $\zeta=0.6$, poles $-3\pm4i$, overshoot $9.48\%$. (d) poles $-2,-8$: $k_p=16$, $k_v=10$, $\zeta=1.25$. \chk\\
-$k_p=25$: $k_v=4$: $\zeta=0.4$, poles $-2\pm4.58i$, 25.4\%; $k_v=10$: $-5$ double; $k_v=20$: $-1.34,-18.66$ (slow pole dominates, slower than critical). \chk
-
-\hd{Trajectory following \pg{38--40}}
-\begin{fbx}[Servo law with feed-forward \pg{39}]
-\[f'=\ddot x_d+k_v\dot E+k_pE\ \Rightarrow\ \ddot E+k_v\dot E+k_pE=0,\quad f=mf'+b\dot x+kx\]
-\use{needs $x_d,\dot x_d,\ddot x_d$ (smooth, twice differentiable). Without $\ddot x_d$: constant $a$ leaves $E_{ss}=a/k_p$.}
-\end{fbx}
-$k_p=100,k_v=20$, $E(0)=0.5$, $\dot E(0)=0$: $E=E_0(1+10t)e^{-10t}$, $E(0.5)=0.0202$ m. No FF on $x_d=t^2$: $E_{ss}=2/100=0.02$ m. \chk
-
-\hd{Disturbance and PID \pg{41--45}}
-\begin{fbx}[Steady-state error under a constant disturbance \pg{42--43}]
-\[\ddot E+k_v\dot E+k_pE=\frac{f_{dist}}m\ \Rightarrow\ E_{ss}=\frac{f_{dist}}{k_p\,m}\]
-\use{$f_{dist}$ enters the force junction with a minus; $E=x_d-x$ flips it. $k_v,b,k$ do not appear. Tolerance $E_{max}$: $k_p\ge f_{dist}/(mE_{max})$, then $k_v=2\sqrt{k_p}$.}
-\end{fbx}
-\begin{recipe}[Steady-state error and its cure]
-\label{w8:sse}
+\wdiag{\begin{tikzpicture}[x=0.95cm,y=0.8cm]
+\node[sumj] (s1) at (1.0,0) {};
+\node[svblk] (kp) at (0.1,-1.35) {$k_p$};
+\node[svblk] (kv) at (1.9,-1.35) {$k_v$};
+\node[mbblk] (al) at (3.3,0) {$\alpha=m$};
+\node[sumj] (s2) at (5.0,0) {};
+\node[mbblk] (be) at (5.0,-1.35) {$\beta=b\dot x+kx$};
+\node[plant,minimum width=27mm] (pl) at (7.5,0) {Plant\\$m\ddot x+b\dot x+kx=f$};
+\node[w8dot] (T) at (9.4,0) {};
+\draw[sig] (s1) -- node[sgn,above]{$f'$} (al);
+\draw[sig] (al) -- node[sgn,above,pos=0.55]{$+$} (s2);
+\draw[sig] (be) -- node[sgn,right,pos=0.6]{$+$} (s2);
+\draw[sig] (s2) -- node[sgn,above]{$f$} (pl);
+\draw[sig] (pl) -- (T) -- (10.2,0) node[sgn,right]{$x$};
+\draw[sig] (kp.north) -- node[sgn,left,pos=0.7]{$-$} (s1.south west);
+\draw[sig] (kv.north) -- node[sgn,right,pos=0.7]{$-$} (s1.south east);
+\draw (T) -- (9.4,-2.35) -- (0.1,-2.35);
+\draw[sig] (0.1,-2.35) -- node[sgn,left,pos=0.5]{$x$} (kp.south);
+\draw[sig] (1.9,-2.35) -- node[sgn,left,pos=0.5]{$\dot x$} (kv.south);
+\draw[sig] (5.0,-2.35) -- node[sgn,left,pos=0.5]{$x,\dot x$} (be.south);
+\node[w8dot] at (1.9,-2.35) {}; \node[w8dot] at (5.0,-2.35) {};
+\node[grpsv,fit=(s1)(kp)(kv)] (gsv) {};
+\node[grplab,text=svcol,anchor=south west] at (gsv.north west) {SERVO-BASED};
+\node[grpmb,fit=(al)(s2)(be)] (gmb) {};
+\node[grplab,text=mbcol,anchor=south east] at (gmb.north east) {MODEL-BASED};
+\end{tikzpicture}}
+\drawncap{partitioned controller (slide p.\,37 redrawn).}
+\slidefig[0.78\linewidth]{w08-lec}{37}{96 86 134 111}{the lecturer's annotation: ``servo portion'' ($k_p,k_v,f'$), ``model-based portion'' ($m$, $b\dot x+kx$)}
+\begin{slideerr}[p.36 critical damping]
+Slide prints $k_p^2=4k_v$ (swapped). From $s^2+k_vs+k_p$: $k_v^2=4k_p$. Slide's rule: $k_p{=}16\Rightarrow k_v{=}64$, roots $-63.75,-0.25$; correct $k_v{=}8$, double root $-4$. \chk
+\end{slideerr}
+\begin{recipe}[Partitioned force at one instant]
 \begin{enumerate}
-\item Error equation with $f_{dist}/m$ on the right. Set $\ddot E=\dot E=0$.
-\item $E_{ss}=f_{dist}/(k_pm)$; PD cannot reach 0 unless $k_p\to\infty$.
-\item Cure: integral action. $f'=\ddot x_d+k_v\dot E+k_pE+k_i\!\int\!E\,dt$.
-\item Differentiate: $\dddot E+k_v\ddot E+k_p\dot E+k_iE=\dot f_{dist}/m$; steady state $k_iE=0\Rightarrow E=0$.
-\item Stable only if $k_vk_p>k_i$ (poly $s^3+k_vs^2+k_ps+k_i$; \added).
+\item $\alpha=m$, $\beta=b\dot x+kx$ at the \emph{measured} $x,\dot x$.
+\item $f'=-k_v\dot x-k_px$ (regulation) or $\ddot x_d+k_v\dot E+k_pE$ (tracking).
+\item Critical: $k_p=\omega_n^2$, $k_v=2\omega_n$. Then $f=mf'+b\dot x+kx$.
+\item Check: $(f-b\dot x-kx)/m=f'$.
 \end{enumerate}
 \end{recipe}
-\begin{worked}
-$f_{dist}=10$, $m=2$, $k_p=25$: $E_{ss}=0.2$ m; $m=5$: $0.08$ m. $E_{ss}\le5$ mm: $k_p\ge1000$, $k_v=63.25$. PID $k_p{=}25$, $k_v{=}10$, $k_i{=}40$: roots $-7.335$, $-1.332\pm1.918i$; $\int E\to10/(2\cdot40)=0.125$. $k_i{=}250$: $(s+10)(s^2+25)$, oscillation at 5 rad/s; $k_i{=}300$ unstable. \chk
+\begin{worked}[force at a state]
+$m,b,k{=}2,3,8$; $k_p{=}25,k_v{=}10$; $x{=}0.5$, $\dot x{=}1$: $f'=-10(1)-25(0.5)=-22.5$; $f=2(-22.5)+3(1)+8(0.5)=-38$ N. Check $(-38-3-4)/2=-22.5$. \chk
+\end{worked}
+\begin{twoway}{A. PD on raw plant}{B. Partitioned}
+$f=-k_px-k_v\dot x$; $m\ddot x+(b{+}k_v)\dot x+(k{+}k_p)x=0$; $k_p=m\omega_n^2-k$, $k_v=2m\omega_n-b$.
+\tcblower
+$f=mf'+b\dot x+kx$; $\ddot x+k_v\dot x+k_px=0$; $k_p=\omega_n^2$, $k_v=2\omega_n$.
+\end{twoway}
+\begin{worked}[scenario: same plant, both ways]
+$m{=}0.5,b{=}1,k{=}18$, critical with $\omega_n{=}12$. \textbf{A:} $k_p=72-18=54$, $k_v=12-1=11$. \textbf{B:} $k_p=144$, $k_v=24$, $f=0.5f'+\dot x+18x$. Both: double pole $-12$. B's gains on the raw plant: $s^2+50s+324$, poles $-42.35,-7.65$ (not critical). \chk
+\end{worked}
+
+%==================================================================
+\hdk{Gains from the poles \added}
+\begin{fbx}[Gains $\leftrightarrow$ poles (unit-mass servo)]
+\[\omega_n=\sqrt{k_p},\ \ \zeta=\frac{k_v}{2\sqrt{k_p}},\ \ k_p=p_1p_2,\ \ k_v=-(p_1{+}p_2)\]
+\[\text{overshoot}\ (\zeta{<}1)=e^{-\pi\zeta/\sqrt{1-\zeta^2}}\]
+\[t_{s,2\%}\approx\frac4{\zeta\omega_n}\ (\zeta{<}1),\quad\approx\frac4{|s_{slow}|}\ (\zeta{>}1),\quad=\frac{5.83}{\omega_n}\ (\zeta{=}1)\]
+\use{given $\zeta$: $k_v=2\zeta\omega_n$. $5.83$ = root of $(1+u)e^{-u}=0.02$. Rules approximate. $\mathrm{Re}>0$ unstable; $\pm i\omega$ ($k_v{=}0$) never settles.}
+\end{fbx}
+\begin{worked}[scenario: response from the poles \chk]
+(a) $-3\pm4i$: $\omega_n{=}5$, $\zeta{=}0.6$, $k_p{=}25$, $k_v{=}6$; overshoot $9.48\%$; $t_s\approx1.33$ s (exact $1.19$).\\
+(b) $-2,-8$: $k_p{=}16$, $k_v{=}10$, $\zeta{=}1.25$; $x=(8e^{-2t}-2e^{-8t})/6$; $t_s\approx2.0$ s (exact $2.10$).\\
+(c) $-5,-5$: $k_p{=}25$, $k_v{=}10$; $t_s=5.83/5=1.17$ s.\ \ (d) $k_v{=}0,k_p{=}9$: $\pm3i$, period $2.09$ s.
+\end{worked}
+
+%==================================================================
+\hdk{Trajectory following \pg{38--40}}
+\begin{fbx}[Servo law with feed-forward \pg{39}]
+\[f'=\ddot x_d+k_v\dot E+k_pE,\quad f=mf'+b\dot x+kx\ \Rightarrow\ \ddot E+k_v\dot E+k_pE=0\]
+\use{from $\ddot x=f'$ and $\ddot E=\ddot x_d-\ddot x$; the error obeys the regulation equation for \emph{any} smooth trajectory. Without $\ddot x_d$, constant $\ddot x_d=a$ leaves $E_{ss}=a/k_p$.}
+\end{fbx}
+\wdiag{\begin{tikzpicture}[x=0.9cm,y=0.72cm]
+\node[sgn,anchor=east] (xdd) at (0,0) {$\ddot x_d$};
+\node[sumj] (sf) at (2.3,0) {};
+\node[svblk] (kp) at (1.5,-1.35) {$k_p$};
+\node[svblk] (kv) at (3.1,-1.35) {$k_v$};
+\node[sumj] (sed) at (3.1,-2.5) {};
+\node[sumj] (se) at (1.5,-3.5) {};
+\node[sgn,anchor=east] (xd1) at (0,-2.5) {$\dot x_d$};
+\node[sgn,anchor=east] (xd0) at (0,-3.5) {$x_d$};
+\node[mbblk] (al) at (4.8,0) {$\alpha=m$};
+\node[sumj] (sb) at (6.5,0) {};
+\node[mbblk] (be) at (6.5,-1.35) {$\beta=b\dot x+kx$};
+\node[plant,minimum width=15mm] (pl) at (8.7,0) {Plant};
+\node[w8dot] (T) at (10.0,0) {};
+\draw[sig] (xdd) -- node[sgn,above,pos=0.7]{$+$} (sf);
+\draw[sig] (xd1) -- node[sgn,above,pos=0.85]{$+$} (sed);
+\draw[sig] (xd0) -- node[sgn,above,pos=0.85]{$+$} (se);
+\draw[sig] (kp.north) -- node[sgn,left,pos=0.7]{$+$} (sf.south west);
+\draw[sig] (kv.north) -- node[sgn,right,pos=0.7]{$+$} (sf.south east);
+\draw[sig,w8hop] (se.north) -- node[sgn,right,pos=0.3]{$E$} (kp.south);
+\draw[sig] (sed.north) -- node[sgn,right,pos=0.4]{$\dot E$} (kv.south);
+\draw[sig] (sf) -- node[sgn,above]{$f'$} (al);
+\draw[sig] (al) -- node[sgn,above,pos=0.55]{$+$} (sb);
+\draw[sig] (be) -- node[sgn,right,pos=0.6]{$+$} (sb);
+\draw[sig] (sb) -- node[sgn,above]{$f$} (pl);
+\draw[sig] (pl) -- (T) -- (10.7,0) node[sgn,right]{$x$};
+\draw (T) -- (10.0,-3.5);
+\draw[sig] (10.0,-2.5) -- node[sgn,above,pos=0.8]{$\dot x$} (sed.east);
+\draw[sig] (10.0,-3.5) -- node[sgn,above,pos=0.8]{$x$} (se.east);
+\node[w8dot] at (10.0,-2.5) {};
+\draw[sig] (5.9,-2.5) -- (5.9,-1.72); \node[w8dot] at (5.9,-2.5) {};
+\draw[sig,w8hop] (6.7,-3.5) -- (6.7,-1.72); \node[w8dot] at (6.7,-3.5) {};
+\node[sgn] at (3.4,-2.28) {$-$}; \node[sgn] at (1.8,-3.28) {$-$};
+\node[grpsv,fit=(sf)(kp)(kv)(sed)(se)] (gsv) {};
+\node[grplab,text=svcol,anchor=south west] at (gsv.north west) {SERVO-BASED};
+\node[grpmb,fit=(al)(sb)(be)] (gmb) {};
+\node[grplab,text=mbcol,anchor=south east] at (gmb.north east) {MODEL-BASED};
+\end{tikzpicture}}
+\drawncap{trajectory-following controller (slide p.\,40 redrawn): $x,\dot x$ enter the error junctions with $-$ and the model part $\beta$.}
+\begin{worked}[tracking numbers \chk]
+$k_p{=}100$, $k_v{=}20$ (critical, $\omega_n{=}10$), $E(0){=}0.5$, $\dot E(0){=}0$: $E=E_0(1+10t)e^{-10t}$, $E(0.5)=0.5(6)e^{-5}=0.0202$ m. $E(0)=\dot E(0)=0$: stays $0$. No feed-forward, $x_d=t^2$: $E_{ss}=2/100=0.02$ m.
+\end{worked}
+
+%==================================================================
+\hdk{Disturbance, steady-state error and PID \pg{41--45}}
+\noindent\begin{minipage}{\linewidth}
+\premise[disturbance]{partitioned tracking controller; unmodelled constant force $f_{dist}$}{error equation, $E_{ss}$, cure}
+\wdiag{\begin{tikzpicture}[x=0.82cm,y=0.72cm]
+\node[sgn,anchor=east] (xdd) at (0,0) {$\ddot x_d$};
+\node[sumj] (sf) at (2.6,0) {};
+\node[svblk] (kp) at (1.4,-1.35) {$k_p$};
+\node[svblk] (kv) at (2.8,-1.35) {$k_v$};
+\node[svblk,minimum width=14mm] (ki) at (4.3,-1.35) {$k_i\!\int\!dt$};
+\node[sumj] (sed) at (2.8,-2.4) {};
+\node[sumj] (se) at (1.4,-3.6) {};
+\node[sgn,anchor=east] (xd1) at (0,-2.4) {$\dot x_d$};
+\node[sgn,anchor=east] (xd0) at (0,-3.6) {$x_d$};
+\node[mbblk] (al) at (6.0,0) {$\alpha=m$};
+\node[sumj] (sb) at (7.7,0) {};
+\node[mbblk] (be) at (7.7,-1.35) {$\beta=b\dot x+kx$};
+\node[plant,minimum width=14mm] (pl) at (9.9,0) {Plant};
+\node[w8dot] (T) at (11.5,0) {};
+\node[sgn] (fd) at (7.7,1.35) {$f_{dist}$};
+\draw[sig] (xdd) -- node[sgn,above,pos=0.7]{$+$} (sf);
+\draw[sig] (xd1) -- node[sgn,above,pos=0.85]{$+$} (sed);
+\draw[sig] (xd0) -- node[sgn,above,pos=0.85]{$+$} (se);
+\draw[sig] (kp.north) -- node[sgn,left,pos=0.7]{$+$} (sf.south west);
+\draw[sig] (kv.north) -- node[sgn,left,pos=0.75]{$+$} (sf.south);
+\draw[sig] (ki.north) -- node[sgn,right,pos=0.7]{$+$} (sf.south east);
+\draw[sig,w8hop] (se.north) -- node[sgn,right,pos=0.15]{$E$} (kp.south);
+\draw[sig] (sed.north) -- node[sgn,right,pos=0.4]{$\dot E$} (kv.south);
+\draw (1.4,-3.0) -- (4.3,-3.0);
+\draw[sig,w8hop] (4.3,-3.0) -- (ki.south);
+\node[w8dot] at (1.4,-3.0) {};
+\draw[sig] (sf) -- node[sgn,above]{$f'$} (al);
+\draw[sig] (al) -- node[sgn,above,pos=0.55]{$+$} (sb);
+\draw[sig] (be) -- node[sgn,right,pos=0.6]{$+$} (sb);
+\draw[sig] (fd) -- node[sgn,right,pos=0.5]{$-$} (sb.north);
+\draw[sig] (sb) -- node[sgn,above]{$f$} (pl);
+\draw[sig] (pl) -- (T) -- (12.2,0) node[sgn,right]{$x$};
+\draw (T) -- (11.5,-3.6);
+\draw[sig] (11.5,-2.4) -- node[sgn,above,pos=0.8]{$\dot x$} (sed.east);
+\draw[sig] (11.5,-3.6) -- node[sgn,above,pos=0.8]{$x$} (se.east);
+\node[w8dot] at (11.5,-2.4) {};
+\draw[sig] (7.4,-2.4) -- (7.4,-1.72); \node[w8dot] at (7.4,-2.4) {};
+\draw[sig,w8hop] (8.2,-3.6) -- (8.2,-1.72); \node[w8dot] at (8.2,-3.6) {};
+\node[sgn] at (3.1,-2.18) {$-$}; \node[sgn] at (1.7,-3.38) {$-$};
+\node[grpsv,fit=(sf)(kp)(kv)(ki)(sed)(se)] (gsv) {};
+\node[grplab,text=svcol,anchor=south west] at (gsv.north west) {SERVO-BASED (PID)};
+\node[grpmb,fit=(al)(sb)(be)] (gmb) {};
+\node[grplab,text=mbcol,anchor=south west] at (gmb.north west) {MODEL-BASED};
+\end{tikzpicture}}
+\drawncap{PID with disturbance (slides p.\,41, 44 combined). Without $k_i\!\int\!dt$: the PD loop of p.\,41. $f_{dist}$ enters with $-$.}
+\end{minipage}
+\begin{fbx}[Disturbance and steady-state error \pg{41--43}]
+\[m\ddot x+b\dot x+kx=f-f_{dist},\ f=mf'+\beta\Rightarrow\ \ddot E+k_v\dot E+k_pE=\frac{f_{dist}}m\]
+\[f_{dist}\text{ const},\ \ddot E{=}\dot E{=}0:\quad E_{ss}=\frac{f_{dist}}{k_p\,m}\]
+\use{bounded $f_{dist}\Rightarrow$ bounded $E$ (BIBO). Only $k_p,m$ matter ($k_v,b,k$ do not). Tolerance $E_{max}$: $k_p\ge f_{dist}/(mE_{max})$. Joint sags in the direction of the push.}
+\end{fbx}
+\begin{worked}[steady-state error \chk]
+$m{=}1.5,f_{dist}{=}6,k_p{=}64,k_v{=}16$: $E_{ss}=6/(64\cdot1.5)=0.0625$ m (same for $k_v=40$). For $E_{ss}\le5$ mm: $k_p\ge800$, $k_v=2\sqrt{800}=56.57$ (big gains: use integral action).
 \end{worked}
 \begin{trap}
-``$E_{ss}$ independent of $m$'', ``$E_{ss}=f/k_v$'', ``raising $k_v$ cuts the steady error'', ``PD removes it'', ``integral never hurts''.
+``$E_{ss}=f/k_v$''; ``raising $k_v$ cuts it'' (only changes speed); ``independent of mass''; ``PD removes it''.
+\end{trap}
+\begin{fbx}[PID law and stability \pg{44, 45}]
+\[f'=\ddot x_d+k_v\dot E+k_pE+k_i\!\int\!E\,dt\ \Rightarrow\ \dddot E+k_v\ddot E+k_p\dot E+k_iE=\frac{\dot f_{dist}}m\]
+\[s^3+k_vs^2+k_ps+k_i=0:\quad\text{stable}\iff k_v,k_p>0,\ \ 0<k_i<k_vk_p\ \added\]
+\use{constant $f_{dist}$: $\dot f_{dist}{=}0$, steady state $k_iE=0\Rightarrow E=0$. $k_i$ [s$^{-3}$]. Routh: $s^1$ entry $(k_vk_p-k_i)/k_v>0$. At $k_i=k_vk_p$: $(s+k_v)(s^2+k_p)$, oscillation at $\sqrt{k_p}$.}
+\end{fbx}
+\begin{recipe}[PID stability]
+\begin{enumerate}
+\item Write $s^3+k_vs^2+k_ps+k_i$; compare $k_i$ with $k_vk_p$: below stable, equal marginal, above unstable.
+\item Roots if asked: calculator polynomial solver.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[scenario: is it stable? \chk]
+$k_p{=}64,k_v{=}16$ (limit $1024$): $k_i{=}900$: $-15.60,-0.20\pm7.59i$ stable; $1024$: $-16,\pm8i$ marginal; $1100$: $-16.23,+0.12\pm8.23i$ unstable. $k_p{=}30,k_v{=}5,k_i{=}200>150$: unstable ($-5.79,+0.39\pm5.87i$); $k_i{=}100$ stable.
+\end{worked}
+\begin{trap}
+``integral never hurts'' (large $k_i$ destabilises); ``PI is enough'' (unstable on unit mass).
 \end{trap}
 
-\hd{DC motor and gearbox \pg{46--50}}
-\begin{fbx}[Reflected inertia \pg{49--50}]
-\[Q_m=k_4i_a,\quad I_m\ddot q_m=k_4i_a-c_m\dot q_m,\quad \dot q_m=\eta\dot q_{axle}\]
-\[Q=(I+\eta^2I_m)\ddot q+(c+\eta^2c_m)\dot q,\qquad Q_m=Q/\eta,\quad i_a=Q_m/k_4\]
-\use{$\eta>1$: motor faster than axle. Not $\eta$, not $\eta I_m$. $\eta\cdot\eta$: inertia torque $I_m\eta\ddot q$, counted $\eta$ times at the axle. p.51 is blank: no combined PID+motor formula.}
+%==================================================================
+\hdk{DC motor, friction and gearing \pg{46--50}}
+\premise[single joint]{motor ($k_4,I_m,c_m$), gear ratio $\eta$, link $I,c$; planned $\ddot q,\dot q$ at the axle}{axle torque $Q$, motor torque $Q_m$, armature current $i_a$}
+\begin{fbx}[Motor and gearing \pg{49, 50}]
+\[Q_m=k_1Bi_a=k_4i_a,\quad I_m\ddot q_m=k_4i_a-c_m\dot q_m\]
+\[Q=\eta Q_m,\quad \dot q_{axle}=\tfrac1\eta\dot q_m,\quad Q=(I+\eta^2I_m)\ddot q_{axle}+(c+\eta^2c_m)\dot q_{axle}\]
+where $k_4$ [N\,m/A] torque constant, $I_m$ rotor inertia, $c_m$ motor friction, $\eta>1$: motor faster than axle. Then $Q_m=Q/\eta$, $i_a=Q_m/k_4$.
+\use{motor inertia and friction count $\eta^2$ (not $\eta$). Electrical side ($R_a,L_a,V_b$) is only drawn on p.\,48.}
 \end{fbx}
-\begin{worked}
-$\eta=50$, $I_m=2{\times}10^{-5}$, $I=0.04$, $c=0.1$, $c_m=10^{-4}$, $k_4=0.04$; $\ddot q=10$, $\dot q=2$: $I_{eff}=0.04{+}0.05=0.09$, $c_{eff}=0.35$, $Q=0.9+0.7=1.6$ N\,m, $Q_m=0.032$, $i_a=0.8$ A, motor speed $100$ rad/s. Wrong: 1.6 (no $\div\eta$), 0.012 (no $\eta^2$). \chk
+\wdiag{\begin{tikzpicture}[x=0.8cm,y=0.8cm]
+\node[font=\scriptsize,anchor=east] (va) at (-0.8,0) {$V_a$};
+\node[plant,minimum width=16mm] (ar) at (0.6,0) {Armature\\$R_a,L_a$};
+\node[plant,minimum width=9mm] (k4) at (2.8,0) {$k_4$};
+\node[sumj] (sm) at (4.4,0) {};
+\node[plant,minimum width=9mm] (im) at (6.0,0) {$1/I_m$};
+\node[plant,minimum width=8mm] (in) at (7.6,0) {$\int$};
+\node[w8dot] (tm) at (8.7,0) {};
+\node[plant,minimum width=9mm] (gr) at (10.0,0) {$1/\eta$};
+\node[plant,minimum width=9mm] (cm) at (6.3,1.5) {$c_m$};
+\node[plant,minimum width=26mm] (ld) at (8.0,-1.6) {Load\\$Q_L=I\ddot q+c\dot q$};
+\node[plant,minimum width=9mm] (gl) at (5.5,-1.6) {$1/\eta$};
+\draw[sig] (va) -- (ar);
+\draw[sig] (ar) -- node[sgn,above]{$i_a$} (k4);
+\draw[sig] (k4) -- node[sgn,above]{$Q_m$} (sm);
+\draw[sig] (sm) -- node[sgn,above]{$I_m\ddot q_m$} (im);
+\draw[sig] (im) -- node[sgn,above]{$\ddot q_m$} (in);
+\draw (in) -- (tm); \draw[sig] (tm) -- node[sgn,above]{$\dot q_m$} (gr);
+\draw[sig] (gr) -- ++(2.0,0) node[sgn,right]{$\dot q_{axle}$};
+\draw (tm) -- (8.7,1.5); \draw[sig] (8.7,1.5) -- (cm.east);
+\draw (cm.west) -- (4.4,1.5); \draw[sig] (4.4,1.5) -- node[sgn,right,pos=0.45]{$-$} (sm.north);
+\node[w8dot] (ta) at (11.1,0) {};
+\draw (ta) -- (11.1,-1.6); \draw[sig] (11.1,-1.6) -- (ld.east);
+\draw[sig] (ld.west) -- node[sgn,above]{$Q_L$} (gl.east);
+\draw (gl.west) -- (4.4,-1.6); \draw[sig] (4.4,-1.6) -- node[sgn,right,pos=0.45]{$-$} (sm.south);
+\node[sgn] at (3.95,0.25) {$+$}; \node[sgn] at (4.12,-0.55) {$-$};
+\node[w8grp,fit=(ar)(k4)(sm)(im)(in)(cm)] (gm) {};
+\node[grplab,text=g3,anchor=south west] at (gm.north west) {MOTOR ($I_m,c_m$)};
+\node[w8grp,fit=(ld)(gl)] (gld) {};
+\node[grplab,text=g3,anchor=north east] at (gld.south east) {LOAD (axle: $I,c$)};
+\end{tikzpicture}}
+\drawncap{torque balance at the motor shaft, $Q_m=I_m\ddot q_m+c_m\dot q_m+Q_L/\eta$, $q_m=\eta q_{axle}$ \added (slide p.\,48 draws only the circuit). With $Q_L=I\ddot q+c\dot q$, $\ddot q_m=\eta\ddot q$, multiply by $\eta$: the $\eta^2$ result.}
+\begin{worked}[gear numbers \chk]
+$\eta{=}50$, $I_m{=}2{\times}10^{-5}$, $I{=}0.04$, $c{=}0.1$, $c_m{=}10^{-4}$, $k_4{=}0.04$; $\ddot q{=}10$, $\dot q{=}2$. $I_{eff}=0.04+2500(2{\times}10^{-5})=0.09$; $c_{eff}=0.1+2500(10^{-4})=0.35$; $Q=0.09(10)+0.35(2)=1.6$ N\,m; $Q_m=0.032$; $i_a=0.8$ A; motor speed $100$ rad/s. Wrong: $1.6$ (no $\div\eta$), $0.012$ (no $\eta^2$).
 \end{worked}
+\begin{slideerr}[p.50, 51]
+$Q=\eta Q_m$ is the torque at the axle. Slide p.\,51 (``Bringing it all together'') is blank: no combined PID + motor formula exists.
+\end{slideerr}
+
+%==================================================================
+\hdk{Exam-style questions}
+W13 has no control question. \textbf{Practical sheet Q1} (one link, $\dot{\mathbf v}_C=(-3(b{+}2ct)^2,6c,0)$, $\tau=24c$): worked in W7, p.\,\pageref{p:W7}. \textbf{Practical Q2} (3D RRR equations of motion = W13 Q4): solved on p.\,\pageref{p:SAMPLE}.
+\begin{examq}[Practical sheet Q3: planar 3-link arm along a cubic \mk{marks not published}]
+$L=(3,2,1)$ m. Rest at tool pose $(5,1,90^\circ)$ to rest at $(-3,3,180^\circ)$, $T=2$ s; point masses $3,2,1$ kg at the link ends, vertical plane, gravity $-y$. Joint torques at $t=0,1,2$ s.
+\solution
+Wrist $=(x-L_3\cos\varphi,\,y-L_3\sin\varphi)$; $\cos q_2=(w^2-L_1^2-L_2^2)/(2L_1L_2)$. Start wrist $(5,0)$: stretched, $q_0=(0,0,90^\circ)$. Goal wrist $(-2,3)$, $\cos q_2=0$, take $q_2=+90^\circ$: $q_1=\atantwo(3,-2)-\atantwo(2,3)=90^\circ$, $q_3=0$: $q_f=(90^\circ,90^\circ,0)$ (other elbow $(157.38^\circ,-90^\circ,112.62^\circ)$).\\
+Cubic rest-to-rest: $a_2=3\Delta/T^2$, $a_3=-2\Delta/T^3$, $\Delta=(90,90,-90)^\circ$; $\ddot q(0)=6\Delta/T^2=\pm2.356$, peak $\dot q=1.5\Delta/T=1.178$ rad/s at $t=1$.\\
+$\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf V+\mathbf G$ from $K=\sum\frac12m_i|\dot{\mathbf p}_i|^2$, $P=\sum m_igy_i$ ($\mathbf p_i$ = link ends); $G_1(0)=9.81(9+10+5)=235.44$.
+\begin{center}\scriptsize
+\begin{tabular}{@{}rcrrr@{}}\toprule
+$t$ (s) & $\mathbf q$ ($^\circ$) & $Q_1$ & $Q_2$ & $Q_3$ (N\,m)\\\midrule
+0 & $(0,0,90)$ & $548.814$ & $160.176$ & $2.356$\\
+1 & $(45,45,45)$ & $70.817$ & $20.781$ & $5.078$\\
+2 & $(90,90,0)$ & $-268.947$ & $-141.712$ & $-21.591$\\\bottomrule
+\end{tabular}
+\end{center}
+Check: $Q_1(0)=235.44$ (gravity) $+\,\mathbf M\ddot{\mathbf q}$ term. \chk
+\end{examq}
+\begin{examq}[Mock 1 Q7: partitioned control of one joint \mk{marks assumed 7}]
+$m{=}2$, $b{=}0.5$, $k{=}4$. (a) Partitioned law and error equation. (b) $k_p,k_v$ critical, $\omega_n{=}8$. (c) $E_{ss}$ for constant $5$ N; removal. (d) $f$ at $x{=}0.10$, $\dot x{=}-0.20$, $x_d{=}0.15$, $\dot x_d{=}\ddot x_d{=}0$.
+\solution
+(a) $\alpha=m$, $\beta=b\dot x+kx$, $f'=\ddot x_d+k_v\dot E+k_pE$; $\ddot E+k_v\dot E+k_pE=0$ \mk{3}\ \ (b) $k_p=64$, $k_v=16$ \mk{1}\\
+(c) $E_{ss}=5/(64\cdot2)=0.0391$ m, in the direction of the push; add $k_i<k_vk_p=1024$ \mk{2}\\
+(d) $E{=}0.05$, $\dot E{=}0.20$: $f'=16(0.2)+64(0.05)=6.4$; $f=2(6.4)+0.5(-0.2)+4(0.10)=\boxed{13.1\ \text{N}}$ \mk{1}. Check $(13.1+0.1-0.4)/2=6.4$. \chk
+\end{examq}
+\begin{examq}[Practice Q8.4: motor, gearbox, current \mk{marks assumed 6}]
+$\eta{=}40$; $I_m{=}3{\times}10^{-5}$, $c_m{=}2{\times}10^{-4}$; $I{=}0.05$, $c{=}0.2$; $k_4{=}0.05$. Axle $\ddot q{=}8$, $\dot q{=}3$. Find $Q$, $i_a$.
+\solution
+$\eta^2=1600$: $I_{eff}=0.098$, $c_{eff}=0.52$. $Q=0.098(8)+0.52(3)=\boxed{2.344\ \text{N\,m}}$; $Q_m=0.0586$; $i_a=\boxed{1.172\ \text{A}}$; motor speed $120$ rad/s. Check: $Q_m=I_m\eta\ddot q+c_m\eta\dot q+(I\ddot q+c\dot q)/\eta=0.0096+0.0240+0.0250=0.0586$. $\eta$ instead of $\eta^2$ gives $0.517$ A (wrong). \chk
+\end{examq}
 \end{multicols}

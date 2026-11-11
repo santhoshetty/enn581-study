@@ -1,159 +1,283 @@
-\week{W6}{Velocity kinematics, singularities, statics}{6}
+\week{W6}{Velocity kinematics, Jacobian, singularities, statics}{6}
+% W6 booklet part (condensed). Numbers verified by vcheck/v2_w06.py.
+\newcommand{\wsixhd}[1]{\par\vspace{2pt}\phantomsection\addcontentsline{toc}{subsection}{#1}{\sffamily\bfseries\normalsize\color{seccolor}#1}\par\nobreak\vspace{0.5pt}\nobreak}
+\newcommand{\wsixsh}[1]{\par\vspace{1pt}{\sffamily\bfseries\small\color{seccolor}#1}\par\nobreak}
 \begin{multicols}{3}
-\hd{Jacobian: joint rates $\to$ tool velocity \pg{6--7, 21}}
-\begin{fbx}[Spatial velocity (twist)]
-\[{}^0\boldsymbol\nu=\begin{bmatrix}\boldsymbol\upsilon\\\boldsymbol\omega\end{bmatrix}={}^0\mathbf J(\mathbf q)\,\dot{\mathbf q},\qquad \underbrace{{}^0\boldsymbol\nu}_{6\times1}=\underbrace{{}^0\mathbf J}_{6\times n}\underbrace{\dot{\mathbf q}}_{n\times1}\]
-$\boldsymbol\upsilon$ linear (m/s) on top, $\boldsymbol\omega$ angular (rad/s) below, both in frame \{0\}. $n$ = number of joints.
-\use{column $j$ = tool spatial velocity when only joint $j$ moves at 1\,rad/s; effects add. Revolute: linear rows in m per rad, angular rows dimensionless. 6-joint arm: $6\times6$. Planar RR: $6\times2$, rows $\upsilon_z,\omega_x,\omega_y$ are zero; keep $x,y,\omega_z$.}
+
+\wsixhd{Jacobian: joint rates $\to$ tool velocity \pg{6--7, 20--21}}
+\begin{fbx}[Manipulator Jacobian \pg{20--21}]
+\[{}^0\boldsymbol\nu=\begin{bmatrix}\boldsymbol\upsilon\\\boldsymbol\omega\end{bmatrix}=\begin{bmatrix}\mathbf J_\upsilon(\mathbf q)\\\mathbf J_\omega(\mathbf q)\end{bmatrix}\dot{\mathbf q}={}^0\mathbf J(\mathbf q)\,\dot{\mathbf q}\qquad(\mathbf J:\ 6\times n)\]
+$\boldsymbol\upsilon$ (m/s), $\boldsymbol\omega$ (rad/s): tool linear/angular velocity \emph{in frame $\{0\}$} (state the frame, p.21); $\dot q_j=\dot\theta_j$ or $\dot d_j$. Column $j$ = tool twist for $\dot q_j=1$; the joints' effects add. Units: linear rows m per rad (revolute), angular rows dimensionless.\\
+\textbf{Which formula:} $\dot{\mathbf q}\to\boldsymbol\nu$: $\boldsymbol\nu=\mathbf J\dot{\mathbf q}$. $\boldsymbol\nu\to\dot{\mathbf q}$: $\mathbf J^{-1}$ or $\mathbf J^+$. Singular: $\det\mathbf J=0$. Ellipse: $\mathbf J\mathbf J^\top$. Statics: $\boldsymbol\tau=\mathbf J^\top\mathbf F_E$.
 \end{fbx}
 
-\hd{Skew, vex, $\dot{\mathbf R}=[\boldsymbol\omega]_\times\mathbf R$ \pg{9--12, 18--19}}
-\begin{fbx}[Skew matrix]
-\[[\mathbf s]_\times=\begin{bmatrix}0&-s_3&s_2\\s_3&0&-s_1\\-s_2&s_1&0\end{bmatrix},\quad \mathbf s=\vee_\times(\mathbf S)=(S_{32},S_{13},S_{21})^\top\]
-$[\boldsymbol\omega]_\times\mathbf P=\boldsymbol\omega\times\mathbf P$. $\mathbf R\mathbf R^\top=\mathbf I\Rightarrow\dot{\mathbf R}\mathbf R^\top$ is skew, so
-$\dot{\mathbf R}=[\boldsymbol\omega]_\times\mathbf R,\ \ \boldsymbol\omega=\vee_\times(\dot{\mathbf R}\mathbf R^\top)$.
-Augmented skew (p.12): $\hat{\mathbf S}=\begin{bmatrix}[\mathbf s_{4:6}]_\times&\mathbf s_{1:3}\\\mathbf0&0\end{bmatrix}$, linear part first.
+\wsixhd{Rotation rate: $\dot{\mathbf R}=[\boldsymbol\omega]_\times\mathbf R$, vex \pg{9--12, 18--19}}
+\begin{fbx}[Skew matrix, vex, angular velocity \pg{10, 18}]
+\[[\mathbf s]_\times=\begin{bmatrix}0&-s_3&s_2\\s_3&0&-s_1\\-s_2&s_1&0\end{bmatrix},\qquad\vee_\times(\mathbf S)=\begin{bmatrix}S_{32}\\S_{13}\\S_{21}\end{bmatrix}\]
+\[\dot{\mathbf R}=[\boldsymbol\omega]_\times\mathbf R\iff[\boldsymbol\omega]_\times=\dot{\mathbf R}\mathbf R^\top,\quad\boldsymbol\omega=\vee_\times(\dot{\mathbf R}\mathbf R^\top)\]
+$\dot{\mathbf R}$ is $3\times3$ (entrywise derivative), $\boldsymbol\omega$ is $3\times1$: convert through the skew matrix. Fixed axis $\hat{\mathbf n}$: $\boldsymbol\omega=\dot\theta\hat{\mathbf n}$.
 \end{fbx}
-\begin{worked}
-$\boldsymbol\omega=(1,2,3)$, $\mathbf P=(4,5,6)$: $\boldsymbol\omega\times\mathbf P=(-3,6,-3)$. $\boldsymbol\omega=(0,0,2)$\,rad/s, $\mathbf r=(0.3,0.4,0)$\,m: $\mathbf v=(-0.8,0.6,0)$\,m/s, length $2\times0.5$. \chk
+\begin{deriv}[why $\dot{\mathbf R}\mathbf R^\top$ is skew \added]
+$\mathbf R\mathbf R^\top=\mathbf I\Rightarrow\dot{\mathbf R}\mathbf R^\top+(\dot{\mathbf R}\mathbf R^\top)^\top=\mathbf 0$, so $\mathbf S=\dot{\mathbf R}\mathbf R^\top$ is skew; call it $[\boldsymbol\omega]_\times$, multiply right by $\mathbf R$.
+\end{deriv}
+\begin{worked}[$\mathbf R_z(\theta)$, $\theta=30^\circ$, $\dot\theta=2$\,rad/s]
+$\dot{\mathbf R}_z\mathbf R_z^\top=\dot\theta\begin{bmatrix}-s&-c&0\\c&-s&0\\0&0&0\end{bmatrix}\begin{bmatrix}c&s&0\\-s&c&0\\0&0&1\end{bmatrix}=\dot\theta\begin{bmatrix}0&-1&0\\1&0&0\\0&0&0\end{bmatrix}$, $\vee_\times\Rightarrow\boldsymbol\omega=(0,0,2)$\,rad/s. \chk
 \end{worked}
-\begin{slideerr}[cross-product note]
-The note prints the $\hat{\mathbf j}$ coefficient as $+(\omega_xP_z-\omega_zP_x)$. The determinant expansion has a minus: $\hat{\mathbf j}$ coefficient $=\omega_zP_x-\omega_xP_z$ (here $+6$, not $-6$). Its skew-matrix form is right, so its two forms disagree as printed. The note also drops rotations and frame labels of Craig's formula.
+\begin{slideerr}[cross-product note, \texttt{w06-cross}]
+Expansion prints the $\hat{\mathbf j}$ term as $+(\omega_xP_z-\omega_zP_x)$; row-1 cofactor expansion gives $-(\omega_xP_z-\omega_zP_x)=\omega_zP_x-\omega_xP_z$ (= middle row of $[\boldsymbol\omega]_\times\mathbf P$). $\boldsymbol\omega=(1,2,3)$, $\mathbf P=(4,5,6)$: printed gives $-6$, right $+6$; $\boldsymbol\omega\times\mathbf P=(-3,6,-3)$. Follow this page. \chk
 \end{slideerr}
 
-\hd{Jacobian from the ETS \pg{13--16, 27--39}}
-\begin{fbx}[Differentiate the pose, column by column]
-$\mathbf T={}^0\mathbf T_E=\mathbf E_1\cdots\mathbf E_M$, $\dot{\mathbf T}=\sum_j\dfrac{\partial\mathbf T}{\partial q_j}\dot q_j$, with $\mu(j)$ the position of the elementary transform holding $q_j$:
-\[\frac{\partial\mathbf T}{\partial q_j}=\Big(\prod_{i<\mu(j)}\mathbf E_i\Big)\frac{\partial\mathbf E_{\mu(j)}}{\partial q_j}\Big(\prod_{i>\mu(j)}\mathbf E_i\Big)=\begin{bmatrix}\mathbf J_{R_j}&\mathbf J_{t_j}\\\mathbf 0&0\end{bmatrix}\]
-\[\mathbf J_{\upsilon_j}=\tau\!\Big(\frac{\partial\mathbf T}{\partial q_j}\Big),\qquad \mathbf J_{\omega_j}=\vee_\times\!\Big(\rho\Big(\frac{\partial\mathbf T}{\partial q_j}\Big)\rho(\mathbf T)^\top\Big)\]
-$\tau$ = $3\times1$ translation column, $\rho$ = $3\times3$ rotation block. Elementary derivatives: $\partial\mathbf T_{t_k}/\partial d=\hat{\mathbf t}_k$ (single 1 at entry $(k,4)$); $\partial\mathbf T_{R_k}/\partial\theta=\hat{\mathbf R}_k\mathbf T_{R_k}(\theta)$, with $\hat{\mathbf R}_k$ the $4\times4$ skew matrix of axis $k$, e.g. $\hat{\mathbf R}_z$: rows $(0,-1,0,0)$, $(1,0,0,0)$, zeros.
-\use{``derive the Jacobian of this arm'': show every step; the order of the product is the point.}
+\wsixhd{Jacobian from the ETS: the slides' method \pg{13--19, 25--32}}
+\begin{fbx}[Columns from $\partial\mathbf T/\partial q_j$ \pg{17--19}]
+\[{}^0\mathbf T_E=\prod_{i=1}^{M}\mathbf E_i(\eta_i),\quad\dot{\mathbf T}=\sum_{j=1}^n\frac{\partial\mathbf T}{\partial q_j}\dot q_j,\quad\frac{\partial\mathbf T}{\partial q_j}=\begin{bmatrix}\mathbf J_{R_j}&\mathbf J_{t_j}\\\mathbf 0&0\end{bmatrix}\]
+\[\mathbf J_{\upsilon,j}=\tau\Big(\frac{\partial\mathbf T}{\partial q_j}\Big),\qquad\mathbf J_{\omega,j}=\vee_\times\Big(\rho\Big(\frac{\partial\mathbf T}{\partial q_j}\Big)\,\rho(\mathbf T)^\top\Big)\]
+$\tau(\mathbf M)$: rows 1--3 of column 4; $\rho(\mathbf M)$: upper-left $3\times3$; $\rho(\mathbf T)=\mathbf R$. Stack $\mathbf J_\upsilon$ over $\mathbf J_\omega$.
 \end{fbx}
-\begin{recipe}[Jacobian by ETS (p.\,38)]
+\begin{deriv}[of the rotation rows \pg{18--19}]
+$\dot{\mathbf R}=\sum_j\mathbf J_{R_j}\dot q_j=[\boldsymbol\omega]_\times\mathbf R$. Post-multiply by $\mathbf R^\top$: $[\boldsymbol\omega]_\times=\sum_j(\mathbf J_{R_j}\mathbf R^\top)\dot q_j$; $\vee_\times$ is linear. Translation: $\boldsymbol\upsilon=\dot{\mathbf t}=\sum_j\mathbf J_{t_j}\dot q_j$.
+\end{deriv}
+\begin{fbx}[Derivative of one elementary transform \pg{29, 31, 32}]
+\[\frac{\partial\mathbf T_{R_k}(\theta)}{\partial\theta}=\hat{\mathbf R}_k\mathbf T_{R_k}(\theta),\qquad\frac{\partial\mathbf T_{t_k}(d)}{\partial d}=\hat{\mathbf t}_k\]
+{\footnotesize$\hat{\mathbf R}_x=\begin{bmatrix}0&0&0&0\\0&0&-1&0\\0&1&0&0\\0&0&0&0\end{bmatrix}$ $\hat{\mathbf R}_y=\begin{bmatrix}0&0&1&0\\0&0&0&0\\-1&0&0&0\\0&0&0&0\end{bmatrix}$ $\hat{\mathbf R}_z=\begin{bmatrix}0&-1&0&0\\1&0&0&0\\0&0&0&0\\0&0&0&0\end{bmatrix}$\\[2pt]
+$\hat{\mathbf t}_x=\begin{bmatrix}0&0&0&1\\0&0&0&0\\0&0&0&0\\0&0&0&0\end{bmatrix}$ $\hat{\mathbf t}_y=\begin{bmatrix}0&0&0&0\\0&0&0&1\\0&0&0&0\\0&0&0&0\end{bmatrix}$ $\hat{\mathbf t}_z=\begin{bmatrix}0&0&0&0\\0&0&0&0\\0&0&0&1\\0&0&0&0\end{bmatrix}$}
+\[\frac{\partial\mathbf T}{\partial q_j}=\Big(\prod_{i<\mu(j)}\mathbf E_i\Big)\frac{\partial\mathbf E_{\mu(j)}}{\partial q_j}\Big(\prod_{i>\mu(j)}^{M}\mathbf E_i\Big)\]
+$\mu(j)$ = position of the factor holding $q_j$. Freeze all other factors, keep the order. Sign flip if the joint's positive sense opposes the axis: $\frac{d}{dq}R_y(-q)=-\hat{\mathbf R}_y\mathbf T_{R_y}(-q)$, $\frac{d}{dd}t_z(-d)=-\hat{\mathbf t}_z$.
+\end{fbx}
+\begin{recipe}[Jacobian by the slides' method \pg{25--26}]
 \begin{enumerate}
-\item Write the ETS base $\to$ tool; mark which transform holds each joint.
-\item Joint $j$: replace that one factor by its derivative, keep the rest.
-\item Drawn positive sense opposite to the axis (e.g.\ $R_y(-\theta_2)$, $t_z(-d)$): flip the sign of that derivative.
-\item Multiply in order; read $\tau$ (linear) and $\vee_\times(\rho\rho^\top)$ (angular); stack linear above angular.
-\item Check at a pose you can see ($q=0$).
-\end{enumerate}
-\end{recipe}
-\begin{fbx}[Planar RR, two ways \pg{34--38}]
-$x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$ ($s_{12}=\sin(q_1{+}q_2)$):
-\[{}^0\mathbf J_{xy}=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix},\ \omega_z\text{ row }(1,1)\]
-In the tool frame ($\{3\}$, slide 45; depends on $q_2$ only):
-\[{}^E\mathbf J_{xy}=\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\end{bmatrix}\]
-\end{fbx}
-\begin{trap}
-Running sum: $\sin(q_1{+}q_2)$, not $\sin q_2$, in frame \{0\}. State frame and size ($2\times2$ block or $6\times2$).
-\end{trap}
-\begin{worked}[notebook Q1]
-$L=(3,4)$\,m, $q=(30^\circ,15^\circ)$, $q_1{+}q_2=45^\circ$: $J_{11}=-3(0.5)-4(0.7071)=-4.3284$, $J_{12}=-2.8284$, $J_{21}=5.4265$, $J_{22}=2.8284$; $\det=3.1058=12\sin15^\circ$. $\dot{\mathbf q}=(0.2,-0.1)$\,rad/s: $\boldsymbol\upsilon=(-0.5828,0.8025)$\,m/s, $\omega_z=0.1$\,rad/s. \chk
-\end{worked}
-\begin{worked}[same pose, tool frame]
-${}^E\mathbf J_{xy}=\begin{bmatrix}0.7765&0\\6.8978&4\end{bmatrix}$, $\det=3.1058$ (same). $\boldsymbol\upsilon_E=(0.1553,0.9796)$\,m/s $=\mathbf R_z(45^\circ)^\top(-0.5828,0.8025)$; speed 0.9918 in both frames. \chk
-\end{worked}
-
-\hd{Frames, geometric rule, Craig \pg{21, 40, 45}}
-\begin{fbx}[Change of frame]
-\[{}^A\mathbf J=\begin{bmatrix}{}^A\mathbf R_B&\mathbf 0\\\mathbf 0&{}^A\mathbf R_B\end{bmatrix}{}^B\mathbf J,\qquad {}^E\mathbf R_0=({}^0\mathbf R_E)^\top\]
-\use{rotate both the linear and the angular half. $\det$ and singular values of the linear block are the same in every frame, so singularities do not depend on the frame. Do not rotate $\mathbf J$ by a transpose, nor apply a $3\times3$ rotation to a $6\times n$ matrix.}
-\end{fbx}
-\begin{fbx}[Geometric column rule \added]
-$\hat{\mathbf z}_j$ = axis of joint $j$, $\mathbf o_j$ a point on it, $\mathbf p_E$ the tool point, all in \{0\}:
-\[\text{revolute: }\mathbf J_{:,j}=\begin{bmatrix}\hat{\mathbf z}_j\times(\mathbf p_E-\mathbf o_j)\\\hat{\mathbf z}_j\end{bmatrix},\quad\text{prismatic: }\begin{bmatrix}\hat{\mathbf z}_j\\\mathbf 0\end{bmatrix}\]
-\use{fastest way to write a planar or simple arm by inspection. Planar RR: col 1 $=(-y,x,0)$, col 2 $=L_2(-s_{12},c_{12},0)$.}
-\end{fbx}
-\begin{fbx}[Craig velocity propagation \added]
-Revolute $i{+}1$: ${}^{i+1}\boldsymbol\omega_{i+1}={}^{i+1}_i\mathbf R\,{}^i\boldsymbol\omega_i+\dot\theta_{i+1}{}^{i+1}\hat{\mathbf Z}_{i+1}$, \ ${}^{i+1}\mathbf v_{i+1}={}^{i+1}_i\mathbf R\big({}^i\mathbf v_i+{}^i\boldsymbol\omega_i\times{}^i\mathbf P_{i+1}\big)$. Prismatic: no $\dot\theta$ term; add $\dot d_{i+1}{}^{i+1}\hat{\mathbf Z}_{i+1}$ to $\mathbf v$. Start ${}^0\boldsymbol\omega_0={}^0\mathbf v_0=\mathbf 0$; result is in the last frame.
-\use{only if the question says ``velocity propagation''. Planar RR gives ${}^3\mathbf J=\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\end{bmatrix}$, $\omega_z$ row $(1,1)$. \chk}
-\end{fbx}
-\begin{slideerr}[slides 22--24, 21 vs 45]
-Slide 22--23 prints a $6\times6$ entry as $j_{76}$ (should be $j_{66}$). Slide 21 stresses frame \{0\}; slide 45 prints the RR matrix in the tool frame $\{3\}$: both right, they differ by the rotation above.
-\end{slideerr}
-
-\hd{Reading a real Jacobian: PUMA 560 \pg{24}}
-Slide gives no pose, frame or units. It matches the toolbox PUMA at $\mathbf q=(0,45^\circ,180^\circ,0,45^\circ,0)$ in \{0\}: say ``assumed nominal pose, frame \{0\}''. \chk Angular rows (bottom three) are the joint axes in \{0\}: col 1 $(0,0,1)$ vertical waist; cols 2, 3, 5 all $(0,-1,0)$ (three parallel horizontal axes); col 4 $(0.707,0,-0.707)$; col 6 $(1,0,0)$. Angle between axes 4 and 6 $=q_5=45^\circ$. Col 1 linear $=(-p_y,p_x,0)=(0.13,0.664,0)$. $\det=-0.0806$, rank 6: not singular. \chk
-
-\hd{Inverse velocity \pg{41--42}}
-\begin{fbx}[Joint rates from a wanted tool velocity]
-\[\dot{\mathbf q}=\mathbf J^{-1}\boldsymbol\nu,\qquad \mathbf J^{-1}_{RR}=\frac{1}{L_1L_2\sin q_2}\begin{bmatrix}L_2c_{12}&L_2s_{12}\\-L_1c_1-L_2c_{12}&-L_1s_1-L_2s_{12}\end{bmatrix}\]
-Slide questions: square? ($\ne$: pseudo-inverse); $\det\ne0$?; which poses fail? Tall $\mathbf J$ ($m>n$): $\mathbf J^+=(\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top$, least squares. Fat $\mathbf J$ ($n>m$, redundant): $\mathbf J^+=\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}$, minimum norm \added.\\
-Resolved rate: each step $\dot{\mathbf q}_k=\mathbf J^{-1}(\mathbf q_k)\boldsymbol\nu$, $\mathbf q_{k+1}=\mathbf q_k+\dot{\mathbf q}_k\Delta t$ (radians; recompute $\mathbf J$ every step).\\
-Damped least squares \added: $\mathbf J^\top(\mathbf J\mathbf J^\top+\lambda^2\mathbf I)^{-1}$ keeps rates finite near a singularity at the cost of tracking error.
-\end{fbx}
-\begin{worked}[rates blow up, $L=(3,4)$, 0.1\,m/s $\perp$ arm]
-$\dot q_1=0.1/(3\sin q_2)$, $\dot q_2=-\dot q_1(3\cos q_2+4)/4$.\par
-\begin{tabular}{@{}lrrrrr@{}}\toprule $q_2$&90$^\circ$&30$^\circ$&15$^\circ$&5$^\circ$&1$^\circ$\\\midrule
-$\dot q_1$&0.0333&0.0667&0.1288&0.3825&1.9100\\$\dot q_2$&$-$0.0333&$-$0.1100&$-$0.2221&$-$0.6682&$-$3.3422\\\bottomrule\end{tabular}\par
-Growth 30$^\circ\to$5$^\circ$: $\sin30^\circ/\sin5^\circ=5.7\times$. \chk
-\end{worked}
-\begin{worked}[notebook Q4: $q=(30^\circ,60^\circ)$, $\boldsymbol\nu=(0.2,-0.3,-0.2)$]
-$\mathbf J=\begin{bmatrix}-5.5&-4\\2.5981&0\\1&1\end{bmatrix}$, $\det_{xy}=10.3923=12\sin60^\circ$. Two joints, three components: over-determined; $\omega_z=\dot q_1+\dot q_2$ is not free. Reading A (follow position): $\dot{\mathbf q}=\mathbf J_{xy}^{-1}(0.2,-0.3)=(-0.1155,0.1088)$\,rad/s, $\omega_z=-0.0067$; after 0.1\,s $q=(29.338^\circ,60.623^\circ)$. Reading B (least squares, $\mathbf J^+$): $(-0.1056,0.0840)$, residual $(0.0446,0.0258,0.1784)$; $q=(29.395^\circ,60.481^\circ)$. Say which reading you use. After 5\,s (50 steps) A ends tip $(3.591,3.997)$, B $(3.795,4.058)$; ideal line ends $(3.598,4.000)$. \chk
-\end{worked}
-
-\hd{Singularities \pg{43--47}}
-\begin{fbx}[Definition]
-Singular $\iff\mathbf J(\mathbf q)$ loses rank, $\det\mathbf J=0$ (non-square: rank drop, $\det(\mathbf J\mathbf J^\top)=0$, or $\sigma_{\min}=0$). There is a direction $\mathbf u$ with $\mathbf u^\top\mathbf J=\mathbf 0$ the tool cannot move in; rates for nearby velocities $\to\infty$ ($\mathbf J^{-1}$ has $1/\det$).\\
-\textbf{Boundary}: stretched or folded. \textbf{Interior}: axes aligned (e.g.\ wrist).
-\[\det\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\end{bmatrix}=L_1L_2\sin q_2=0\iff q_2=0^\circ,180^\circ\]
-\use{independent of $q_1$ and of the frame. Stretched: columns of $\mathbf J_\upsilon$ parallel, both $\perp$ arm, rank 1.}
-\end{fbx}
-\begin{fbx}[Other arms: factorise $\det$, then solve each factor]
-W13 arm ($R_z(\theta_1)t_z(1.1)R_y(-\theta_2)t_x(L_3)R_y(-\theta_3)t_x(L_4)$): $\det\mathbf J_\upsilon=-L_3L_4\sin\theta_3\,[L_3\cos\theta_2+L_4\cos(\theta_2{+}\theta_3)]$. $\sin\theta_3=0$: stretched/folded (boundary). Bracket $=0$: tool on the vertical axis, $\theta_1$ no longer moves it (interior). $L_3{=}0.4$, $L_4{=}0.3$, $\theta_2{=}60^\circ$: $\theta_3=71.81^\circ$. \chk\\
-Spherical-wrist PUMA (zero offset): $\det\mathbf J=-L_uL_f\sin q_3\,[L_u\sin q_2+L_f\sin(q_2{+}q_3)]\sin q_5$: elbow $\sin q_3=0$; shoulder (wrist centre on waist axis; $L_u{=}0.5$, $L_f{=}0.3$: $q_2{=}22.92^\circ$, $q_3{=}{-}63.39^\circ$); wrist $\sin q_5=0$ (axes 4, 6 align, rank 5). \chk
-\end{fbx}
-\begin{worked}[RR $L=(3,4)$, $q_1=30^\circ$]
-$q_2=0$: ${}^0\mathbf J_{xy}=\begin{bmatrix}-3.5&-2\\6.0622&3.4641\end{bmatrix}$, col 1 $=1.75\times$ col 2, along $(-0.5,0.866)\perp$ arm $(0.866,0.5)$. Tool frame ${}^E\mathbf J_{xy}=\begin{bmatrix}0&0\\7&4\end{bmatrix}$: the row along the arm is zero. $q_2=180^\circ$: $\begin{bmatrix}0&0\\1&4\end{bmatrix}$, rank 1. \chk
-\end{worked}
-\begin{recipe}[Singularities]
-\begin{enumerate}
-\item Write $\mathbf J$ (or the square block that matters), compute $\det$, factorise.
-\item Solve each factor for the angles; list every solution in the range.
-\item Name each: boundary or interior.
-\item State what is lost (tool cannot move along $\ldots$) and that rates $\to\infty$.
+\item ETS base to tool, ${}^0\mathbf T_E=\mathbf E_1\cdots\mathbf E_M$; mark $\mu(j)$.
+\item Joint $j$: replace only $\mathbf E_{\mu(j)}$ by its derivative; sign flip if needed.
+\item Multiply out $\partial\mathbf T/\partial q_j$ ($4\times4$).
+\item Column $j$: $\tau(\cdot)$ on top, $\vee_\times(\rho(\cdot)\rho(\mathbf T)^\top)$ below.
+\item Stack into $6\times n$, state the frame.
+\item Check at $\mathbf q=\mathbf 0$: each column = velocity from turning that joint by hand.
 \end{enumerate}
 \end{recipe}
 
-\hd{Manipulability, velocity ellipsoid \pg{49--55}}
-\begin{fbx}[Velocity ellipsoid]
-Unit joint rates $\dot{\mathbf q}^\top\dot{\mathbf q}\le1$ with $\dot{\mathbf q}=\mathbf J^{-1}\boldsymbol\nu$:
-\[\boldsymbol\nu^\top(\mathbf J\mathbf J^\top)^{-1}\boldsymbol\nu\le1,\quad \mathbf A=\mathbf J\mathbf J^\top,\ \ \text{semi-axes }\sqrt{\lambda_i}=\sigma_i\text{ along }\mathbf v_i\]
-\[m=\frac{\sqrt{\lambda_{\min}}}{\sqrt{\lambda_{\max}}}=\frac{\sigma_{\min}}{\sigma_{\max}}\in[0,1]\quad(1=\text{isotropic},\ 0=\text{singular})\]
-Yoshikawa \added: $w=\sqrt{\det\mathbf J\mathbf J^\top}=\sigma_1\sigma_2\cdots$; square: $w=|\det\mathbf J|$; RR: $L_1L_2|\sin q_2|$. $m$ = round, $w$ = big.
-\use{some books define $m$ as the reciprocal: state your definition. $2\times2$: $\lambda=\tfrac12(\mathrm{tr}\pm\sqrt{\mathrm{tr}^2-4\det})$, $\det\mathbf A=(\det\mathbf J)^2$, $\mathrm{tr}\,\mathbf A=L_1^2+2L_2^2+2L_1L_2\cos q_2$.}
+\wsixsh{Worked: planar RR, two ways \pg{33--39}}
+\slidefig[0.42\linewidth]{w06-lec}{35}{19 108 672 216}{RR frames $\{0\},\{1\},\{2\},\{3\}$ (slide 35)}
+ETS $\mathbf T=\mathbf T_{R_z}(q_1)\mathbf T_{t_x}(L_1)\mathbf T_{R_z}(q_2)\mathbf T_{t_x}(L_2)=\mathbf E_1\mathbf E_2\mathbf E_3\mathbf E_4$, $\mu(1)=1$, $\mu(2)=3$.
+\begin{twoway}{A. Direct differentiation \pg{33--34}}{B. ETS method \pg{35--39}}
+$x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$.\\
+$\dot x=-L_1s_1\dot q_1-L_2s_{12}(\dot q_1+\dot q_2)$\\
+$\dot y=L_1c_1\dot q_1+L_2c_{12}(\dot q_1+\dot q_2)$\\
+coefficients of $\dot q_j$ = $\mathbf J_{xy}$; $\omega_z=\dot q_1+\dot q_2$ by hand. Planar only.
+\tcblower
+$\partial_1\mathbf T=\hat{\mathbf R}_z\mathbf E_1\mathbf E_2\mathbf E_3\mathbf E_4$\\
+$\partial_2\mathbf T=\mathbf E_1\mathbf E_2\hat{\mathbf R}_z\mathbf E_3\mathbf E_4$\\
+then $\tau$, $\vee_\times(\rho\rho^\top)$ per column. Any arm, 3D, all six rows.
+\end{twoway}
+\begin{deriv}[method B, lines (slides 36--39)]
+$\mathbf T=\begin{bmatrix}c_{12}&-s_{12}&0&x\\s_{12}&c_{12}&0&y\\0&0&1&0\\0&0&0&1\end{bmatrix}$. $\hat{\mathbf R}_z\mathbf T$: row 1 $=-$row 2 of $\mathbf T$, row 2 $=$ row 1.
+\[\frac{\partial\mathbf T}{\partial q_1}=\begin{bmatrix}-s_{12}&-c_{12}&0&-y\\c_{12}&-s_{12}&0&x\\0&0&0&0\\0&0&0&0\end{bmatrix},\ \frac{\partial\mathbf T}{\partial q_2}=\begin{bmatrix}-s_{12}&-c_{12}&0&-L_2s_{12}\\c_{12}&-s_{12}&0&L_2c_{12}\\0&0&0&0\\0&0&0&0\end{bmatrix}\]
+$\mathbf J_{t_1}=(-y,x,0)^\top$, $\mathbf J_{t_2}=L_2(-s_{12},c_{12},0)^\top$. Rotation, joint 1 (same for 2):
+\[\rho\Big(\tfrac{\partial\mathbf T}{\partial q_1}\Big)\mathbf R^\top=\begin{bmatrix}-s_{12}&-c_{12}&0\\c_{12}&-s_{12}&0\\0&0&0\end{bmatrix}\begin{bmatrix}c_{12}&s_{12}&0\\-s_{12}&c_{12}&0\\0&0&1\end{bmatrix}\]
+\[=\begin{bmatrix}0&-1&0\\1&0&0\\0&0&0\end{bmatrix}\xrightarrow{\vee_\times}\begin{bmatrix}0\\0\\1\end{bmatrix}\]
+\end{deriv}
+\begin{fbx}[Planar RR in $\{0\}$, full $6\times2$ \pg{34--39}]
+\[{}^0\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\\0&0\\0&0\\0&0\\1&1\end{bmatrix}\begin{matrix}\leftarrow\upsilon_x\\\leftarrow\upsilon_y\\\leftarrow\upsilon_z\\\leftarrow\omega_x\\\leftarrow\omega_y\\\leftarrow\omega_z\end{matrix},\quad\det\mathbf J_{xy}=L_1L_2\sin q_2\]
+$q_2$ relative to link 1; $s_{12}=\sin(q_1{+}q_2)$ is the absolute angle of link 2. Rows 3--5 zero in the plane (slide 45).
 \end{fbx}
-\begin{worked}[RR $L=(3,4)$, linear block]
-\begin{tabular}{@{}rrrrr@{}}\toprule $q_2$&$\sigma_1$&$\sigma_2$&$m$&$w$\\\midrule
-15$^\circ$&8.002&0.3881&0.0485&3.1058\\60$^\circ$&7.1328&1.4570&0.2043&10.3923\\90$^\circ$&6.0927&1.9696&0.3233&12.0000\\150$^\circ$&4.2711&1.4048&0.3289&6.0000\\\bottomrule\end{tabular}\\
-$\sigma_1\sigma_2=w$ each row. At 15$^\circ$: $\mathrm{tr}=64.182$, $\det=9.646$, $\lambda=64.032,\ 0.1506$. Best $m=0.4267$ at $q_2\approx125.8^\circ$ (equal links: 0.618 at $131.8^\circ$); a planar 2R never reaches $m=1$; $w$ peaks at 90$^\circ$, $m$ elsewhere. \chk
+\begin{worked}[notebook Q1: $L=(3,4)$ m, $q_1=30^\circ$, $q_2=15^\circ$]
+$q_1{+}q_2=45^\circ$: $J_{11}=-1.5-2.8284=-4.3284$, $J_{12}=-2.8284$, $J_{21}=2.5981+2.8284=5.4265$, $J_{22}=2.8284$.
+\[{}^0\mathbf J=\begin{bmatrix}-4.3284&-2.8284\\5.4265&2.8284\\0&0\\0&0\\0&0\\1&1\end{bmatrix},\ \det\mathbf J_{xy}=3.1058=12\sin15^\circ\]
+$\dot{\mathbf q}=(0.2,-0.1)$ rad/s: $\boldsymbol\upsilon=(-0.5828,0.8025)$ m/s, $\omega_z=0.1$ rad/s. \chk
+\end{worked}
+
+\wsixsh{PUMA 560 numeric $6\times6$ and reading a Jacobian \pg{22--24}}
+\begin{worked}[slide 24, assumed nominal pose $\mathbf q=(0,45^\circ,180^\circ,0,45^\circ,0)$, frame $\{0\}$]
+\[{}^0\mathbf J=\begin{bmatrix}0.13&0&0.306&0&0&0\\0.664&0&0&-0.038&0&0\\0&0.664&0.359&0&0.053&0\\0&0&0&0.707&0&1\\0&-1&-1&0&-1&0\\1&0&0&-0.707&0&0\end{bmatrix}\]
+Slide gives no pose/frame/units (and prints $j_{76}$ for $j_{66}$). Rows 4--6 = joint axes in $\{0\}$ (cols 2,3,5 parallel $(0,-1,0)$; cols 4,6 at $45^\circ=q_5$). Rows 1--3 of a revolute column $=\hat{\mathbf z}_j\times(\mathbf p_E-\mathbf o_j)$: col 1 $=(-p_y,p_x,0)$, so tool at $p_x=0.664$, $p_y=-0.130$ m. $\det\approx-0.081$, rank 6. \chk
+\end{worked}
+
+\wsixhd{Changing the frame of the Jacobian \pg{40, 45}}
+\begin{fbx}[Express a Jacobian in another frame \pg{40}]
+\[{}^A\mathbf J(\mathbf q)=\begin{bmatrix}{}^A\mathbf R_B&\mathbf 0_{3\times3}\\\mathbf 0_{3\times3}&{}^A\mathbf R_B\end{bmatrix}{}^B\mathbf J(\mathbf q),\qquad{}^E\mathbf R_0=({}^0\mathbf R_E)^\top\]
+Rotate \emph{both} halves (a $3\times3$ cannot multiply $6\times n$). $\det$, singular values, singular poses: frame-independent.
+\end{fbx}
+\begin{worked}[RR of Q1 in tool frame $\{3\}$ \pg{45}]
+${}^3\mathbf R_0=\mathbf R_z(-45^\circ)$:
+\[{}^3\mathbf J=\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\\0&0\\0&0\\0&0\\1&1\end{bmatrix}=\begin{bmatrix}0.7765&0\\6.8978&4\\0&0\\0&0\\0&0\\1&1\end{bmatrix}\]
+$\det=3.1058$ as in $\{0\}$. $\dot{\mathbf q}=(0.2,-0.1)$: ${}^3\boldsymbol\upsilon=(0.1553,0.9796)$ m/s; speed $0.9918$ m/s in both frames. \chk
+\end{worked}
+
+\wsixsh{Alternative: velocity propagation, geometric rule \added}
+\begin{twoway}{A. Craig propagation (result in last frame)}{B. Geometric column rule (all in $\{0\}$)}
+Revolute: ${}^{i+1}\boldsymbol\omega_{i+1}={}^{i+1}_{\ i}\mathbf R\,{}^i\boldsymbol\omega_i+\dot\theta_{i+1}\hat{\mathbf Z}$\\
+${}^{i+1}\mathbf v_{i+1}={}^{i+1}_{\ i}\mathbf R({}^i\mathbf v_i+{}^i\boldsymbol\omega_i\times{}^i\mathbf P_{i+1})$\\
+Prismatic: $\boldsymbol\omega$ unchanged; add $\dot d_{i+1}\hat{\mathbf Z}$ to $\mathbf v$. Start $\mathbf 0$. Coefficients of $\dot q_j$ = ${}^n\mathbf J$; rotate to $\{0\}$ if asked.
+\tcblower
+$\hat{\mathbf z}_j$ axis of joint $j$, $\mathbf o_j$ a point on it, $\mathbf p_E$ tool.\\
+revolute: $\begin{bmatrix}\hat{\mathbf z}_j\times(\mathbf p_E-\mathbf o_j)\\\hat{\mathbf z}_j\end{bmatrix}$, prismatic: $\begin{bmatrix}\hat{\mathbf z}_j\\\mathbf 0\end{bmatrix}$\\
+Fast for planar/simple arms.
+\end{twoway}
+
+\wsixhd{Jacobians of the simple robots \added}
+\begin{fbx}[ETS, $\mathbf J$ in $\{0\}$, $\det$, singular poses (all checked against finite differences) \chk]
+Rows $\upsilon_x,\upsilon_y,\omega_z$ shown for planar arms (rows $\upsilon_z,\omega_x,\omega_y\equiv0$). $s_{12}=\sin(q_1{+}q_2)$, $s_{123}=\sin(q_1{+}q_2{+}q_3)$.\\
+\textbf{RR}: $\mathbf T_{R_z}(q_1)\mathbf T_{t_x}(L_1)\mathbf T_{R_z}(q_2)\mathbf T_{t_x}(L_2)$, J as above. $\det\mathbf J_{xy}=L_1L_2\sin q_2$: $q_2=0$ stretched, $\pi$ folded; rank 1, columns $\perp$ arm, lost direction \emph{along} the arm.\\
+\textbf{RP}: $\mathbf T_{R_z}(q_1)\mathbf T_{t_x}(d_2)$, $x=d_2c_1$, $y=d_2s_1$.
+\[\begin{bmatrix}-d_2s_1&c_1\\d_2c_1&s_1\\1&0\end{bmatrix},\quad\det\mathbf J_{xy}=-d_2\]
+Singular at $d_2=0$ (tool on the joint axis): tangential direction lost. $q_1=40^\circ$, $d_2=0.6$: $\det=-0.6$; tangential $0.3$ m/s needs $\dot q_1=0.5$, $\dot d_2=0$.\\
+\textbf{PR}: $\mathbf T_{t_x}(d_1)\mathbf T_{R_z}(q_2)\mathbf T_{t_x}(L_2)$, $x=d_1+L_2c_2$, $y=L_2s_2$.
+\[\begin{bmatrix}1&-L_2s_2\\0&L_2c_2\\0&1\end{bmatrix},\quad\det\mathbf J_{xy}=L_2\cos q_2\]
+Singular at $q_2=\pm90^\circ$ (link $\perp$ rail): columns $(1,0)$ and $(\mp L_2,0)$ parallel, $y$ lost.\\
+\end{fbx}
+\begin{fbx}[Planar RRR \chk]
+$\mathbf T_{R_z}(q_1)\mathbf T_{t_x}(L_1)\mathbf T_{R_z}(q_2)\mathbf T_{t_x}(L_2)\mathbf T_{R_z}(q_3)\mathbf T_{t_x}(L_3)$.
+\[\begin{bmatrix}-L_1s_1-L_2s_{12}-L_3s_{123}&-L_2s_{12}-L_3s_{123}&-L_3s_{123}\\L_1c_1+L_2c_{12}+L_3c_{123}&L_2c_{12}+L_3c_{123}&L_3c_{123}\\1&1&1\end{bmatrix}\]
+Column $j$ sums links $j$ outwards. $(x,y)$ only: $2\times3$, rank 1 only if all links collinear. $(x,y,\omega_z)$: $\det=L_1L_2\sin q_2$ (indep.\ of $q_3$). $L=(0.4,0.3,0.2)$, $\mathbf q=(20^\circ,40^\circ,-30^\circ)$: $\mathbf J_{xy}=\begin{bmatrix}-0.4966&-0.3598&-0.1000\\0.6991&0.3232&0.1732\end{bmatrix}$, $\det_{(x,y,\omega_z)}=0.0771$; $\dot{\mathbf q}=(0.3,-0.2,0.5)$: $\boldsymbol\upsilon=(-0.1270,0.2317)$, $\omega_z=0.6$.\\
+\end{fbx}
+\begin{fbx}[RRP spherical (W3 arm) \chk]
+$\mathbf T_{R_z}(\theta_1)\mathbf T_{t_z}(H)\mathbf T_{R_y}(\theta_2)\mathbf T_{t_z}(d_3)$; tip $(c_1d_3s_2,\,s_1d_3s_2,\,H{+}d_3c_2)$. Axes: $(0,0,1)$, $(-s_1,c_1,0)$, slide $(c_1s_2,s_1s_2,c_2)$.
+\[{}^0\mathbf J=\begin{bmatrix}-d_3s_1s_2&d_3c_1c_2&c_1s_2\\d_3c_1s_2&d_3s_1c_2&s_1s_2\\0&-d_3s_2&c_2\\0&-s_1&0\\0&c_1&0\\1&0&0\end{bmatrix},\ \det\mathbf J_\upsilon=-d_3^2\sin\theta_2\]
+Singular: $d_3=0$ (tool on joint-2 axis), $\sin\theta_2=0$ (boom vertical, tool on $z_0$; direction $(-s_1,c_1,0)$ lost). $H=0.5$, tip $(0.3,0.4,0.9)$ ($\theta_1=53.13^\circ$, $\theta_2=51.34^\circ$, $d_3=0.6403$): $\mathbf J_\upsilon=\begin{bmatrix}-0.4&0.24&0.4685\\0.3&0.32&0.6247\\0&-0.5&0.6247\end{bmatrix}$, $\det=-0.3202$; $\dot{\mathbf q}=(0.2,-0.1,0.05)$: $\boldsymbol\upsilon=(-0.0806,0.0592,0.0812)$, $\boldsymbol\omega=(0.08,-0.06,0.2)$.
+\end{fbx}
+
+\wsixhd{Inverse velocity: tool velocity $\to$ joint rates \pg{41--42}}
+\begin{fbx}[Inverse Jacobian and pseudo-inverses \pg{41--42}]
+\[\dot{\mathbf q}=\mathbf J^{-1}\boldsymbol\nu,\qquad\mathbf J_{RR}^{-1}=\frac{1}{L_1L_2\sin q_2}\begin{bmatrix}L_2c_{12}&L_2s_{12}\\-L_1c_1-L_2c_{12}&-L_1s_1-L_2s_{12}\end{bmatrix}\]
+\[\text{tall }(m>n):\ \mathbf J^+=(\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top\ (\text{least sq.})\]
+\[\text{fat }(n>m):\ \mathbf J^+=\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}\ (\text{min norm})\]
+$m$ rows (task components), $n$ joints. Slide's 3 questions (p.42): square? non-singular? invertible for all $\mathbf q$? Resolved rate: $\mathbf q_{k+1}=\mathbf q_k+\mathbf J^{-1}(\mathbf q_k)\boldsymbol\nu\,\Delta t$, recompute $\mathbf J$ each step. Damped LS $\mathbf J^\top(\mathbf J\mathbf J^\top+\lambda^2\mathbf I)^{-1}$ \added.
+\end{fbx}
+\begin{worked}[notebook Q4: $L=(3,4)$, $\mathbf q=(30^\circ,60^\circ)$, $\boldsymbol\nu=(0.2,-0.3,-0.2)$]
+$\mathbf J=\begin{bmatrix}-5.5&-4\\2.5981&0\\1&1\end{bmatrix}$ ($\upsilon_x,\upsilon_y,\omega_z$), $\det\mathbf J_{xy}=10.3923$. 2 joints, 3 components: over-determined. \textbf{A} (follow position): $\upsilon_y\Rightarrow\dot q_1=-0.1155$; $\upsilon_x\Rightarrow\dot q_2=0.1088$ rad/s ($\omega_z=-0.0067$). \textbf{B} (least squares) $\mathbf J^+\boldsymbol\nu=(-0.1056,0.0840)$, residual $(0.0446,0.0258,0.1784)$. State which reading. \chk
+\end{worked}
+
+\wsixhd{Singularities \pg{43--47}}
+\begin{fbx}[Definition and types \pg{44}]
+$\det\mathbf J(\mathbf q)=0$ (non-square: rank drop, $\det\mathbf J\mathbf J^\top=0$, $\sigma_{\min}=0$). Then some $\mathbf u\neq\mathbf 0$ with $\mathbf u^\top\mathbf J=\mathbf 0$: the tool cannot move along $\mathbf u$; $\mathbf J^{-1}\propto1/\det\mathbf J$ blows up.\\
+\textbf{Boundary}: arm stretched/folded (RR $q_2=0,\pi$). \textbf{Interior}: axes align (wrist $q_5=0$; tool on base axis).\\
+RR: $\det\begin{bmatrix}L_1s_2&0\\L_1c_2+L_2&L_2\end{bmatrix}=L_1L_2\sin q_2$ (slide 45), indep.\ of $q_1$ and the frame.
+\end{fbx}
+\begin{worked}[RR $L=(3,4)$, $q_1=30^\circ$, singular poses (notebook cell 46)]
+Stretched $q_2=0$: $\{0\}$ block $\begin{bmatrix}-3.5&-2\\6.0622&3.4641\end{bmatrix}$, col 1 $=1.75\times$col 2, both $\perp$ arm: rank 1. ${}^3\mathbf J_{xy}=\begin{bmatrix}0&0\\7&4\end{bmatrix}$ (row along the arm is zero). Folded $q_2=180^\circ$: ${}^3\mathbf J_{xy}=\begin{bmatrix}0&0\\1&4\end{bmatrix}$. \chk
+\end{worked}
+\begin{worked}[3D arms]
+\textbf{W13-type RRR}: $\det\mathbf J_\upsilon=-L_3L_4\sin\theta_3\,(L_3c_2+L_4c_{23})$: $\sin\theta_3=0$ boundary; $r=L_3c_2+L_4c_{23}=0$ interior (tool on shoulder vertical). $L_3=0.4$, $L_4=0.3$, $\theta_2=60^\circ$: $\theta_3=71.81^\circ$. \textbf{PUMA 560 (zero-offset), notebook Q3}: $\det\mathbf J=-L_uL_f\sin q_3\,(L_u\sin q_2+L_f\sin(q_2{+}q_3))\sin q_5$: elbow $\sin q_3=0$; shoulder $L_u\sin q_2+L_f\sin(q_2{+}q_3)=0$ (wrist centre on waist axis; $L_u=0.5$, $L_f=0.3$, $q_2=22.92^\circ$, $q_3=-63.39^\circ$); wrist $\sin q_5=0$ (axes 4, 6 aligned, rank 5). Real PUMA has offsets: same types, shifted \added. \chk
+\end{worked}
+\begin{recipe}[Find and explain singularities]
+\begin{enumerate}
+\item Write $\mathbf J$ (the square block that matters; say which rows).
+\item $\det$, factorise (RR: $L_1L_2\sin q_2$).
+\item Solve each factor, list every angle in range.
+\item Name (boundary/interior), draw the pose.
+\item State what is lost; rates $\to\infty$ for a velocity with a component there.
+\item Check: two columns parallel at the pose.
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[Why rates blow up near $\det\mathbf J=0$ \added]
+$\mathbf J^{-1}=\operatorname{adj}\mathbf J/\det\mathbf J$. RR: $\dot q_1=\upsilon_\perp/(L_1\sin q_2)\to\infty$ as $q_2\to0$. $L=(3,4)$, $0.1$ m/s $\perp$ arm:\\
+{\small\begin{tabular}{@{}lrrrrr@{}}\toprule $q_2$&90$^\circ$&30$^\circ$&15$^\circ$&5$^\circ$&1$^\circ$\\\midrule
+$\dot q_1$&0.0333&0.0667&0.1288&0.3825&1.9100\\$\dot q_2$&$-$0.0333&$-$0.1100&$-$0.2221&$-$0.6682&$-$3.3422\\\bottomrule\end{tabular}}\\
+$30^\circ\to5^\circ$: $\sin30^\circ/\sin5^\circ=5.7\times$. \chk
+\end{fbx}
+
+\wsixhd{Scenarios: line, circle, rectangle \added}
+RR $L=(0.5,0.4)$ m, $q_2>0$, frame $\{0\}$, pose $\mathbf q=(30^\circ,60^\circ)$, tool $\mathbf p=(0.4330,0.6500)$:
+\[\mathbf J=\begin{bmatrix}-0.65&-0.4\\0.4330&0\end{bmatrix},\ \det\mathbf J=0.1732,\ \mathbf J^{-1}=\begin{bmatrix}0&2.3094\\-2.5&-3.7528\end{bmatrix}\]
+\textbf{(a) Line.} $v=0.2$ m/s along $+x_0$: $\dot{\mathbf q}=\mathbf J^{-1}(0.2,0)=(0,-0.5)$ rad/s. Along $+y_0$: $(0.4619,-0.7506)$. $0.1$ m takes $0.5$ s. Recompute $\mathbf J$ each step: after $0.5$ s $\mathbf q=(32.03^\circ,42.14^\circ)$, tip $(0.5330,0.6500)$. Reach limit on $y=0.65$: $x=\sqrt{0.9^2-0.65^2}=0.6225$ ($0.1895$ m, $0.947$ s).\\
+{\small\begin{tabular}{@{}rrrrr@{}}\toprule $x$&$q_1,q_2$ ($^\circ$)&$\det\mathbf J$&$\dot q_1$&$\dot q_2$\\\midrule
+0.433&30.00, 60.00&0.1732&0&$-0.500$\\0.533&32.03, 42.14&0.1342&0.163&$-0.794$\\0.600&37.81, 21.37&0.0729&0.562&$-1.647$\\0.620&43.18, 7.14&0.0249&2.055&$-4.990$\\\bottomrule\end{tabular}}\\
+\textbf{(b) Circle} $\rho=0.1$ m, $v=0.2$ m/s, CCW from rightmost point, centre $\mathbf c=(0.3330,0.6500)$.
+\begin{recipe}[circle]
+\begin{enumerate}
+\item $\Omega=v/\rho=2$ rad/s; $T=2\pi/\Omega=3.1416$ s.
+\item $\mathbf p=\mathbf c+\rho(\cos\Omega t,\sin\Omega t)$; $\boldsymbol\upsilon=0.2(-\sin2t,\cos2t)$, $|\boldsymbol\upsilon|=v$. $\omega_z$ not controlled.
+\item In workspace? farthest $0.83<0.9$; smallest $q_2=45.7^\circ$.
+\item Each sample: IK ($q_2>0$), $\mathbf J(\mathbf q)$, $\dot{\mathbf q}=\mathbf J^{-1}\boldsymbol\upsilon$.
+\item Check: $\mathbf q$ returns to $(30^\circ,60^\circ)$ after $T$.
+\end{enumerate}
+\end{recipe}
+{\small\begin{tabular}{@{}rrrrr@{}}\toprule $\Omega t$&$\mathbf p$ (m)&$\boldsymbol\upsilon$&$\mathbf q$ ($^\circ$)&$\dot{\mathbf q}$ (rad/s)\\\midrule
+0&(0.433, 0.650)&(0, 0.2)&(30.0, 60.0)&(0.462, $-$0.751)\\
+$\pi/2$&(0.333, 0.750)&($-$0.2, 0)&(44.5, 48.8)&(0.031, 0.443)\\
+$\pi$&(0.233, 0.650)&(0, $-$0.2)&(35.4, 80.4)&($-$0.365, 0.659)\\
+$3\pi/2$&(0.333, 0.550)&(0.2, 0)&(20.3, 89.5)&($-$0.136, $-$0.333)\\\bottomrule\end{tabular}}\\
+$t=0$: $\dot{\mathbf q}=(0.2\cdot2.3094,\,0.2\cdot(-3.7528))=(0.462,-0.751)$. Largest rate on the lap $0.78$ rad/s. \chk\\
+\textbf{(c) Rectangle} $A(0.45,0.45)$, $B(0.65,0.45)$, $C(0.65,0.55)$, $D(0.45,0.55)$, $v=0.1$ m/s: sides $AB$ 2 s, $BC$ 1 s, $CD$ 2 s, $DA$ 1 s (6 s). $\boldsymbol\upsilon$ constant per side, $\mathbf J$ not: evaluate at the midpoint (IK, $q_2>0$).\\
+{\small\begin{tabular}{@{}llrrr@{}}\toprule side&midpoint&$\boldsymbol\upsilon$&$\mathbf q$ ($^\circ$)&$\dot{\mathbf q}$ (rad/s)\\\midrule
+$AB$&(0.55, 0.45)&(0.1, 0)&(6.1, 76.3)&(0.027, $-$0.283)\\
+$BC$&(0.65, 0.50)&(0, 0.1)&(16.0, 49.0)&(0.240, $-$0.331)\\
+$CD$&(0.55, 0.55)&($-$0.1, 0)&(18.3, 60.8)&($-$0.043, 0.315)\\
+$DA$&(0.45, 0.50)&(0, $-$0.1)&(11.8, 83.9)&($-$0.200, 0.251)\\\bottomrule\end{tabular}}\\
+End of $BC$ (corner $C$, $0.8515$ m, $q_2=38.0^\circ$): $(0.285,-0.446)$. At a corner $\boldsymbol\upsilon$ jumps: infinite acceleration, stop or blend (W5). \chk\\
+\textbf{(d) Moving along the arm near the boundary.} $r^2=L_1^2+L_2^2+2L_1L_2c_2\Rightarrow\dot q_2=-r\dot r/(L_1L_2\sin q_2)\to\infty$ as $q_2\to0$. $\dot r=0.1$ m/s: $\dot q_2=-0.302,-0.681,-4.745$ rad/s at $r=0.60,0.85,0.899$ m. Rate limit $2$ rad/s at $r=0.85$: $\dot r\le2\cdot0.2\sin38.6^\circ/0.85=0.294$ m/s. \chk
+\begin{trap}
+One $\mathbf J$ (start pose) for a whole path; end point outside the workspace ($0.6225$, not $0.633$).
+\end{trap}
+
+\wsixhd{Manipulability and the velocity ellipsoid \pg{49--55}}
+\begin{deriv}[ellipsoid equation \pg{51--53}]
+Unit rates $\dot{\mathbf q}^\top\dot{\mathbf q}=1$, $\dot{\mathbf q}=\mathbf J^{-1}\boldsymbol\nu$: $\boldsymbol\nu^\top(\mathbf J^{-1})^\top\mathbf J^{-1}\boldsymbol\nu=\boldsymbol\nu^\top(\mathbf J\mathbf J^\top)^{-1}\boldsymbol\nu=1$. $\mathbf A=\mathbf J\mathbf J^\top$: semi-axes along eigenvectors $\mathbf v_i$, length $\sqrt{\lambda_i}$ (for $\boldsymbol\nu=\sqrt{\lambda_i}\mathbf v_i$: $\lambda_i\mathbf v_i^\top\mathbf A^{-1}\mathbf v_i=1$ \added).
+\end{deriv}
+\begin{fbx}[Velocity ellipsoid, manipulability \pg{52--55}]
+\[\boldsymbol\nu^\top(\mathbf J\mathbf J^\top)^{-1}\boldsymbol\nu\le1,\quad\mathbf A=\mathbf J\mathbf J^\top\]
+\[m=\frac{\sqrt{\lambda_{\min}}}{\sqrt{\lambda_{\max}}}\in[0,1],\quad w=\sqrt{\det\mathbf J\mathbf J^\top}=|\det\mathbf J|\]
+$\sqrt{\lambda_i}=\sigma_i$: tool speed per unit joint-rate norm along $\mathbf v_i$. $m=1$ isotropic, $0$ singular. $w=\sigma_1\sigma_2\cdots$ (RR $L_1L_2|\sin q_2|$) \added. Some books use the reciprocal for $m$: state yours. $2\times2$: $\lambda=\tfrac12(\operatorname{tr}\mathbf A\pm\sqrt{\operatorname{tr}^2\mathbf A-4\det\mathbf A})$, $\det\mathbf A=(\det\mathbf J)^2$, $\operatorname{tr}\mathbf A=L_1^2+2L_2^2+2L_1L_2c_2$ (RR).
+\end{fbx}
+\begin{worked}[RR $L=(3,4)$: $\sigma$, $m$, $w$]
+{\small\begin{tabular}{@{}rrrrr@{}}\toprule $q_2$&$\sigma_1$&$\sigma_2$&$m$&$w$\\\midrule
+15$^\circ$&8.002&0.3881&0.0485&3.1058\\60$^\circ$&7.1328&1.4570&0.2043&10.3923\\90$^\circ$&6.0927&1.9696&0.3233&12.0000\\150$^\circ$&4.2711&1.4048&0.3289&6.0000\\\bottomrule\end{tabular}}\\
+2R never reaches $m=1$ (best $0.4267$ at $q_2\approx125.8^\circ$); $w$ peaks at $90^\circ$. \chk
+\end{worked}
+\begin{worked}[$L=(0.5,0.4)$, $\mathbf q=(30^\circ,60^\circ)$: what to draw]
+$\mathbf J\mathbf J^\top=\begin{bmatrix}0.5825&-0.2815\\-0.2815&0.1875\end{bmatrix}$, $\lambda=0.7288,\ 0.04116$; semi-axes $0.8537$ (along $152.5^\circ$) and $0.2029$ (along $62.5^\circ$), $m=0.2376$: thin ellipse centred on the tool. \chk
 \end{worked}
 \begin{trap}
-Reporting $\lambda$ where the semi-axis is $\sqrt\lambda$; $m$ as $\lambda_{\min}$ alone; ``near a singularity the ellipsoid is large so the arm is faster'': false, one axis collapses ($\sigma_{\min}\to0$).
+$\lambda$ for the semi-axis (it is $\sqrt\lambda$); $m=\lambda_{\min}$ alone; ``bigger ellipse near a singularity'': false, $\sigma_{\min}\to0$.
 \end{trap}
-\begin{slideerr}[slide 51]
-Unit-norm condition printed $\dot{\mathbf q}\dot{\mathbf q}^\top=1$: for a column vector that is an $n\times n$ matrix. The scalar condition is $\dot{\mathbf q}^\top\dot{\mathbf q}=1$.
-\end{slideerr}
 
-\hd{Statics and force ellipsoid \pg{57--59}}
-\begin{fbx}[Joint torques for a tool wrench]
-\[\boldsymbol\tau=\mathbf J^\top(\mathbf q)\,\mathbf F_E,\quad \mathbf F_E=(F_x,F_y,F_z,n_x,n_y,n_z)^\top,\quad \boldsymbol\tau^\top\dot{\mathbf q}=\mathbf F^\top\boldsymbol\nu\]
-\[\text{force ellipsoid (}\boldsymbol\tau^\top\boldsymbol\tau\le1\text{): }\ \mathbf F^\top\mathbf J\mathbf J^\top\mathbf F\le1\ \ \text{(no inverse)}\]
-Same axes as the velocity ellipsoid, semi-axes $1/\sqrt{\lambda_i}$: fast = weak. At a singularity the force semi-axis $\to\infty$: the structure carries load along the lost direction with zero torque.
-\use{$\mathbf F$ and $\mathbf J$ in the same frame. Convention (not on the slide \added): $\mathbf F$ is the wrench the tool applies to the environment; $\boldsymbol\tau$ is what the actuators supply. If $\mathbf F$ is the load on the tool the sign flips. $\mathbf J^\top$ exists even when $\mathbf J^{-1}$ does not.}
+\wsixhd{Statics: $\boldsymbol\tau=\mathbf J^\top\mathbf F_E$ \pg{57--59}}
+\begin{fbx}[Joint torques from tool wrench \pg{58}]
+\[\boldsymbol\tau=\mathbf J^\top(\mathbf q)\,\mathbf F_E,\quad\mathbf F_E=\begin{bmatrix}F_x&F_y&F_z&n_x&n_y&n_z\end{bmatrix}^\top,\quad\boldsymbol\tau^\top\dot{\mathbf q}=\mathbf F_E^\top\boldsymbol\nu\]
+$\mathbf F_E$ (N; N\,m) in the frame of $\mathbf J$; $\boldsymbol\tau$ (N\,m; N). Planar: $\boldsymbol\tau=\mathbf J_{xy}^\top\mathbf F+n_z(1,1,\dots)^\top$. Reverse: $\mathbf F=\mathbf J^{-\top}\boldsymbol\tau$ (square, non-singular). \textbf{Convention \added:} $\mathbf F_E$ = force the tool applies to the environment, $\boldsymbol\tau$ = actuator torque to hold it; a load on the tool flips signs. State frame and sign.
 \end{fbx}
-\begin{worked}[$L=(0.5,0.4)$\,m, $q=(30^\circ,60^\circ)$]
-$\mathbf J_{xy}=\begin{bmatrix}-0.65&-0.4\\0.4330&0\end{bmatrix}$, $\mathbf F=(10,-20)$\,N: $\boldsymbol\tau=\mathbf J^\top\mathbf F=(-6.5-8.660,\ -4.0)=(-15.160,-4.000)$\,N\,m. Wrong $\mathbf J\mathbf F$ gives $(1.5,4.330)$. Moment $n_z=2$ adds $2(1,1)$. \chk\\
-Stretched $q=(30^\circ,0)$: 50\,N along the arm needs $\boldsymbol\tau=(0,0)$; 50\,N perpendicular needs $(45,20)$\,N\,m. \chk\\
-$\mathbf J\mathbf J^\top$ eigenvalues 0.04116, 0.72884: velocity semi-axes 0.2029, 0.8537; force semi-axes 4.929, 1.171. \chk
+\begin{deriv}[virtual work \added]
+$\boldsymbol\tau^\top\dot{\mathbf q}=\mathbf F_E^\top\boldsymbol\nu=\mathbf F_E^\top\mathbf J\dot{\mathbf q}$ for all $\dot{\mathbf q}$ $\Rightarrow\boldsymbol\tau^\top=\mathbf F_E^\top\mathbf J\Rightarrow\boldsymbol\tau=\mathbf J^\top\mathbf F_E$.
+\end{deriv}
+\begin{fbx}[Force ellipsoid \pg{59}]
+$\boldsymbol\tau^\top\boldsymbol\tau\le1$, $\boldsymbol\tau=\mathbf J^\top\mathbf F$: $\mathbf F^\top\mathbf J\mathbf J^\top\mathbf F\le1$ (no inverse). Same axes as the velocity ellipsoid, semi-axes $1/\sqrt{\lambda_i}$. Fast direction = weak force. At a singularity the force axis $\to\infty$: structure carries load with zero torque.
+\end{fbx}
+\begin{worked}[$L=(0.5,0.4)$, $\mathbf q=(30^\circ,60^\circ)$; $\mathbf J^\top=\begin{bmatrix}-0.65&0.4330\\-0.4&0\end{bmatrix}$]
+\textbf{Torques.} $\mathbf F=(0,-15)$ N: $\boldsymbol\tau=(-6.495,0)$ N\,m ($\tau_2=0$: link 2 vertical, force through the elbow). $\mathbf F=(10,-20)$: $(-15.160,-4.000)$ (wrong $\mathbf J\mathbf F$: $(1.5,4.330)$).\\
+\textbf{Force from torques.} $\boldsymbol\tau=(2,1)$: $-0.4F_x=1\Rightarrow F_x=-2.5$; $-0.65(-2.5)+0.4330F_y=2\Rightarrow F_y=0.866$; $|\mathbf F|=2.646$ N.\\
+\textbf{Stretched} $\mathbf q=(30^\circ,0)$: 50 N along the arm: $\boldsymbol\tau=(0,0)$; 50 N $\perp$: $(45,20)$ N\,m. \textbf{Frame:} ${}^0\mathbf J^\top{}^0\mathbf F={}^3\mathbf J^\top{}^3\mathbf F$ with ${}^3\mathbf F=\mathbf R_z(45^\circ)^\top\mathbf F$. Axes: velocity $0.2029,0.8537$; force $4.929,1.171$. \chk
 \end{worked}
-\begin{slideerr}[slide 58]
-Slide 58 gives neither the frame of $\mathbf F_E$ nor the sign convention for $\boldsymbol\tau$. Write both in your answer.
+\begin{recipe}[Statics question]
+\begin{enumerate}
+\item Sketch arm and force; frame $\{0\}$; sign convention.
+\item $\mathbf J_{xy}$ in that frame (add $\omega_z$ row if a moment is given).
+\item $\boldsymbol\tau=\mathbf J^\top\mathbf F$: torque $j$ = column $j$ dotted with $\mathbf F$.
+\item Check by moments: $\tau_1=xF_y-yF_x$. Units N\,m.
+\item Singular pose: forces needing zero torque.
+\end{enumerate}
+\end{recipe}
+\begin{slideerr}[slides 21/45, 32, 51, 58]
+Slide 21 stresses $\{0\}$ but slide 45 prints RR in the tool frame $\{3\}$: both right (rotation above). Slide 32 ends the product at $\mathbf E_n$; it should be $\mathbf E_M$. Slide 51: $\dot{\mathbf q}\dot{\mathbf q}^\top=1$ should be $\dot{\mathbf q}^\top\dot{\mathbf q}=1$. Slide 58 gives no frame or sign convention for $\mathbf F_E,\boldsymbol\tau$: write both.
 \end{slideerr}
 
-\hd{Offset RP arm (extra, W7--8 folder)}
-$x=l_1c_1-d_2s_1$, $y=l_1s_1+d_2c_1$ ($d_2$ slides $\perp$ link): $\mathbf J=\begin{bmatrix}-l_1s_1-d_2c_1&-s_1\\l_1c_1-d_2s_1&c_1\end{bmatrix}$, $\det=-d_2$. Singular only at $d_2=0$: the two columns are parallel, the radial direction is lost; null motion $\dot q_1=-1/l_1$, $\dot d_2=1$. \chk
+\wsixsh{Exam-style questions (marks assumed)}
+No W13 sample question is on W6. Typical lost marks: running sums, mixed frames, $\mathbf J\mathbf F$ for $\mathbf J^\top\mathbf F$, radians, one $\mathbf J$ for a path.
+\begin{examq}[Q1: Jacobian, statics, rates \mk{assumed 7}]
+RR $L_1=0.5$, $L_2=0.4$ m. (a) $2\times2$ $\mathbf J$ in $\{0\}$, singular poses [3]. (b) $\mathbf q=(30^\circ,60^\circ)$: torques holding tip force $(0,-10)$ N; explain $\tau_2$ [2]. (c) $\dot{\mathbf q}$ for tip velocity $(0.1,0)$ m/s [2].
+\solution
+(a) $\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}$, $\det=L_1L_2(s_{12}c_1-c_{12}s_1)=L_1L_2\sin q_2$; zero at $q_2=0,\pi$ \mk{3}.\\
+(b) $\mathbf J=\begin{bmatrix}-0.65&-0.4\\0.4330&0\end{bmatrix}$, $\boldsymbol\tau=\mathbf J^\top\mathbf F=(-4.330,0)$ N\,m \mk{1}; $\tau_2=0$: link 2 vertical, force along it, no moment about joint 2 (load on tip: $(+4.330,0)$) \mk{1}.\\
+(c) $\det=0.1732$; $\dot{\mathbf q}=\frac1{0.1732}\begin{bmatrix}0&0.4\\-0.433&-0.65\end{bmatrix}\begin{bmatrix}0.1\\0\end{bmatrix}=(0,-0.25)$ rad/s \mk{2}. Check $-0.4(-0.25)=0.1$ ✓. \chk
+\end{examq}
+\begin{examq}[Q2: spot the errors \mk{assumed 5}]
+Student: $\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_2&-L_2s_2\\L_1c_1+L_2c_2&L_2c_2\end{bmatrix}$, ``$\det=L_1L_2\sin q_2$ only when $q_1=0$'', ``$\omega_z=\dot q_2$''. $L=(0.5,0.3)$, $\mathbf q=(30^\circ,60^\circ)$: correct $\mathbf J$; mark the claims.
+\solution
+Running sum: $s_2,c_2\to s_{12},c_{12}$ ($q_1{+}q_2=90^\circ$): $J_{11}=-0.55$, $J_{12}=-0.3$, $J_{21}=0.4330$, $J_{22}=0$ (student: $-0.5098$, $0.5830$) \mk{2}. $\det=L_1L_2\sin q_2=0.1299$ for every $q_1$, frame-independent \mk{2}. $\omega_z=\dot q_1+\dot q_2$ \mk{1}. \chk
+\end{examq}
+\begin{examq}[Q3: planar 3R, redundant \mk{assumed 6}]
+$L=(0.4,0.3,0.2)$ m, $\mathbf q=(20^\circ,40^\circ,-30^\circ)$ ($\mathbf J_{xy}$ in the RRR box). (a) Tool velocity for $\dot{\mathbf q}=(0.3,-0.2,0.5)$ [2]. (b) Smallest-norm $\dot{\mathbf q}$ for $(0.05,0.02)$ m/s [3]. (c) When is $\mathbf J_{xy}$ rank-deficient? [1]
+\solution
+(a) $\boldsymbol\upsilon=(-0.1270,0.2317)$ m/s, $\omega_z=0.3-0.2+0.5=0.6$ rad/s \mk{2}.\\
+(b) Fat: $\dot{\mathbf q}=\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1}\boldsymbol\upsilon$; $\mathbf J\mathbf J^\top=\begin{bmatrix}0.3861&-0.4808\\-0.4808&0.6232\end{bmatrix}$, $\det=0.00945$, $\mathbf y=(4.3169,3.3626)$, $\dot{\mathbf q}=\mathbf J^\top\mathbf y=(0.2069,-0.4664,0.1507)$, $\|\dot{\mathbf q}\|=0.5321$ \mk{3}. Check $\mathbf J\dot{\mathbf q}=(0.05,0.02)$ ✓.\\
+(c) Rank 1 only if all links collinear (one straight elbow is fine for $(x,y)$); $(x,y,\varphi)$: $\det=L_1L_2\sin q_2$ \mk{1}. \chk
+\end{examq}
 
-\hd{Traps and likely questions}
-Frame mix-up ($\mathbf J$ rotates, $\det$ does not); $\mathbf J\mathbf F$ for $\mathbf J^\top\mathbf F$; inverse in the force ellipsoid; tall $\mathbf J$ needs a pseudo-inverse; degrees into a calculator set to radians; units on every answer (m/s, rad/s, N\,m). Forms to expect: $\mathbf J$ of a planar RR at given $\mathbf q$; $\det$ and singular poses; joint rates for a tool velocity; torques for a tool force; sketch of the velocity ellipse near and far from a singularity. No W13 sample question is on velocity kinematics (marks not published).
 \end{multicols}

@@ -1,0 +1,165 @@
+% ENN581 revision booklet v2 — shared preamble.
+% A4 landscape, 2 columns. Colour = role of a box (and subject on the edge tab); body text stays black.
+\documentclass[9pt]{extarticle}
+\usepackage[a4paper,landscape,top=13mm,bottom=9mm,left=9mm,right=15mm,headsep=3mm,headheight=5mm]{geometry}
+\usepackage{amsmath,amssymb,mathtools,multicol,xcolor,enumitem,booktabs,array,tabularx,fancyhdr,lastpage,graphicx,bm}
+\usepackage{newpxtext,newpxmath}
+\setsansfont{texgyreheros}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic,Scale=0.88]
+\raggedcolumns
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,angles,quotes,positioning,fit,backgrounds,shapes.geometric,decorations.pathreplacing}
+\usepackage[most]{tcolorbox}
+\usepackage{tocloft}
+\usepackage[hidelinks,bookmarks=false]{hyperref}
+\setlength{\columnsep}{6mm}
+\setlength{\columnseprule}{0.3pt}\renewcommand{\columnseprulecolor}{\color{g2}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlist{nosep,leftmargin=1.3em,labelsep=0.3em}
+\setlength{\abovedisplayskip}{3pt}\setlength{\belowdisplayskip}{3pt}
+\setlength{\abovedisplayshortskip}{1pt}\setlength{\belowdisplayshortskip}{2pt}
+\renewcommand{\arraystretch}{1.12}
+\setcounter{MaxMatrixCols}{12}
+\allowdisplaybreaks
+
+% ---------- colours: each colour means one thing ----------
+% boxes: blue formula, green recipe/steps, red trap, purple worked example, amber slide check,
+%        slate premise (given -> find), grey derivation, teal alternative approach, charcoal exam question
+\definecolor{ink}{gray}{0}
+\definecolor{g1}{gray}{0.93}
+\definecolor{g2}{gray}{0.82}
+\definecolor{g3}{gray}{0.45}
+\definecolor{fblue}{RGB}{28,78,140}     \definecolor{fbluebg}{RGB}{229,238,250}
+\definecolor{rgreen}{RGB}{30,112,66}    \definecolor{rgreenbg}{RGB}{231,244,234}
+\definecolor{tred}{RGB}{184,38,38}      \definecolor{tredbg}{RGB}{253,240,239}
+\definecolor{wpurple}{RGB}{104,62,156}  \definecolor{wpurplebg}{RGB}{245,240,251}
+\definecolor{samber}{RGB}{170,104,0}    \definecolor{samberbg}{RGB}{255,242,208}
+\definecolor{slate}{RGB}{70,82,96}      \definecolor{slatebg}{RGB}{236,239,243}
+\definecolor{dgrey}{RGB}{90,90,90}      \definecolor{dgreybg}{RGB}{246,246,246}
+\definecolor{alteal}{RGB}{0,110,110}    \definecolor{altealbg}{RGB}{228,244,244}
+\definecolor{exq}{RGB}{40,40,48}        \definecolor{exqbg}{RGB}{250,250,252}
+% controller block diagrams: model-based vs servo vs plant
+\definecolor{mbcol}{RGB}{196,96,20}     \definecolor{mbbg}{RGB}{253,234,214}
+\definecolor{svcol}{RGB}{28,78,140}     \definecolor{svbg}{RGB}{220,232,248}
+% subject colours (edge tabs, headers)
+\definecolor{secfront}{RGB}{70,82,96}
+\definecolor{seckin}{RGB}{28,78,140}
+\definecolor{secdyn}{RGB}{196,96,20}
+\definecolor{secmob}{RGB}{0,122,122}
+\definecolor{secplan}{RGB}{104,62,156}
+\definecolor{secsample}{RGB}{150,30,60}
+\colorlet{seccolor}{secfront}
+
+% ---------- running header + thumb index ----------
+\newcommand{\curweek}{}\newcommand{\curtopic}{}\newcommand{\curtab}{0}
+\newcommand{\tabcount}{17} % tab positions down the right edge
+\pagestyle{fancy}\fancyhf{}
+\renewcommand{\headrulewidth}{0.6pt}
+\renewcommand{\headrule}{{\color{seccolor}\hrule height \headrulewidth width\headwidth}}
+\fancyhead[L]{\sffamily\bfseries\small\color{seccolor}\curweek\quad\normalfont\color{black}\curtopic}
+\fancyhead[R]{\sffamily\footnotesize\color{slate}ENN581 revision booklet \quad page \thepage\ of \pageref{LastPage}}
+\fancyfoot[C]{}
+\fancyhead[C]{\ifnum\curtab>0\begin{tikzpicture}[remember picture,overlay]
+  \pgfmathsetmacro{\tabh}{(\paperheight-24mm)/\tabcount}
+  \fill[seccolor] ([xshift=-9mm,yshift={-12mm-(\curtab-1)*\tabh*1pt}]current page.north east) rectangle ++(9mm,{-\tabh*1pt+1mm});
+  \node[rotate=-90,font=\sffamily\bfseries\scriptsize,text=white,anchor=center] at ([xshift=-4.5mm,yshift={-12mm-(\curtab-0.5)*\tabh*1pt}]current page.north east) {\curweek};
+\end{tikzpicture}\fi}
+% tab positions: 1 CONTENTS, 2 RECIPES, 3 BASICS, 4 ROBOTS, 5..16 = W1..W12, 17 SAMPLE
+\newcommand{\setsec}[1]{\ifcase#1\colorlet{seccolor}{secfront}\or\colorlet{seccolor}{secfront}\or\colorlet{seccolor}{secfront}%
+  \or\colorlet{seccolor}{secfront}\or\colorlet{seccolor}{secfront}%
+  \or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}\or\colorlet{seccolor}{seckin}%
+  \or\colorlet{seccolor}{secdyn}\or\colorlet{seccolor}{secdyn}\or\colorlet{seccolor}{secdyn}%
+  \or\colorlet{seccolor}{secmob}\or\colorlet{seccolor}{secmob}\or\colorlet{seccolor}{secplan}%
+  \or\colorlet{seccolor}{secsample}\else\colorlet{seccolor}{secfront}\fi}
+
+% ---------- contents (tocloft) ----------
+\renewcommand{\contentsname}{}
+\setlength{\cftbeforesecskip}{3pt}
+\renewcommand{\cftsecfont}{\sffamily\bfseries\small}\renewcommand{\cftsecpagefont}{\sffamily\bfseries\small}
+\renewcommand{\cftsubsecfont}{\footnotesize}\renewcommand{\cftsubsecpagefont}{\footnotesize}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\setlength{\cftsubsecindent}{0.8em}\setlength{\cftsecindent}{0pt}
+\setlength{\cftsecnumwidth}{0pt}\setlength{\cftsubsecnumwidth}{0pt}
+\renewcommand{\cftdotsep}{2.5}
+\setcounter{tocdepth}{2}
+
+% Part openers. \bpart{TAB}{title}{tab position}; \week{W2}{title}{2}
+% optional [label] when one tab name opens several parts (default label p:<TAB>)
+\newcommand{\bpart}[4][]{\clearpage\renewcommand{\curweek}{#2}\renewcommand{\curtopic}{#3}\renewcommand{\curtab}{#4}\setsec{#4}\phantomsection\ifx\relax#1\relax\label{p:#2}\else\label{p:#1}\fi\addcontentsline{toc}{section}{#2\enspace #3}}
+\newcommand{\week}[3]{\bpart{#1}{#2}{\the\numexpr#3+4\relax}}
+
+% ---------- headings (each \hd is a contents entry) ----------
+% \hd{Heading}            -> also in the contents
+% \hd*{Heading}           -> not in the contents
+\makeatletter
+\newcommand{\hd}{\@ifstar\hd@star\hd@toc}
+\newcommand{\hd@toc}[1]{\par\vspace{4pt}\phantomsection\addcontentsline{toc}{subsection}{#1}{\sffamily\bfseries\large\color{seccolor}#1}\par\vspace{1pt}{\color{seccolor}\hrule height 0.4pt}\vspace{2pt}}
+\newcommand{\hd@star}[1]{\par\vspace{4pt}{\sffamily\bfseries\large\color{seccolor}#1}\par\vspace{1pt}{\color{seccolor}\hrule height 0.4pt}\vspace{2pt}}
+\makeatother
+\newcommand{\sh}[1]{\par\vspace{3pt}{\sffamily\bfseries\normalsize\color{seccolor}#1}\par\vspace{1pt}}
+\DeclareRobustCommand{\pg}[1]{\mbox{\sffamily\scriptsize\color{slate}[p.\,#1]}}          % slide page reference
+\DeclareRobustCommand{\added}{\mbox{\sffamily\scriptsize\color{samber}[added]}}             % not on the slides
+\DeclareRobustCommand{\chk}{\mbox{\sffamily\scriptsize\color{rgreen}\,[checked]}}          % number verified by script
+\newcommand{\use}[1]{\par{\itshape\small Use: #1}\par}   % when to use a formula
+
+% ---------- boxes ----------
+\tcbset{base/.style={enhanced,boxrule=0.5pt,arc=1pt,left=3pt,right=3pt,top=2pt,bottom=2pt,boxsep=0pt,
+  breakable=false,fonttitle=\sffamily\bfseries\small,coltitle=black,before skip=3pt,after skip=3pt}}
+\newtcolorbox{fbx}[1][]{base,colback=white,colframe=fblue,title={#1},colbacktitle=fbluebg,coltitle=fblue,toptitle=0.5pt,bottomtitle=0.5pt}
+\newtcolorbox{recipe}[1][]{base,colback=rgreenbg,colframe=rgreenbg,borderline west={2.4pt}{0pt}{rgreen},title={STEPS\ \ #1},colbacktitle=rgreenbg,coltitle=rgreen,toptitle=0.5pt,bottomtitle=0pt}
+\newtcolorbox{trap}[1][]{base,colback=tredbg,colframe=tred,boxrule=0.6pt,borderline={0.7pt}{0pt}{tred,dashed},frame hidden,title={TRAP #1},colbacktitle=tredbg,coltitle=tred,toptitle=0.5pt,bottomtitle=0pt}
+\newtcolorbox{worked}[1][]{base,colback=wpurplebg,colframe=wpurplebg,borderline west={1pt}{0pt}{wpurple},borderline west={1pt}{2.4pt}{wpurple},title={WORKED #1},colbacktitle=wpurplebg,coltitle=wpurple,toptitle=0.5pt,bottomtitle=0pt}
+\newtcolorbox{slideerr}[1][]{base,colback=samberbg,colframe=samber,title={SLIDE CHECK #1},colbacktitle=samberbg,coltitle=samber,toptitle=0.5pt,bottomtitle=0pt}
+\newtcolorbox{deriv}[1][]{base,colback=dgreybg,colframe=dgreybg,borderline west={1.2pt}{0pt}{dgrey},title={DERIVATION #1},colbacktitle=dgreybg,coltitle=dgrey,toptitle=0.5pt,bottomtitle=0pt}
+% premise: what you are GIVEN and what you must FIND (one line each)
+\newcommand{\premise}[3][]{\begin{tcolorbox}[base,colback=slatebg,colframe=slate,boxrule=0.4pt,left=3pt]%
+  {\sffamily\bfseries\small\color{slate}PREMISE\ifx\relax#1\relax\else\ \ #1\fi}\quad\textbf{Given:} #2\par\hspace*{4.6em}\textbf{Find:} #3\end{tcolorbox}}
+% symbols table: \begin{symbols} $q_i$ & joint angle of joint $i$ & rad \\ ... \end{symbols}
+\newenvironment{symbols}{\par\noindent{\sffamily\bfseries\scriptsize\color{slate}SYMBOLS}\par\nobreak\small\noindent\tabularx{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.17\linewidth}X>{\raggedright\arraybackslash}p{0.12\linewidth}@{}}}{\endtabularx\par}
+% alternative approaches side by side: \begin{twoway}{Approach A}{Approach B} left \tcblower right \end{twoway}
+\newtcolorbox{twoway}[2]{enhanced,breakable=false,sidebyside,sidebyside align=top seam,lefthand ratio=0.5,sidebyside gap=6pt,
+  boxrule=0.5pt,arc=1pt,colframe=alteal,colback=white,left=3pt,right=3pt,top=2pt,bottom=2pt,boxsep=0pt,before skip=3pt,after skip=3pt,
+  title={\textsc{alternative approaches}\hfill\rlap{}},fonttitle=\sffamily\bfseries\small,colbacktitle=altealbg,coltitle=alteal,toptitle=0.5pt,bottomtitle=0.5pt,
+  segmentation style={solid,alteal,line width=0.5pt},
+  before upper={{\sffamily\bfseries\small\color{alteal}#1}\par},before lower={{\sffamily\bfseries\small\color{alteal}#2}\par}}
+% exam-style question with full solution (end of each week, and the Sample Qs part)
+\newtcolorbox{examq}[1][]{base,colback=exqbg,colframe=exq,boxrule=0.8pt,title={EXAM-STYLE QUESTION\ \ #1},colbacktitle=exq,coltitle=white,toptitle=1pt,bottomtitle=1pt}
+\newcommand{\solution}{\par\vspace{2pt}{\sffamily\bfseries\small\color{exq}Solution}\par}
+\newcommand{\mk}[1]{\hfill{\sffamily\scriptsize\color{g3}[#1]}}
+\newcommand{\lookup}[2]{\textbf{#1} \dotfill\ #2\par}
+
+% ---------- figures ----------
+% \slidefig[width]{deck}{page}{trim l b r t in bp}{caption}  -- vector crop of a lecture page (use figcrop.py to get the line)
+\newcommand{\notesdir}{../dist/notes/}
+\newcommand{\slidefig}[5][\linewidth]{\par\vspace{2pt}{\centering\includegraphics[page=#3,trim={#4},clip,width=#1]{\notesdir#2.pdf}\par}%
+  {\centering\sffamily\scriptsize\color{slate}\figsrc{#2}{#3}\ifx\relax#5\relax\else\ --- #5\fi\par}\vspace{2pt}}
+\newcommand{\figsrc}[2]{[\expandafter\figdeck#1-\relax\ p.\,#2]}
+\def\figdeck#1-#2-\relax{\uppercase{#1} #2}
+% hand-drawn (TikZ) figure caption: \drawncap{caption}
+\newcommand{\drawncap}[1]{{\centering\sffamily\scriptsize\color{slate}[drawn for this booklet] #1\par}}
+
+% ---------- block diagrams (controllers) ----------
+% servo-based blocks (use measured error: k_p, k_v, k_i) = blue; model-based blocks (use the model: M, C, G, alpha, beta) = orange; plant = grey
+\tikzset{
+  blk/.style={draw,line width=0.6pt,minimum height=7mm,minimum width=10mm,inner sep=2pt,font=\small,fill=white,align=center},
+  svblk/.style={blk,draw=svcol,fill=svbg},
+  mbblk/.style={blk,draw=mbcol,fill=mbbg},
+  plant/.style={blk,draw=black,fill=g1,line width=0.9pt},
+  sumj/.style={circle,draw,line width=0.6pt,inner sep=0pt,minimum size=4.5mm,fill=white},
+  sig/.style={-{Latex[length=1.8mm,width=1.4mm]},line width=0.6pt},
+  vsig/.style={sig,double distance=0.8pt,-{Latex[length=2mm]}}, % vector signal (optional)
+  sgn/.style={font=\scriptsize,inner sep=0.5pt},
+  grpmb/.style={draw=mbcol,dashed,line width=0.6pt,rounded corners=2pt,inner sep=2.5mm},
+  grpsv/.style={draw=svcol,dashed,line width=0.6pt,rounded corners=2pt,inner sep=2.5mm},
+  grplab/.style={font=\sffamily\bfseries\scriptsize,inner sep=1pt},
+}
+\newcommand{\cdlegend}{{\sffamily\scriptsize
+  \tikz[baseline=-0.6ex]\node[svblk,minimum width=4mm,minimum height=2.5mm]{};~servo-based (feedback on the error; gains $k_p,k_v,k_i$)\quad
+  \tikz[baseline=-0.6ex]\node[mbblk,minimum width=4mm,minimum height=2.5mm]{};~model-based (uses the robot model: $\mathbf M,\mathbf C,\mathbf g,\mathbf f$, $\boldsymbol\alpha,\boldsymbol\beta$)\quad
+  \tikz[baseline=-0.6ex]\node[plant,minimum width=4mm,minimum height=2.5mm]{};~plant (the robot)}\par}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\T}{\mathbf T}
+\newcommand{\Rm}{\mathbf R}
+\newcommand{\tr}[2]{{}^{#1}\mathbf T_{#2}}
+\newcommand{\atantwo}{\operatorname{atan2}}

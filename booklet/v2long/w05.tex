@@ -1,0 +1,553 @@
+\week{W5}{Trajectory generation}{5}
+% ---- local macros (prefix wfive) ----
+% one plot panel: \wfiveP{xmax}{ymin}{ymax}{expression in \x}{label}  (units: pt, panel 36mm x 24mm)
+\newcommand{\wfiveP}[5]{\begin{tikzpicture}[x=1pt,y=1pt,every node/.style={font=\sffamily\fontsize{6}{7}\selectfont}]
+ \pgfmathsetmacro{\wfsx}{92/(#1)}\pgfmathsetmacro{\wfsy}{60/((#3)-(#2))}
+ \begin{scope}[x=\wfsx pt,y=\wfsy pt]
+  \clip (0,#2) rectangle (#1,#3);
+  \draw[g2,line width=0.3pt] (0,#2) rectangle (#1,#3);
+  \draw[g3,line width=0.3pt] (0,0)--(#1,0);
+  \draw[line width=0.8pt,samples=90,domain=0:#1] plot (\x,{#4});
+ \end{scope}
+ \draw[line width=0.3pt,g3] (0,{(#2)*\wfsy}) rectangle ({#1*\wfsx},{(#3)*\wfsy});
+ \node[anchor=east] at (-1,{(#2)*\wfsy}) {\pgfmathprintnumber{#2}};
+ \node[anchor=east] at (-1,{(#3)*\wfsy}) {\pgfmathprintnumber{#3}};
+ \node[anchor=north] at ({#1*\wfsx},{(#2)*\wfsy-1}) {\pgfmathprintnumber{#1}\,s};
+ \node[anchor=south west,font=\sffamily\fontsize{7}{8}\selectfont\bfseries,inner sep=1pt] at (0,{(#3)*\wfsy}) {#5};
+\end{tikzpicture}}
+% three panels in a row: position, velocity, acceleration
+\newcommand{\wfiveTri}[3]{\par\noindent\hspace*{3mm}#1\hfill #2\hfill #3\par}
+
+% piecewise expressions of the notebook Q2 example (five points, simple rule); \x = time in s
+\def\wfQq{ifthenelse(\x<5,10+4.8*\x*\x-0.64*\x*\x*\x,ifthenelse(\x<10,50-3.6*(\x-5)*(\x-5)+0.48*(\x-5)*(\x-5)*(\x-5),ifthenelse(\x<15,20+1.9*(\x-10)*(\x-10)-0.22*(\x-10)*(\x-10)*(\x-10),40+2.5*(\x-15)-0.4*(\x-15)*(\x-15)+0.02*(\x-15)*(\x-15)*(\x-15))))}
+\def\wfQv{ifthenelse(\x<5,9.6*\x-1.92*\x*\x,ifthenelse(\x<10,-7.2*(\x-5)+1.44*(\x-5)*(\x-5),ifthenelse(\x<15,3.8*(\x-10)-0.66*(\x-10)*(\x-10),2.5-0.8*(\x-15)+0.06*(\x-15)*(\x-15))))}
+\def\wfQa{ifthenelse(\x<5,9.6-3.84*\x,ifthenelse(\x<10,-7.2+2.88*(\x-5),ifthenelse(\x<15,3.8-1.32*(\x-10),-0.8+0.12*(\x-15))))}
+% Q8 (10,40,20 deg, T1=T2=1 s)
+\def\wfEq{ifthenelse(\x<1,10+82.5*\x*\x-52.5*\x*\x*\x,40+7.5*(\x-1)-75*(\x-1)*(\x-1)+47.5*(\x-1)*(\x-1)*(\x-1))}
+\def\wfEv{ifthenelse(\x<1,165*\x-157.5*\x*\x,7.5-150*(\x-1)+142.5*(\x-1)*(\x-1))}
+\def\wfEa{ifthenelse(\x<1,165-315*\x,-150+285*(\x-1))}
+% LSPB 120 deg in 2 s, a=300 (tB=0.2254, v=67.62)
+\def\wfLq{ifthenelse(\x<0.2254,150*\x*\x,ifthenelse(\x<1.7746,67.62*(\x-0.1127),120-150*(2-\x)*(2-\x)))}
+\def\wfLv{ifthenelse(\x<0.2254,300*\x,ifthenelse(\x<1.7746,67.62,300*(2-\x)))}
+\def\wfLa{ifthenelse(\x<0.2254,300,ifthenelse(\x<1.7746,0,-300))}
+% LSPB 10->70 deg in 3 s, a=30 (tB=1, v=30)
+\def\wfMq{ifthenelse(\x<1,10+15*\x*\x,ifthenelse(\x<2,25+30*(\x-1),70-15*(3-\x)*(3-\x)))}
+\def\wfMv{ifthenelse(\x<1,30*\x,ifthenelse(\x<2,30,30*(3-\x)))}
+\def\wfMa{ifthenelse(\x<1,30,ifthenelse(\x<2,0,-30))}
+% cubic 10->50 in 2 s
+\def\wfCq{10+30*\x*\x-10*\x*\x*\x}
+
+\begin{multicols}{2}
+
+\hd{Path, trajectory, teach mode \pg{6--10}}\nopagebreak[4]
+\premise[trajectory generation]{start and goal pose of the tool $\{T\}$ (and optional via points), a duration $t_F$ \emph{or} limits on speed and acceleration}{position $q_i(t)$, velocity $\dot q_i(t)$, acceleration $\ddot q_i(t)$ of \emph{every} joint $i$, for $t_0\le t\le t_F$}
+Slide definition \pg{7}: \textbf{a trajectory is a time sequence of position (velocity and acceleration) for every degree of freedom.}
+\par\begin{tabularx}{\linewidth}{@{}>{\bfseries}p{13mm}XX@{}}\toprule
+ & Path \added & Trajectory \pg{7}\\\midrule
+ What & the curve the tool follows in space: a set of poses, \emph{no time} & the same curve \emph{with timing}: $q,\dot q,\ddot q$ against $t$\\
+ Example & straight line from A to B & line from A to B in 2\,s, starting and stopping at rest\\\bottomrule
+\end{tabularx}
+\textbf{Teach mode} \pg{9}: the operator jogs the robot (pendant, or holds the end effector); the joint positions are stored and replayed; \emph{no kinematic calculation}. Good for a repeated task. \textbf{Generated trajectory} \pg{10}: given the initial and final pose of the tool, work out the motion in between. Whatever you plan, the motors always receive \textbf{joint} positions, velocities and accelerations \pg{68}.
+
+\hd{Joint space or Cartesian space? \pg{11--14, 42--47}}\nopagebreak[4]
+\par\begin{tabularx}{\linewidth}{@{}>{\bfseries\raggedright\arraybackslash}p{15mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}\toprule
+ & Joint (configuration) space \pg{12} & Task (Cartesian) space \pg{43}\\\midrule
+ You give & IK of start and goal $\Rightarrow$ joint values; one curve $q_i(t)$ per joint & the path of $\{T\}$ in $\{S\}$ (line, ellipse, \dots) as ${}^S\mathbf T_T(t)$\\
+ Cost & cheap: IK only at the two ends & heavier: IK at every sample, then fit and resample\\
+ Tool path & not controlled, in general curved \pg{46} & the shape you asked for\\
+ Use when & free motion A$\to$B, speed matters & a prescribed path (line, ellipse), obstacles \pg{43}\\
+ Must check & joint limits at the ends & workspace, singularity and IK branch \emph{all along} the path \pg{47}\\\bottomrule
+\end{tabularx}
+\sh{Joint-space approach \pg{12--14}}\nopagebreak[4]
+Steps: (1) convert the initial and final poses to joint positions with IK; (2) generate $q_i(t)$ in between, one joint at a time. Many curves join the same two points \pg{13}, so we must choose.
+\slidefig[0.5\linewidth]{w05-lec}{13}{211 97 250 151}{many curves $q(t)$ from $q_0$ at $t_0$ to $q_F$ at $t_F$: which one?}
+\begin{fbx}[Linear interpolation \pg{14, 31}]
+\[q(t)=q_0+\frac{q_F-q_0}{t_F-t_0}\,(t-t_0),\qquad \dot q=\frac{q_F-q_0}{t_F-t_0}=\text{const}\]
+\begin{symbols}
+$q_0,\,q_F$ & start and goal joint value & rad, m\\
+$t_0,\,t_F$ & start and finish time & s\\
+\end{symbols}
+\use{simplest trajectory; but the velocity jumps from $0$ to $\dot q$ at $t_0$ (infinite acceleration) and back at $t_F$. This is why we use cubics and blends.}
+\end{fbx}
+
+\hd{Toolkit: constant-acceleration motion \added}\nopagebreak[4]
+\begin{fbx}[The three kinematics builders (from school physics)]
+\[ s=ut+\tfrac12at^2,\qquad v=u+at,\qquad v^2=u^2+2as \]
+\begin{symbols}
+$s$ & distance moved (here $\Delta q$ of a joint) & m or rad\\
+$u,\ v$ & speed at the start / at the end of the interval & per s\\
+$a$ & constant acceleration & per s$^2$\\
+$t$ & duration of the interval & s\\
+\end{symbols}
+\use{every parabolic blend. \textbf{Graph facts:} slope of the $q$--$t$ graph is the speed; slope of the speed graph is the acceleration; \textbf{area under the speed graph = distance moved}.}
+\end{fbx}
+\begin{worked}[from rest at $a$ for $t_B$]
+$u=0$: $v=at_B$ and $s=\tfrac12at_B^2$ (a triangle of area $\tfrac12 t_B\cdot v$). Braking from $v$ to $0$ at $a$ takes the same $t_B$ and covers the same $\tfrac12at_B^2$. A joint with $a=300^\circ/$s$^2$ accelerating for $0.2254$\,s reaches $67.6^\circ/$s having moved $7.62^\circ$. \chk
+\end{worked}
+
+\hd{Cubic polynomial \pg{15--16}}\nopagebreak[4]
+Order-$N$ polynomial $q(t)=\sum_{k=0}^{N}a_kt^k$ has $N{+}1$ unknowns, so it needs $N{+}1$ conditions \pg{15}. ``Start at rest, stop at the goal'' gives \textbf{4} conditions (position and velocity at both ends), so the simplest function is a \textbf{cubic}.
+\begin{fbx}[Cubic trajectory, slide notation \pg{16}, $t_0=0$]
+\[q=a_0+a_1t+a_2t^2+a_3t^3,\quad \dot q=a_1+2a_2t+3a_3t^2,\quad \ddot q=2a_2+6a_3t\]
+Conditions: $q(0)=q_0,\ \ q(t_F)=q_F,\ \ \dot q(0)=\dot q_0,\ \ \dot q(t_F)=\dot q_F$.
+\begin{symbols}
+$a_0,a_1,a_2,a_3$ & the four unknown coefficients & $a_k$ in unit/s$^k$\\
+$q_0,q_F$ & start and goal position & rad, m\\
+$\dot q_0,\dot q_F$ & start and goal velocity ($0$ for rest) & per s\\
+$t_F$ & duration (clock starts at $t=0$ at the start) & s\\
+\end{symbols}
+\use{any move that must start and stop with given positions and speeds. The slide gives $\dot q$; the $\ddot q$ line is needed for plots and acceleration checks.}
+\end{fbx}
+\begin{deriv}[of the four coefficients]
+Let $\Delta q=q_F-q_0$. \textbf{Step 1 (start, $t=0$):} $q(0)=a_0$ and $\dot q(0)=a_1$, so $a_0=q_0$, $a_1=\dot q_0$.\\
+\textbf{Step 2 (end, $t=t_F$):} substitute $a_0,a_1$:
+\[ a_2t_F^2+a_3t_F^3=\Delta q-\dot q_0t_F \quad(i),\qquad 2a_2t_F+3a_3t_F^2=\dot q_F-\dot q_0 \quad(ii)\]
+\textbf{Step 3 (eliminate $a_2$):} from (i), $a_2=(\Delta q-\dot q_0t_F-a_3t_F^3)/t_F^2$. Put it in (ii):
+\[\frac{2(\Delta q-\dot q_0t_F)}{t_F}-2a_3t_F^2+3a_3t_F^2=\dot q_F-\dot q_0
+\ \Rightarrow\ a_3t_F^2=(\dot q_F+\dot q_0)-\frac{2\Delta q}{t_F}\]
+\textbf{Step 4:} divide by $t_F^2$ for $a_3$; back-substitute for $a_2$:
+\[\boxed{a_3=\frac{-2\Delta q+(\dot q_0+\dot q_F)t_F}{t_F^3}},\qquad
+\boxed{a_2=\frac{3\Delta q-(2\dot q_0+\dot q_F)t_F}{t_F^2}}\]
+Rest to rest ($\dot q_0=\dot q_F=0$): $a_2=3\Delta q/t_F^2$, $a_3=-2\Delta q/t_F^3$. \chk
+\end{deriv}
+\begin{fbx}[Matrix form (the 4 conditions written as $\mathbf M\mathbf a=\mathbf b$) \pg{16}, notebook]
+\[\underbrace{\begin{bmatrix}1&0&0&0\\1&t_F&t_F^2&t_F^3\\0&1&0&0\\0&1&2t_F&3t_F^2\end{bmatrix}}_{\mathbf M}
+\begin{bmatrix}a_0\\a_1\\a_2\\a_3\end{bmatrix}=\begin{bmatrix}q_0\\q_F\\\dot q_0\\\dot q_F\end{bmatrix},\qquad
+\mathbf M^{-1}=\begin{bmatrix}1&0&0&0\\0&0&1&0\\-\frac3{t_F^2}&\frac3{t_F^2}&-\frac2{t_F}&-\frac1{t_F}\\[1mm]\frac2{t_F^3}&-\frac2{t_F^3}&\frac1{t_F^2}&\frac1{t_F^2}\end{bmatrix}\]
+Rows of $\mathbf M$ in order: $q(0)$, $q(t_F)$, $\dot q(0)$, $\dot q(t_F)$. $\mathbf a=\mathbf M^{-1}\mathbf b$ reproduces the closed forms above. \chk
+\use{if you forget the closed forms, write $\mathbf M$ from the four conditions and solve the $2\times2$ system; it is the same algebra.}
+\end{fbx}
+\begin{fbx}[Start time $t_0\neq0$ (added)]
+Use a local clock $\tau=t-t_0\in[0,T]$ with $T=t_F-t_0$: $q(t)=a_0+a_1\tau+a_2\tau^2+a_3\tau^3$ and the coefficient formulas above with $t_F\to T$.
+\use{via-point segments (each on its own clock) and any move that does not start at $t=0$. Example: $10^\circ\to50^\circ$ from $t_0=1$ to $t_F=3$ has $T=2$ and the same coefficients $(10,0,30,-10)$; $q(t{=}2)=30^\circ$. \chk}
+\end{fbx}
+\begin{recipe}[Cubic between two points]
+\begin{enumerate}
+\item List the four conditions with units (rest $\Rightarrow\dot q=0$); set the clock so the move starts at $\tau=0$; $T=t_F-t_0$.
+\item $a_0=q_0$, $a_1=\dot q_0$.
+\item $a_2$ and $a_3$ from the boxed formulas (note $T^2$ and $T^3$ in the denominators).
+\item Write $q$, $\dot q$, $\ddot q$ with numbers.
+\item Check $q(T)=q_F$ and $\dot q(T)=\dot q_F$.
+\item Peak speed (rest to rest): $1.5\,\Delta q/T$ at $T/2$; end accelerations $\pm6\Delta q/T^2$.
+\end{enumerate}
+\end{recipe}
+\begin{trap}
+$a_3$ divides by $T^3$, not $T^2$ (20$^\circ\to$80$^\circ$ in 3\,s: $a_3=-2(60)/27=-4.44$, not $-13.3$). Units of $a_k$ are unit/s$^k$. Degrees or radians, but not mixed. A cubic does \emph{not} start or stop with zero acceleration: $\ddot q=\pm6\Delta q/T^2$ at the ends.
+\end{trap}
+
+\hd{Worked example: rest-to-rest cubic \pg{17--19}}\nopagebreak[4]
+\begin{worked}[slide pp.\,17--18: $10^\circ\to50^\circ$ in 2\,s, at rest at both ends]
+Conditions: $q(0)=10^\circ$, $q(2)=50^\circ$, $\dot q(0)=\dot q(2)=0$. $\Delta q=40^\circ$, $t_F=2$.\\
+$a_0=10,\ a_1=0,\ a_2=\dfrac{3(40)}{2^2}=30,\ a_3=\dfrac{-2(40)}{2^3}=-10$.
+\[q=10+30t^2-10t^3\ [^\circ],\quad \dot q=60t-30t^2\ [^\circ/\text{s}],\quad \ddot q=60-60t\ [^\circ/\text{s}^2]\]
+Check: $q(2)=10+120-80=50$ \checkmark; $\dot q(2)=120-120=0$ \checkmark. Peak speed $\dot q(1)=30^\circ$/s $=1.5\Delta q/T$; $\ddot q$ runs from $+60$ to $-60$. \chk
+\end{worked}
+\slidefig{w05-lec}{19}{29 86 29 151}{slide plots of this cubic: position (10 to 50), velocity (peak 30 at 1\,s), acceleration (60 to $-60$)}
+\begin{worked}[extra: non-zero final speed, $20^\circ\to80^\circ$ in 3\,s, $\dot q_F=10^\circ$/s]
+$\Delta q=60$: $a_2=\dfrac{3(60)-(0+10)(3)}{9}=16.667$, $a_3=\dfrac{-120+(0+10)(3)}{27}=-3.333$. $q(3)=20+150-90=80$ \checkmark, $\dot q(3)=100-90=10$ \checkmark. \chk
+\end{worked}
+\sh{More than one joint \pg{20}, notebook Q1}\nopagebreak[4]
+Each joint gets its \emph{own} cubic with the \emph{same} $t_0,t_F$ (``multi-axis'' trajectory), so all joints start and stop together. Example $\Delta q=(40,90,-20)^\circ$, $T=2$: $a_2=(30,67.5,-15)$, $a_3=(-10,-22.5,5)$, peak speeds $(30,67.5,-15)^\circ$/s at $t=1$\,s. \chk
+
+
+\hd{Via points \pg{21--28}}\nopagebreak[4]
+A \textbf{via point} is an extra point the robot must pass on the way to the goal \pg{21}, e.g. $\{T\}_{via}$ between $\{T\}_{start}$ and $\{T\}_{final}$.
+\premise[via points]{points $q_k$ at times $t_k$ ($k=0,\dots,n$), end velocities (usually $0$)}{a cubic $q_k(t)$ for every segment $t_k\to t_{k+1}$, each on its own clock $\tau\in[0,T_k]$}
+\textbf{Idea \pg{23}:} a cubic between each pair of adjacent points. A cubic needs a velocity at both ends, so every via point needs a velocity \pg{24}. If each cubic is rest-to-rest the robot stops at every point: smooth, but wasteful \pg{25}. Three options \pg{26}:
+\begin{enumerate}
+\item the user specifies the via velocities;
+\item the system computes them with a simple formula (in joint or task space);
+\item the system chooses them so that the \textbf{acceleration is continuous}.
+\end{enumerate}
+\begin{fbx}[Option 2: the simple rule \pg{27}]
+Chord slope of segment $k$: $\;s_k=\dfrac{q_{k+1}-q_k}{t_{k+1}-t_k}$. At a via point between segments $k{-}1$ and $k$:
+\[\dot q_k=\begin{cases}0 & s_{k-1}s_k\le0\ \ (\text{slope changes sign})\\[1mm] \tfrac12\,(s_{k-1}+s_k) & \text{same sign (average of the two slopes)}\end{cases}\]
+Start and end: $\dot q=0$ (the figure on p.\,27 shows this; state it as an assumption).
+\begin{symbols}
+$s_k$ & chord slope = average speed on segment $k$ & per s\\
+$\dot q_k$ & speed prescribed at point $k$ & per s\\
+\end{symbols}
+\use{``apply the slide rule to these points''. Gives continuous $q$ and $\dot q$; the acceleration can jump.}
+\end{fbx}
+\slidefig[0.7\linewidth]{w05-lec}{27}{173 97 230 178}{red tangents: zero speed at $q_0,q_A,q_B,q_F$ (slope changes sign), sloped tangent at $q_C$ (average); green cubic $q_B\to q_C$}
+\begin{recipe}[Via points with the simple rule]
+\begin{enumerate}
+\item Tabulate $(t_k,q_k)$; segment times $T_k=t_{k+1}-t_k$, $\Delta_k=q_{k+1}-q_k$.
+\item Slopes $s_k=\Delta_k/T_k$.
+\item Via speeds by the rule; end speeds $0$.
+\item Each segment: cubic with $(q_0,q_F,\dot q_0,\dot q_F)=(q_k,q_{k+1},\dot q_k,\dot q_{k+1})$ on its own clock.
+\item Check $q_k(T_k)=q_{k+1}$ and equal speeds at each join.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[notebook Q2: $q=10,50,20,40,45^\circ$ at $t=0,5,10,15,20$\,s]
+Slopes $s=(+8,-6,+4,+1)^\circ$/s. At $q_A$ and $q_B$ the sign changes, so $0$; at $q_C$ both slopes are positive: $\tfrac12(4+1)=2.5$. Speeds $(0,0,0,2.5,0)$. Each $T_k=5$. Last segment: $\Delta=5$, $\dot q_0=2.5$, $\dot q_F=0$: $a_2=\dfrac{15-(5)(5)}{25}=-0.4$, $a_3=\dfrac{-10+2.5(5)}{125}=0.02$.\\
+\begin{tabular}{@{}lrrrr@{}}\toprule segment&$a_0$&$a_1$&$a_2$&$a_3$\\\midrule
+$q_0\to q_A$&10&0&4.8&$-0.64$\\$q_A\to q_B$&50&0&$-3.6$&0.48\\$q_B\to q_C$&20&0&1.9&$-0.22$\\$q_C\to q_F$&40&2.5&$-0.4$&0.02\\\bottomrule\end{tabular}\\
+Check: last segment $q(5)=40+12.5-10+2.5=45$ \checkmark. Acceleration jump at the joins (after $-$ before): $+2.4,\,-3.4,\,+2.0^\circ$/s$^2$: the rule keeps $q,\dot q$ continuous only. \chk
+\end{worked}
+\wfiveTri{\wfiveP{20}{10}{50}{\wfQq}{$q$ [$^\circ$]}}{\wfiveP{20}{-10}{12}{\wfQv}{$\dot q$ [$^\circ$/s]}}{\wfiveP{20}{-10}{10}{\wfQa}{$\ddot q$ [$^\circ$/s$^2$]}}
+\drawncap{notebook Q2: $q,\dot q,\ddot q$ plotted from the table above; $\ddot q$ jumps at $5,10,15$\,s}
+\sh{What is continuous? (added)}\nopagebreak[4]
+\par\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xccc@{}}\toprule
+ scheme & $q$ & $\dot q$ & $\ddot q$\\\midrule
+ one cubic, rest to rest & yes & yes (0 at ends) & no: $\pm6\Delta q/T^2$ at ends\\
+ cubics + simple rule & yes & yes & no: jumps\\
+ two cubics, option 3 & yes & yes & \textbf{yes}\\
+ quintic (0 end acc.) & yes & yes & yes\\
+ LSPB (below) & yes & yes & no: steps $0\leftrightarrow\pm a$\\\bottomrule
+\end{tabularx}
+
+\sh{Option 3: continuous acceleration \pg{28}, notebook Q3, W13 Q8}\nopagebreak[4]
+Slide p.\,28: ``single via point; given $q_0,q_{via},q_F$, $\dot q_0=\dot q_F=0$ and a constant acceleration $a_{via}$''. \textbf{Read ``constant'' as ``continuous'': $\ddot q_1=\ddot q_2$ at the via point} (W13 Q8 says ``continuous acceleration''). Prescribing a value $a_{via}$ as well would be a 9th condition on 8 unknowns.
+\premise[Q8]{$\theta_0,\theta_v,\theta_g$; start and end at rest; segment times $t_v$ (first) and $t_F$ (second), each on its own clock}{the two cubics $\theta_1(t)=a_0{+}a_1t{+}a_2t^2{+}a_3t^3$, $\theta_2(t)=b_0{+}b_1t{+}b_2t^2{+}b_3t^3$ (slide W13 p.\,18 notation)}
+\begin{fbx}[The eight conditions for eight unknowns $(a_0..a_3,b_0..b_3)$]
+\par\begin{tabularx}{\linewidth}{@{}rlrl@{}}
+1&$\theta_1(0)=\theta_0$&5&$\theta_2(t_F)=\theta_g$\\
+2&$\dot\theta_1(0)=0$&6&$\dot\theta_2(t_F)=0$\\
+3&$\theta_1(t_v)=\theta_v$&7&$\dot\theta_1(t_v)=\dot\theta_2(0)$ (speed continuous)\\
+4&$\theta_2(0)=\theta_v$&8&$\ddot\theta_1(t_v)=\ddot\theta_2(0)$ (acceleration continuous)\\
+\end{tabularx}
+Slide W13 p.\,18 lists conditions 1, 3, 4, 5, 8; 2, 6, 7 are the rest and speed conditions that complete the count.
+\end{fbx}
+\begin{twoway}{A. Brute force}{B. Via-speed shortcut (faster)}
+Write 8 linear equations in $a_k,b_k$, e.g. $a_0=\theta_0$, $a_1=0$, $b_0=\theta_v$ from 1, 2, 4; five remain in $a_2,a_3,b_1,b_2,b_3$. Solve by substitution.
+\tcblower
+Call the unknown via speed $w=\dot\theta_1(t_v)=\dot\theta_2(0)$ (condition 7 holds by construction). Each segment is then an ordinary cubic with known end speeds; only condition 8 is left, and it fixes $w$.
+\end{twoway}
+\begin{deriv}[of the via speed $w$ and the coefficients, durations $T_1=t_v$, $T_2=t_F$]
+Let $d_1=\theta_v-\theta_0$ and $d_2=\theta_g-\theta_v$.\\
+\textbf{Segment 1} (end speeds $0$ and $w$; use the cubic formulas with $\dot q_0=0$, $\dot q_F=w$):
+\[a_0=\theta_0,\ a_1=0,\ a_2=\frac{3d_1-wT_1}{T_1^2},\ a_3=\frac{-2d_1+wT_1}{T_1^3}\]
+\textbf{Segment 2} (end speeds $w$ and $0$):
+\[b_0=\theta_v,\ b_1=w,\ b_2=\frac{3d_2-2wT_2}{T_2^2},\ b_3=\frac{-2d_2+wT_2}{T_2^3}\]
+\textbf{Condition 8.} $\ddot\theta_1(T_1)=2a_2+6a_3T_1=\dfrac{6d_1-2wT_1-12d_1+6wT_1}{T_1^2}=\dfrac{-6d_1+4wT_1}{T_1^2}$ and $\ddot\theta_2(0)=2b_2=\dfrac{6d_2-4wT_2}{T_2^2}$. Equate:
+\[4w\Big(\frac1{T_1}+\frac1{T_2}\Big)=6\Big(\frac{d_1}{T_1^2}+\frac{d_2}{T_2^2}\Big)\ \Rightarrow\
+\boxed{w=\frac{3\,[\,T_1^2d_2+T_2^2d_1\,]}{2T_1T_2(T_1+T_2)}}\]
+\textbf{Equal durations} $T_1=T_2=t_f$: $\boxed{w=\dfrac{3(\theta_g-\theta_0)}{4t_f}}$, independent of $\theta_v$. \chk
+\end{deriv}
+\begin{fbx}[W13 Q8 answer, $T_1=T_2=t_f$ (symbolic)]
+\[\begin{aligned}
+a_0&=\theta_0, & a_1&=0, & a_2&=\frac{12\theta_v-3\theta_g-9\theta_0}{4t_f^2}, & a_3&=\frac{-8\theta_v+3\theta_g+5\theta_0}{4t_f^3},\\
+b_0&=\theta_v, & b_1&=\frac{3(\theta_g-\theta_0)}{4t_f}, & b_2&=\frac{-12\theta_v+6\theta_g+6\theta_0}{4t_f^2}, & b_3&=\frac{8\theta_v-5\theta_g-3\theta_0}{4t_f^3}\end{aligned}\]
+Shared acceleration at the via point: $\ddot\theta=3(\theta_0+\theta_g-2\theta_v)/t_f^2$. \chk (sympy solves the $8\times8$ system and matches)
+\end{fbx}
+\begin{worked}[numbers: $\theta=10^\circ,40^\circ,20^\circ$; durations $1$\,s]
+$w=3(10)/4=7.5^\circ$/s. Segment 1: $10+0t+82.5t^2-52.5t^3$; segment 2: $40+7.5t-75t^2+47.5t^3$. Checks: $\theta_1(1)=40$ \checkmark, $\dot\theta_1(1)=165-157.5=7.5=b_1$ \checkmark, $\ddot\theta_1(1)=165-315=-150=2b_2$ \checkmark, $\theta_2(1)=40+7.5-75+47.5=20$ \checkmark, $\dot\theta_2(1)=7.5-150+142.5=0$ \checkmark. \chk\\
+Unequal times $T_1=1,T_2=2$: $w=3[1(-20)+4(30)]/(2\cdot1\cdot2\cdot3)=25^\circ$/s; segment 1: $10+65t^2-35t^3$; segment 2: $40+25t-40t^2+11.25t^3$; shared $\ddot\theta=-80$. \chk
+\end{worked}
+\wfiveTri{\wfiveP{2}{10}{45}{\wfEq}{$\theta$ [$^\circ$]}}{\wfiveP{2}{-40}{50}{\wfEv}{$\dot\theta$ [$^\circ$/s]}}{\wfiveP{2}{-160}{180}{\wfEa}{$\ddot\theta$ [$^\circ$/s$^2$]}}
+\drawncap{Q8 numbers, two cubics ($t=0$ to $1$ s segment 1, $1$ to $2$ s segment 2): the acceleration is a single straight line through the via point; the speed has a smooth minimum after it}
+\slidefig[0.55\linewidth]{w05-lec}{28}{58 65 288 308}{the lecturer's sketch: two cubics meeting at $q_{via}$; $\dot q_{via}$ circled as the unknown}
+\begin{recipe}[Two cubics through a via point, continuous acceleration]
+\begin{enumerate}
+\item Write $\theta_1,\theta_2$ on their own clocks; list the 8 conditions (most marks are here).
+\item $a_0=\theta_0$, $a_1=0$, $b_0=\theta_v$.
+\item Call the via speed $w$; write both cubics with end speeds $(0,w)$ and $(w,0)$.
+\item Equate $\ddot\theta_1(T_1)=\ddot\theta_2(0)$; solve $w$.
+\item Substitute $w$; check positions $\theta_1(T_1)=\theta_v$, $\theta_2(T_2)=\theta_g$ and equal accelerations.
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[Many via points: spline (added)]
+For $n{+}1$ points with $h_i=t_{i+1}-t_i$, chord slopes $s_i$, and end speeds $0$, the interior speeds $w_i$ satisfy
+\[\frac{w_{i-1}}{h_{i-1}}+2\Big(\frac1{h_{i-1}}+\frac1{h_i}\Big)w_i+\frac{w_{i+1}}{h_i}=3\Big(\frac{s_{i-1}}{h_{i-1}}+\frac{s_i}{h_i}\Big)\]
+For the Q2 data this gives $0,2.304,-3.214,4.554,0^\circ$/s (the simple rule gave $0,0,0,2.5,0$). For one via point it reduces to $w=3(s_1+s_2)/4$ with equal times. \chk
+\use{only if asked for continuous acceleration through \emph{many} points; with 8 conditions you solve it by hand for one via point.}
+\end{fbx}
+
+\hd{Quintic, time scaling, why not polynomials \pg{29--30}}\nopagebreak[4]
+\begin{fbx}[Quintic \pg{29}]
+\[q=a_0+a_1t+\dots+a_5t^5,\quad \dot q=a_1+2a_2t+3a_3t^2+4a_4t^3+5a_5t^4,\quad \ddot q=2a_2+6a_3t+12a_4t^2+20a_5t^3\]
+6 unknowns need 6 conditions: $q,\dot q,\ddot q$ at $t=0$ and at $t_F$.
+\[\begin{bmatrix}1&0&0&0&0&0\\1&t_F&t_F^2&t_F^3&t_F^4&t_F^5\\0&1&0&0&0&0\\0&1&2t_F&3t_F^2&4t_F^3&5t_F^4\\0&0&2&0&0&0\\0&0&2&6t_F&12t_F^2&20t_F^3\end{bmatrix}\!\begin{bmatrix}a_0\\a_1\\a_2\\a_3\\a_4\\a_5\end{bmatrix}=\begin{bmatrix}q_0\\q_F\\\dot q_0\\\dot q_F\\\ddot q_0\\\ddot q_F\end{bmatrix}\]
+\use{when acceleration must be continuous at the start and stop (less jerk). Linear: 2 conditions, cubic 4, quintic 6.}
+\end{fbx}
+\begin{deriv}[rest to rest, zero end accelerations: closed form \added]
+$a_0=q_0$; $\dot q(0)=0\Rightarrow a_1=0$; $\ddot q(0)=0\Rightarrow a_2=0$. With $u=t_F$ and $\Delta=q_F-q_0$ the end conditions are
+\[a_3u^3+a_4u^4+a_5u^5=\Delta,\quad 3a_3u^2+4a_4u^3+5a_5u^4=0,\quad 6a_3u+12a_4u^2+20a_5u^3=0.\]
+From the third: $a_3=-2a_4u-\tfrac{10}3a_5u^2$. In the second: $-2a_4u^3-5a_5u^4=0\Rightarrow a_4=-\tfrac52a_5u$, so $a_3=\tfrac53a_5u^2$. In the first: $a_5u^5(\tfrac53-\tfrac52+1)=a_5u^5/6=\Delta$.
+\[\boxed{a_3=\frac{10\Delta}{t_F^3},\quad a_4=-\frac{15\Delta}{t_F^4},\quad a_5=\frac{6\Delta}{t_F^5}}\]
+Peak speed $\tfrac{15}{8}\Delta/t_F=1.875\,\Delta/t_F$ at $t_F/2$; peak $|\ddot q|=\tfrac{10}{\sqrt3}\Delta/t_F^2\approx5.77\Delta/t_F^2$ at $t=\tfrac12(1\mp\tfrac1{\sqrt3})t_F$. \chk
+\end{deriv}
+\begin{worked}[$0\to15^\circ$ in 1\,s]
+Quintic $(a_3,a_4,a_5)=(150,-225,90)$: $q(1)=15$, $\dot q(1)=450-900+450=0$, $\ddot q(1)=900-2700+1800=0$ \checkmark; peak $28.125^\circ$/s. Cubic: peak $22.5^\circ$/s, end accelerations $\pm90$. \chk
+\end{worked}
+\begin{fbx}[Time scaling: one shape for every joint (added)]
+\[q(t)=q_0+\Delta q\;s(\tau),\qquad \tau=\frac{t-t_0}{T}\in[0,1]\]
+\[s_{lin}=\tau,\qquad s_{cubic}=3\tau^2-2\tau^3,\qquad s_{quintic}=10\tau^3-15\tau^4+6\tau^5\]
+\begin{symbols}
+$s(\tau)$ & dimensionless progress, $s(0)=0$, $s(1)=1$ & --\\
+$\tau$ & normalised time & --\\
+$T$ & duration $t_F-t_0$ & s\\
+\end{symbols}
+\use{if all joints use the same $s(\tau)$ they finish together and the joint-space path is a straight line in $\mathbf q$-space, traversed with a smooth speed. $s_{cubic}$ reproduces $a_2=3\Delta q/T^2$, $a_3=-2\Delta q/T^3$.}
+\end{fbx}
+\slidefig[0.45\linewidth]{w05-lec}{30}{38 173 518 119}{slide p.\,30 (lecturer's sketch): a polynomial's velocity is a hump, a trapezoid holds near-peak speed}
+\begin{center}
+\begin{tikzpicture}[x=108pt,y=44pt,every node/.style={font=\sffamily\fontsize{6.5}{7.5}\selectfont}]
+\draw[g2,line width=0.3pt] (0,0) rectangle (1,1.9);
+\draw[g3,dashed,line width=0.4pt] (0,1)--(1,1) node[right] {mean};
+\draw[line width=0.9pt,domain=0:1,samples=60] plot (\x,{6*\x*(1-\x)});
+\draw[line width=0.9pt,densely dashed,domain=0:1,samples=80] plot (\x,{30*\x*\x*(1-\x)*(1-\x)});
+\draw[line width=0.9pt,dotted] plot[domain=0:1,samples=100] (\x,{ifthenelse(\x<0.14645,8*\x,ifthenelse(\x<0.85355,1.17157,8*(1-\x)))});
+\node[anchor=east] at (0,1.875) {1.875}; \node[anchor=east] at (0,1.5) {1.5}; \node[anchor=east] at (0,1.17) {1.17}; \node[anchor=east] at (0,1) {1}; \node[anchor=east] at (0,0) {0};
+\node[anchor=north east] at (1,0) {$t/T$};
+\node[anchor=north west] at (-0.08,-0.22) {solid: cubic (1.5)\quad dashed: quintic (1.875)\quad dotted: LSPB, $a=2a_{min}$ (1.17)};
+\end{tikzpicture}
+\end{center}
+\drawncap{speed $\dot q/(\Delta q/T)$ against $t/T$ for the same move: the trapezoid (LSPB) has the lowest peak, the quintic the highest}
+\par\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xcccc@{}}\toprule
+ & linear & cubic & quintic & LSPB ($a{=}2a_{min}$)\\\midrule
+ conditions & 2 & 4 & 6 & 3 phases\\
+ peak speed $/(\Delta q/T)$ & 1 & 1.5 & 1.875 & 1.17\\
+ mean / peak speed & 100\,\% & 66.7\,\% & 53.3\,\% & 85.4\,\%\\
+ acceleration at ends & $\infty$ & $\pm6\Delta q/T^2$ & 0 & $\pm a=\pm8\Delta q/T^2$\\\bottomrule
+\end{tabularx}
+\textbf{Why polynomials are inefficient \pg{30}:} the speed is a hump that touches its peak for an instant, so for the same $\Delta q$ and $T$ it needs a higher peak speed (motor limit) than a trapezoid, which holds a constant speed. \chk
+
+\hd{Linear segment with parabolic blends (LSPB) \pg{31--37}}\nopagebreak[4]
+\textbf{Problem with a straight line} \pg{31}: its speed is constant, so starting and stopping needs infinite acceleration. \textbf{Fix} \pg{32}: blend with a parabola at each end; $t_B$ is the duration for which blending is applied. Three phases: speed up at $+a$ for $t_B$, coast at $v$, slow down at $-a$ for $t_B$. The speed graph is a \textbf{trapezoid}.
+\premise[LSPB]{$\Delta q=q_F-q_0$, duration $t_F$ ($t_0=0$), blend acceleration magnitude $a$ (motor limit)}{blend time $t_B$, coast speed $v$, and $q(t)$ in the three phases}
+\slidefig{w05-lec}{33}{19 119 19 38}{slide pp.\,33--34: $q(t)$ (parabola, line, parabola), $\dot q$ (trapezoid, $v$ on the plateau), $\ddot q$ ($+a$, 0, $-a$) and the three position equations}
+\begin{fbx}[Slide equations \pg{33--34}, $t_0=0$]
+\[q_{B1}=q_0+\tfrac12at_B^2,\qquad q_{B2}=q_{B1}+v(t_F-2t_B),\qquad q_F=q_{B2}+vt_B-\tfrac12at_B^2,\qquad t_B=\frac va\]
+\begin{symbols}
+$q_{B1}$ & position at the end of the first blend ($t=t_B$) & rad, deg\\
+$q_{B2}$ & position at the start of the last blend ($t=t_F-t_B$) & rad, deg\\
+$v$ & coast speed (plateau of the trapezoid) & per s\\
+$a$ & blend acceleration, magnitude ($a>0$ if $q_F>q_0$; use $-a$ if $q_F<q_0$) & per s$^2$\\
+$t_B$ & duration of each blend & s\\
+\end{symbols}
+The slide writes $q_{B1}=q_0+a(t_B-t_0)^2/2$; with $t_0=0$ this is the first equation. Eq.\,1 and 3 are second-order in time, eq.\,2 is linear in time.
+\end{fbx}
+\begin{deriv}[blend time $t_B$ and the existence condition \pg{36}]
+\textbf{Area method.} The distance moved is the area under the speed graph, a trapezoid of height $v$ with parallel sides $t_F$ and $t_F-2t_B$:
+\[\Delta q=\tfrac12\big[t_F+(t_F-2t_B)\big]v=v\,(t_F-t_B).\]
+\textbf{Slide method.} Add the three equations: $q_F=q_0+\tfrac12at_B^2+v(t_F-2t_B)+vt_B-\tfrac12at_B^2=q_0+v(t_F-t_B)$, the same result. Put $v=at_B$:
+\[a\,t_B(t_F-t_B)=\Delta q\ \Rightarrow\ \boxed{a\,t_B^2-a\,t_F\,t_B+\Delta q=0}\ \ \pg{36}\]
+\textbf{Solve:}
+\[t_B=\frac{t_F}2\pm\frac{\sqrt{a^2t_F^2-4a\,\Delta q}}{2a}\]
+The root must be real: $a^2t_F^2-4a\Delta q\ge0\iff\boxed{a\ge\dfrac{4\,\Delta q}{t_F^2}}$ (slide: non-strict). The two blends cannot overlap, $2t_B\le t_F$, so take the \textbf{minus} sign (the plus root is $>t_F/2$). At equality $t_B=t_F/2$: no coast, a triangle with peak $v=2\Delta q/t_F$.\\
+\textbf{If $v$ is given instead} (toolbox \texttt{trapezoidal}): $t_B=t_F-\Delta q/v$ and $a=v/t_B$, which needs $\dfrac{\Delta q}{t_F}<v\le\dfrac{2\Delta q}{t_F}$. \chk
+\end{deriv}
+\begin{fbx}[The three segments as functions of time, $t_0=0$ \added]
+\[\begin{array}{llll}
+0\le t\le t_B: & q=q_0+\tfrac12at^2, & \dot q=at, & \ddot q=+a\\[1mm]
+t_B\le t\le t_F-t_B: & q=q_0+v\,(t-\tfrac12t_B), & \dot q=v, & \ddot q=0\\[1mm]
+t_F-t_B\le t\le t_F: & q=q_F-\tfrac12a\,(t_F-t)^2, & \dot q=a\,(t_F-t), & \ddot q=-a
+\end{array}\]
+\use{plotting, and finding $q$ at a given $t$. Check continuity at $t_B$: $\tfrac12at_B^2=v t_B/2$ \checkmark. The speed is continuous everywhere, the acceleration is not.}
+\end{fbx}
+\begin{recipe}[LSPB, given $\Delta q$, $t_F$, $a$]
+\begin{enumerate}
+\item List $\Delta q$, $t_0=0$, $t_F$, $a$ (units).
+\item Existence: compute $4\Delta q/t_F^2$; need $a\ge$ it, else ``not possible: larger $a$ or longer $t_F$''.
+\item $t_B=\tfrac{t_F}2-\sqrt{a^2t_F^2-4a\Delta q}\,/(2a)$.
+\item $v=a\,t_B$; coast time $t_F-2t_B$.
+\item Check: $v(t_F-t_B)=\Delta q$. Positions $q_{B1}=q_0+\tfrac12at_B^2$, $q_{B2}=q_F-\tfrac12at_B^2$.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[slide p.\,37: $120^\circ$ in 2\,s, $a=300^\circ/$s$^2$, find the coast speed]
+Given $q_F-q_0=120$, $t_0=0$, $t_F=2$, $a=300$. \textbf{Step 1:} $4(120)/2^2=120\le300$ \checkmark. \textbf{Step 2:} $t_B=1\pm\dfrac{\sqrt{300^2\cdot4-4\cdot300\cdot120}}{600}=1\pm\dfrac{464.76}{600}=0.2254$ or $1.7746$; reject $1.7746>t_F/2$. \textbf{Step 3:} $v=at_B=300(0.2254)=67.62^\circ$/s.\\
+Check: $v(t_F-t_B)=67.62(1.7746)=120.0$ \checkmark; $q_{B1}=\tfrac12(300)(0.2254)^2=7.62^\circ$, $q_{B2}=112.38^\circ$. (The slide gives no final number.) \chk\\
+Variants: $a=120$ (minimum): $t_B=1$, $v=120$, triangle. $a=100$: discriminant $-8000<0$, impossible. $v=70$ given: $t_B=2-120/70=0.2857$\,s, $a=245^\circ$/s$^2$. $a=150$: $v=82.9$. A bigger $a$ gives a \emph{lower} coast speed (it tends to the mean $60^\circ$/s). \chk
+\end{worked}
+\wfiveTri{\wfiveP{2}{0}{120}{\wfLq}{$q$ [$^\circ$]}}{\wfiveP{2}{0}{80}{\wfLv}{$\dot q$ [$^\circ$/s]}}{\wfiveP{2}{-300}{300}{\wfLa}{$\ddot q$ [$^\circ$/s$^2$]}}
+\drawncap{slide p.\,37 example plotted from the three segment equations}
+\begin{trap}
+Strict ``$>$'' (the slide says $\ge$); taking the $+$ root ($t_B=1.7746$, $v=532$); $t_F$ instead of $t_F^2$ in the minimum $a$; reading a negative discriminant as a number; believing ``bigger $a$ gives a faster coast''; forgetting the sign of $a$ when $q_F<q_0$.
+\end{trap}
+\begin{slideerr}[slides pp.\,33--34]
+The slide's general-$t_0$ form $q_{B1}=q_0+a(t_B-t_0)^2/2$ together with $q_{B2}=q_{B1}+v(t_F-2t_B)$ and $t_B=v/a$ is only consistent for $t_0=0$ (it mixes $t_B$ as a time and as a duration). Verified: $120^\circ$ moved to $t_0=1$, $t_F=3$ with the slide's quadratic $at_B^2-a(t_F-t_0)t_B+(q_F-q_0-at_0^2/2)=0$ gives roots $2.049,-0.049$, not $0.2254$. \textbf{Use the duration $T=t_F-t_0$ and a local clock $\tau=t-t_0$.} All slide examples have $t_0=0$.
+\end{slideerr}
+\begin{fbx}[Fastest LSPB move under speed and acceleration limits \added]
+Rest to rest, $|\dot q|\le v_{max}$, $|\ddot q|\le a_{max}$: from $\Delta=v(T-t_B)$ with $t_B=v/a$, $T=\dfrac\Delta v+\dfrac va$, which is smallest for the largest allowed $v$.
+\[T_{min}=\frac{\Delta}{v_{max}}+\frac{v_{max}}{a_{max}}\ \ \text{if }\Delta\ge\frac{v_{max}^2}{a_{max}}\ (\text{trapezoid})\]
+\[T_{min}=2\sqrt{\frac{\Delta}{a_{max}}},\quad v_{peak}=\sqrt{a_{max}\Delta}\ \ \text{otherwise (triangle)}\]
+\begin{symbols}
+$\Delta$ & distance to move, $|q_F-q_0|$ & deg, rad, m\\
+$v_{max},a_{max}$ & speed and acceleration limits of the joint & per s, per s$^2$\\
+$T_{min}$ & shortest possible time & s\\
+\end{symbols}
+\use{``what is the minimum time?'' Example $v_{max}=60^\circ$/s, $a_{max}=120^\circ$/s$^2$ (switch distance $v_{max}^2/a_{max}=30^\circ$): $\Delta=90^\circ$: $T=1.5+0.5=2.0$\,s; $\Delta=20^\circ$: triangle, $T=0.816$\,s, peak $49.0^\circ$/s. A cubic with the same limits needs $T\ge\max(1.5\Delta/v_{max},\sqrt{6\Delta/a_{max}})=\max(2.25,2.12)=2.25$\,s for $90^\circ$. \chk}
+\end{fbx}
+
+\hd{Several segments with blends \pg{38--41}}\nopagebreak[4]
+\slidefig[0.75\linewidth]{w05-lec}{39}{29 97 422 151}{slide p.\,39: path through $q_i,q_j,q_k,q_l$ with blends (green) at the corners and linear parts (red)}
+Symbols \pg{39}: $t_{djk}$ total duration $q_j\to q_k$; $t_{jk}$ duration of the linear part; $t_j$ duration of the blend at $q_j$; $v_{jk}$ slope of the linear part; $a_j$ blend acceleration at $q_j$. \textbf{Given} \pg{40}: the via points $q_k$, the durations $t_{djk}$, the magnitudes $|a_j|$. \textbf{Find}: the blend times. The path passes \emph{near} the via points (a rounded corner), not through them: hitting each exactly and stopping at the ends is over-constrained. The slides refer to Craig \S7.3 for the solution and to Corke \S3.3.3 (\texttt{mstraj}) \pg{41}.
+\begin{fbx}[Blend times for a path $\theta_1,\theta_2,\dots,\theta_n$ (Craig \S7.3, textbook, not on the slides) \added]
+\textbf{First segment} (starts at rest): $\ddot\theta_1=\operatorname{sgn}(\theta_2-\theta_1)|\ddot\theta_1|$,
+\[t_1=t_{d12}-\sqrt{t_{d12}^2-\frac{2(\theta_2-\theta_1)}{\ddot\theta_1}},\qquad v_{12}=\frac{\theta_2-\theta_1}{t_{d12}-\tfrac12t_1}\]
+\textbf{Interior point $j$:} $v_{jk}=\dfrac{\theta_k-\theta_j}{t_{djk}}$, $\ddot\theta_j=\operatorname{sgn}(v_{jk}-v_{ij})|\ddot\theta_j|$, $t_j=\dfrac{v_{jk}-v_{ij}}{\ddot\theta_j}$.\\
+\textbf{Last segment} (stops at rest): $\ddot\theta_n=\operatorname{sgn}(\theta_{n-1}-\theta_n)|\ddot\theta_n|$,
+\[t_n=t_{d,n-1\,n}-\sqrt{t_{d,n-1\,n}^2+\frac{2(\theta_n-\theta_{n-1})}{\ddot\theta_n}},\qquad v_{n-1\,n}=\frac{\theta_n-\theta_{n-1}}{t_{d,n-1\,n}-\tfrac12t_n}\]
+\textbf{Linear parts:} first $t_{12}=t_{d12}-t_1-\tfrac12t_2$; interior $t_{jk}=t_{djk}-\tfrac12t_j-\tfrac12t_k$; last $t_{n-1\,n}=t_{d,n-1\,n}-\tfrac12t_{n-1}-t_n$. Corner miss $=|\ddot\theta_j|t_j^2/8$.
+\use{why these: $t_j=\Delta v/a$ is $v=u+at$; the first-segment formulas come from the area rule $\Delta\theta=v_{12}(t_{d12}-\tfrac12t_1)$ with $v_{12}=\ddot\theta_1t_1$; the corner miss is $\tfrac12a(t_j/2)^2$ from $s=\tfrac12at^2$ over half a blend.}
+\end{fbx}
+\begin{worked}[built from these formulas: $\theta=0^\circ,40^\circ,10^\circ$; $t_d=2,2$\,s; $|\ddot\theta|=50^\circ/$s$^2$ at all three]
+$t_1=2-\sqrt{4-80/50}=0.4508$\,s, $v_{12}=40/(2-0.2254)=22.54$. Last: $\ddot\theta_3=\operatorname{sgn}(40-10)\,50=+50$ (the joint moves down and must slow to rest), $t_3=2-\sqrt{4+2(10-40)/50}=2-\sqrt{2.8}=0.3267$\,s, $v_{23}=-30/(2-0.1633)=-16.33$. Interior: $\ddot\theta_2=-50$, $t_2=(-16.33-22.54)/(-50)=0.7775$\,s. Linear parts $t_{12}=2-0.4508-0.3887=1.160$\,s, $t_{23}=2-0.3887-0.3267=1.285$\,s. The path misses $40^\circ$ by $50(0.7775)^2/8=3.78^\circ$ (it reaches $36.22^\circ$). \chk
+\end{worked}
+
+\hd{Task-space trajectories \pg{42--47}}\nopagebreak[4]
+\textbf{Preferred when} \pg{43}: a specific path (straight line, ellipse) is wanted for the end effector, or obstacles must be avoided. It costs more computation than joint-based generation.
+\textbf{Frames} \pg{44--45}: $\{B\}$ base, $\{W\}$ wrist, $\{T\}$ tool, $\{S\}$ station, $\{G\}$ goal, $\{C\}$ camera. A common choice: describe the trajectory as the motion of the tool $\{T\}$ in the station frame $\{S\}$, i.e. ${}^S\mathbf T_T(t)$. Benefits: the description is decoupled from the manipulator (same description for different robots or tools), and it adapts when $\{S\}$ moves (conveyor belt). For IK use ${}^B\mathbf T_T(t)={}^B\mathbf T_S\,{}^S\mathbf T_T(t)$ \added.
+\slidefig[0.85\linewidth]{w05-lec}{46}{115 119 192 151}{slide p.\,46: linear interpolation in joint space (tool sweeps an arc) vs a straight-line path in task space (links reconfigure)}
+\textbf{Joint-linear $\neq$ Cartesian-linear.} RR arm $L_1{=}4$, $L_2{=}3$ m, tool from $(0,4.75)$ to $(4.75,0)$: joint-linear goes from $(51.07^\circ,95.83^\circ)$ to $(-38.93^\circ,95.83^\circ)$; $q_2$ stays constant, so the tool stays $4.75$\,m from the base (an arc). Its midpoint is $(3.359,3.359)$ against the straight-line midpoint $(2.375,2.375)$: $1.39$\,m off. \chk
+\sh{Three problems with Cartesian straight lines \pg{47}}\nopagebreak[4]
+\slidefig{w05-lec}{47}{19 135 10 119}{slide p.\,47: (left) the line crosses the unreachable hole near the base; (middle) it passes through a singularity; (right) A and B are reachable only in different configurations}
+\begin{recipe}[Check a Cartesian line before planning]
+\begin{enumerate}
+\item \textbf{Workspace.} Every point must satisfy $|L_1-L_2|\le r\le L_1+L_2$ (RR). Example $L_1{=}1$, $L_2{=}0.7$ (inner radius $0.3$): line $y=0.2$, $x\in[-1,1]$: ends $r=1.02$ (reachable), middle $r=0.2<0.3$ (hole). \chk
+\item \textbf{Singularity.} $\det\mathbf J=L_1L_2\sin q_2$ ($=0$ stretched or folded); joint rates $\propto1/\sin q_2$. $L_1{=}L_2{=}1$, tool at $1$\,m/s along $x$ on $y{=}0$: largest joint rate $1.15$ rad/s at $x{=}1$, $3.20$ at $1.9$, $10.0$ at $1.99$, $31.6$ at $1.999$. \chk
+\item \textbf{Configuration.} Same IK branch at A and B? If not, the arm must jump or pass a singularity.
+\end{enumerate}
+Fixes: plan in joint space around the problem, move the base or the path, or add a via point.
+\end{recipe}
+
+\hd{Task-space recipe and the planar RR example \pg{48--64}}\nopagebreak[4]
+\textbf{Given} \pg{48}: the tool trajectory in Cartesian coordinates. \textbf{Aim}: joint positions to send to the motors. \textbf{Method:} IK at every sample, fit a curve over the joint values, resample from the curve.
+\begin{recipe}[Task-space trajectory (slide steps 1--6)]
+\begin{enumerate}
+\item Formulate the path as a function ($y=mx+c$ for a line).
+\item Sample it: split $t_F$ into equal sections, get $(x_i,y_i)$.
+\item IK at every sample, \textbf{same branch} throughout.
+\item Fit a curve (cubic, or quintic if one cubic is not enough \pg{60}) to each joint's samples.
+\item Resample the fit at the controller rate (slide: 50 points).
+\item FK of the resampled joints to see the tool path actually drawn.
+\end{enumerate}
+Fit first: numerical IK output is not smooth.
+\end{recipe}
+\begin{minipage}{0.4\linewidth}
+\slidefig[0.95\linewidth]{w05-lec}{49}{67 151 576 119}{}
+\end{minipage}\hfill
+\begin{minipage}{0.58\linewidth}
+\small \textbf{Slide p.\,49:} planar RR, $L_1=4$\,m, $L_2=3$\,m; start $(0,\,L_1+0.25L_2)=(0,4.75)$, end $(4.75,0)$; constant speed $3$\,m/s; tool on a straight line. Goal: joint coordinates for the motion.
+\end{minipage}
+\par\textbf{Step 1} \pg{50--51}: line through $(0,4.75)$ and $(4.75,0)$: $y=-x+4.75$ ($m=-1$). Length $\sqrt{4.75^2+4.75^2}=4.75\sqrt2=6.7175$\,m; time $6.7175/3=2.2392$\,s.\\
+\textbf{Step 2} \pg{52--54}: constant speed $v$ along $y=mx+c$: the unit direction is $(1,m)/\sqrt{1+m^2}$, so
+\[x(t)=x_0+\frac{vt}{\sqrt{1+m^2}},\qquad y(t)=y_0+\frac{vmt}{\sqrt{1+m^2}}\ \Rightarrow\ x(t_i)=\frac{3t_i}{\sqrt2},\ \ y(t_i)=4.75-\frac{3t_i}{\sqrt2}\]
+10 sections, $t_i=i\,t_F/10=0.2239\,i$ (slide: $0.224\,i$).
+\begin{fbx}[Planar RR: FK and IK \pg{56}, week 3]
+\[x=L_1c_1+L_2c_{12},\qquad y=L_1s_1+L_2s_{12}\]
+\[\cos q_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2},\quad \sin q_2=\pm\sqrt{1-\cos^2q_2},\quad q_2=\atantwo(\sin q_2,\cos q_2)\]
+\[q_1=\atantwo(y,x)-\atantwo(L_2\sin q_2,\ L_1+L_2\cos q_2)\]
+\begin{symbols}
+$q_1$ & angle of link 1 from the $x$-axis of the base frame $\{B\}$ & rad\\
+$q_2$ & angle of link 2 relative to link 1 & rad\\
+$L_1,L_2$ & link lengths & m\\
+$(x,y)$ & tool position in $\{B\}$ & m\\
+$\pm$ & $+$: $q_2>0$ (elbow one way), $-$: mirrored arm & --\\
+\end{symbols}
+\use{step 3 of the recipe. Slide note: if the speed is not constant, get the joint velocity at each point from the Jacobian, $\dot{\mathbf q}=\mathbf J^{-1}\dot{\mathbf x}$.}
+\end{fbx}
+\textbf{Step 3} (IK, branch $q_2>0$; computed, the slide table is not transcribed):\\[1mm]
+{\small\begin{tabular}{@{}rrrrrr@{}}\toprule $i$&$t_i$ [s]&$x$ [m]&$y$ [m]&$q_1$ [$^\circ$]&$q_2$ [$^\circ$]\\\midrule
+0&0&0&4.750&51.07&95.83\\1&0.224&0.475&4.275&41.48&105.71\\2&0.448&0.950&3.800&31.44&113.73\\3&0.672&1.425&3.325&20.75&119.76\\4&0.896&1.900&2.850&9.44&123.56\\5&1.120&2.375&2.375&$-2.13$&124.86\\6&1.344&2.850&1.900&$-13.18$&123.56\\7&1.567&3.325&1.425&$-22.85$&119.76\\8&1.791&3.800&0.950&$-30.48$&113.73\\9&2.015&4.275&0.475&$-35.84$&105.71\\10&2.239&4.750&0&$-38.93$&95.83\\\bottomrule\end{tabular}}\chk\\
+In radians the start is $(0.8914,1.6725)$ and the end $(-0.6794,1.6725)$. $q_2$ is symmetric because the path is symmetric about the line $y=x$.
+\par\textbf{Step 4} \pg{58--60}: fit a cubic per joint.
+\slidefig[0.65\linewidth]{w05-lec}{59}{269 76 288 162}{slide p.\,59: joint samples and cubic fits for $q_1$ (red) and $q_2$ (blue), radians}
+Fitting the samples by least squares gives $q_1=0.1346t^3-0.3375t^2-0.6182t+0.8858$ (slide $0.1347,-0.3376,-0.6181$) and $q_2=0.0000\,t^3-0.4032t^2+0.9029t+1.6674$. Largest fit error $0.46^\circ$; the \emph{fitted} tool path wanders up to $37$\,mm from the line, a quintic fit only $7.7$\,mm (\pg{60}: a single cubic may not be enough). \chk
+\begin{slideerr}[slide p.\,59]
+The slide prints $q_2=0.0004t^3-0.4043t^2+0.9036t+1.6674$. Since $q_2$ is equal at both ends and the samples are symmetric, the cubic term must vanish; a least-squares fit gives $0.0000t^3-0.4032t^2+0.9029t$. $q_1$ agrees. Likely rounding of $t_i$; the method matters, not the last digits.
+\end{slideerr}
+\textbf{Steps 5--6} \pg{61--64}: sample each fit at 50 points, then FK $x=L_1c_1+L_2c_{12}$, $y=L_1s_1+L_2s_{12}$ gives the tool path actually followed.\\
+\textbf{Notebook Q4: the other IK solution} ($q_2<0$): start $(128.93^\circ,-95.83^\circ)$, end $(38.93^\circ,-95.83^\circ)$; FK gives the \emph{same} tool path with the arm mirrored. Do not switch branch mid-path. \chk
+\begin{worked}[velocity with the Jacobian, $3$\,m/s at the midpoint $(2.375,2.375)$ ($W6$ preview)]
+$\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\end{bmatrix}$ and $\dot{\mathbf x}=(3,-3)/\sqrt2$ (direction of the line). $\det\mathbf J=L_1L_2\sin q_2=12(0.8205)=9.846$ and $\dot{\mathbf q}=\mathbf J^{-1}\dot{\mathbf x}=(-0.893,\,0)$ rad/s. Sense check: the midpoint is the point of the line nearest the base ($r=3.359$ is momentarily constant), so $\dot q_2=0$, and $\dot q_1=-3/3.359$. \chk
+\end{worked}
+\sh{Poses and summary \pg{65--68}}\nopagebreak[4]
+Interpolating a pose: positions and angles can be interpolated directly, but \textbf{translation or rotation matrices cannot be interpolated entry by entry} (the result is not a rotation matrix); use \texttt{ctraj} \pg{65}. Summary \pg{68}: start and goal are usually given in Cartesian space as the pose of $\{T\}$ with respect to $\{S\}$; the path in between may be generated in joint or task space; the motor commands are \emph{always} joint positions, velocities and accelerations.
+
+\hd{Simple scenarios (added)}\nopagebreak[4]
+\begin{worked}[RR tool on a straight line: joint angles at $t=T/2$ (slide example)]
+$L_1=4$, $L_2=3$, line from $(0,4.75)$ to $(4.75,0)$ at $3$\,m/s: $T=2.2392$\,s, $t=T/2=1.1196$\,s, point $(2.375,2.375)$ (halfway along the line).\\
+$\cos q_2=\dfrac{2(2.375)^2-25}{24}=-0.5716$, $\sin q_2=\pm0.8205$. Branch $+$: $q_2=124.86^\circ$; $q_1=\atantwo(2.375,2.375)-\atantwo(3(0.8205),\,4+3(-0.5716))=45^\circ-\atantwo(2.4616,2.2852)=45^\circ-47.13^\circ=-2.13^\circ$. Branch $-$: $(92.13^\circ,-124.86^\circ)$. FK check on branch $+$: $x=4c_1+3c_{12}=3.9972-1.6222=2.3750$, $y=4s_1+3s_{12}=-0.1486+2.5236=2.3750$ \checkmark. \chk
+\end{worked}
+
+\begin{recipe}[When does a via point need a velocity? Checking continuity]
+\begin{enumerate}
+\item A cubic needs a speed at \emph{both} ends. At a via point two cubics meet, so both must be given the \emph{same} speed there (option 1, 2 or 3).
+\item Speed $0$ means the robot stops: only choose it if the path reverses direction (slope changes sign) or the problem says stop.
+\item To \textbf{check a spline}: (a) positions at every join; (b) speeds equal at every join; (c) accelerations equal only if the question asks for it (option 3, quintic). Evaluate each cubic and its derivatives at $\tau=T_k$ and at $\tau=0$ of the next.
+\end{enumerate}
+\end{recipe}
+
+\hd{Reading map and quick answers \added}\nopagebreak[4]
+\textbf{Suggested, not from the unit:} Craig \emph{Introduction to Robotics} ch.\,7 (path generation: cubics, via points, linear with parabolic blends, Cartesian paths); Lynch \& Park ch.\,9 (time-optimal time scaling, polynomial and trapezoidal profiles); Corke \emph{Robotics, Vision and Control} \S3.3 (\texttt{jtraj}, \texttt{trapezoidal}, \texttt{mstraj}, \texttt{ctraj}), which the unit's slides cite.\\
+\textbf{Quick numbers.} Rest to rest, $\Delta q$ in $T$: cubic $a_2=3\Delta q/T^2$, $a_3=-2\Delta q/T^3$, peak $1.5\Delta q/T$; quintic peak $1.875\Delta q/T$; LSPB minimum $a=4\Delta q/T^2$ (then $t_B=T/2$, peak $2\Delta q/T$). $90^\circ$ in $1.5$\,s: $a_{min}=160^\circ$/s$^2$, $t_B=0.75$\,s, triangle peak $120^\circ$/s. \chk
+
+
+\hd{How this is examined: worked solutions}\nopagebreak[4]
+Marks are not published; the steps below are where the method marks are likely (about one per step: conditions, formula, substitution, units, check).
+
+\begin{examq}[W13 Q8, symbolic via-point cubics \mk{marks not published}]
+\slidefig{w13-lec}{18}{29 68 48 146}{W13 p.\,18: question and the lecturer's set-up (the slide's cubics are $\theta_1=a_0{+}a_1t{+}a_2t^2{+}a_3t^3$ and $\theta_2=b_0{+}b_1t{+}b_2t^2{+}b_3t^3$)}
+\solution
+\textbf{Assume} (state it): start and end at rest, each segment on its own clock, equal durations $t_f$; frames: joint angle $\theta$ in rad (or deg).\\
+\textbf{Conditions (8 for 8 unknowns):} $\theta_1(0)=\theta_0$, $\dot\theta_1(0)=0$, $\theta_1(t_f)=\theta_v$, $\theta_2(0)=\theta_v$, $\theta_2(t_f)=\theta_g$, $\dot\theta_2(t_f)=0$, $\dot\theta_1(t_f)=\dot\theta_2(0)$, $\ddot\theta_1(t_f)=\ddot\theta_2(0)$.\\
+\textbf{Step 1.} $a_0=\theta_0$, $a_1=0$, $b_0=\theta_v$. Let $w=\dot\theta_2(0)=\dot\theta_1(t_f)$.\\
+\textbf{Step 2.} Segment 1 has end speeds $(0,w)$ and $\Delta=\theta_v-\theta_0$: $a_2=\dfrac{3\Delta-wt_f}{t_f^2}$, $a_3=\dfrac{-2\Delta+wt_f}{t_f^3}$. Segment 2 has $(w,0)$ and $\Delta'=\theta_g-\theta_v$: $b_1=w$, $b_2=\dfrac{3\Delta'-2wt_f}{t_f^2}$, $b_3=\dfrac{-2\Delta'+wt_f}{t_f^3}$.\\
+\textbf{Step 3.} $\ddot\theta_1(t_f)=2a_2+6a_3t_f=\dfrac{-6\Delta+4wt_f}{t_f^2}$, $\ddot\theta_2(0)=2b_2=\dfrac{6\Delta'-4wt_f}{t_f^2}$. Equal: $8wt_f=6(\Delta+\Delta')\Rightarrow$ $\boxed{w=\dfrac{3(\theta_g-\theta_0)}{4t_f}}$.\\
+\textbf{Step 4.} Substitute $w$:
+\[\boxed{\begin{aligned}
+a_2&=\tfrac{12\theta_v-3\theta_g-9\theta_0}{4t_f^2}, & a_3&=\tfrac{-8\theta_v+3\theta_g+5\theta_0}{4t_f^3},\\
+b_1&=\tfrac{3(\theta_g-\theta_0)}{4t_f}, & b_2&=\tfrac{-12\theta_v+6\theta_g+6\theta_0}{4t_f^2},\quad b_3=\tfrac{8\theta_v-5\theta_g-3\theta_0}{4t_f^3}\end{aligned}}\]
+\textbf{Check} with $\theta=(10,40,20)^\circ$, $t_f=1$\,s: $w=7.5^\circ$/s, $\theta_1=10+82.5t^2-52.5t^3$, $\theta_2=40+7.5t-75t^2+47.5t^3$; $\theta_1(1)=40$, $\theta_2(1)=20$, $\ddot\theta_1(1)=-150=\ddot\theta_2(0)$ \checkmark. Variant $(0,40,30)^\circ$, $t_f=1$: $w=22.5$; segment 1 $97.5t^2-57.5t^3$, segment 2 $40+22.5t-75t^2+42.5t^3$; peak speed in segment 1 $55.11^\circ$/s at $t=0.565$\,s. \chk\\
+\textbf{Common slips:} one cubic for both segments; forgetting $a_1=0$; using total time instead of $t_f$ per segment; dropping the acceleration condition (then $w$ is undetermined).
+\end{examq}
+
+\begin{examq}[W13 Q9, cubic for a prismatic joint \mk{marks not published}]
+\slidefig{w13-lec}{19}{38 308 48 130}{W13 p.\,19 (question text)}
+\solution
+Prismatic joint, so $q=d$ in m. Conditions: $d(0)=0.02$, $d(0.8)=0.15$, $\dot d(0)=0$, $\dot d(0.8)=0$. $\Delta d=0.13$\,m, $t_F=0.8$\,s.\\
+$a_0=0.02$\,m, $a_1=0$, $a_2=\dfrac{3(0.13)}{0.8^2}=0.609375$\,m/s$^2$, $a_3=\dfrac{-2(0.13)}{0.8^3}=-0.5078125$\,m/s$^3$.
+\[\boxed{d(t)=0.02+0.609375\,t^2-0.5078125\,t^3\ \text{m}}\qquad \dot d=1.21875t-1.5234375t^2\ \text{m/s}\]
+Check: $d(0.8)=0.02+0.39-0.26=0.15$ \checkmark; $\dot d(0.8)=0.975-0.975=0$ \checkmark. Peak speed $1.5\Delta d/t_F=0.24375$\,m/s at $t=0.4$\,s ($d=0.085$\,m); end accelerations $\pm1.21875$\,m/s$^2$. \chk\\
+\textbf{Common slips:} $a_3$ divided by $t_F^2$; cm/m mixed; forgetting $a_0=0.02$.
+\end{examq}
+
+\begin{examq}[Via points, simple rule \mk{marks not published}]
+A joint must pass $10^\circ,30^\circ,70^\circ,80^\circ,60^\circ$ at $t=0,2,5,9,12$\,s. Use the slide rule (zero at the ends and where the chord slope changes sign, else the average of the two slopes). (a) The speed at $t=5$\,s. (b) $a_2,a_3$ of the cubic for $5\to9$\,s on its own clock. (c) The jump in acceleration at $t=5$\,s.
+\solution
+Chord slopes: $10,\ 13.333,\ 2.5,\ -6.667^\circ$/s.\\
+(a) At $t=5$ both neighbours are positive: $\dot q=\tfrac12(13.333+2.5)=7.917^\circ$/s. (At $t=2$: $11.667$; at $t=9$ the slope changes sign: $0$.)\\
+(b) Segment $5\to9$: $T=4$, $\Delta=10$, $\dot q_0=7.917$, $\dot q_F=0$: $a_0=70$, $a_1=7.917$, $a_2=\dfrac{30-(15.833)(4)}{16}=-2.0833$, $a_3=\dfrac{-20+7.917(4)}{64}=0.18229$. Check $q(4)=70+31.667-33.333+11.667=80$ \checkmark, $\dot q(4)=7.917-16.667+8.750=0$ \checkmark.\\
+(c) Segment $2\to5$ ($T=3$, $\Delta=40$, $\dot q_0=11.667$, $\dot q_F=7.917$): $a_2=2.9167$, $a_3=-0.7870$; acceleration at its end $2(2.9167)+6(-0.7870)(3)=-8.333$. Start of the next: $2a_2=-4.167$. Jump $=\boxed{4.167^\circ/\text{s}^2}$: the rule gives continuous $q,\dot q$ only. \chk
+\end{examq}
+
+\begin{examq}[LSPB: minimum acceleration, blend time, cruise speed \mk{marks not published}]
+A joint moves $75^\circ$ in $t_F=1.5$\,s with a linear segment and parabolic blends, $a=200^\circ$/s$^2$. (a) Minimum acceleration for which the move is possible. (b) Blend time and cruise speed. (c) Would $a=130^\circ$/s$^2$ work?
+\solution
+(a) $a_{min}=4\Delta q/t_F^2=4(75)/2.25=133.33^\circ$/s$^2$.\\
+(b) $200\ge133.33$ \checkmark. $a^2t_F^2-4a\Delta q=90000-60000=30000$, $\sqrt{\ }=173.21$. $t_B=0.75-\dfrac{173.21}{400}=0.317$\,s (smaller root). $v=at_B=\boxed{63.40^\circ/\text{s}}$; coast time $1.5-0.634=0.866$\,s. Check: $v(t_F-t_B)=63.40(1.183)=75.0$ \checkmark.\\
+(c) $130<133.33$: discriminant $130^2(2.25)-4(130)(75)=-975<0$, no real $t_B$: not possible in $1.5$\,s with that acceleration (larger $a$ or longer $t_F$). \chk
+\end{examq}
+
+\begin{examq}[LSPB with a sketch \mk{marks not published}]
+A joint moves from $10^\circ$ to $70^\circ$ in $3$\,s with blend acceleration $30^\circ$/s$^2$. (a) Is the acceleration large enough? (b) Blend time, linear-segment speed, angle at the end of the first blend. (c) Sketch $\theta,\dot\theta,\ddot\theta$.
+\solution
+(a) $4(60)/3^2=26.67\le30$ \checkmark.\\
+(b) $t_B=1.5-\dfrac{\sqrt{30^2\cdot9-4\cdot30\cdot60}}{60}=1.5-\dfrac{30}{60}=\boxed{1.0\ \text{s}}$; $v=30(1.0)=\boxed{30^\circ/\text{s}}$; $\theta(t_B)=10+\tfrac12(30)(1)^2=\boxed{25^\circ}$. Coast $1$\,s from $25^\circ$ to $55^\circ$; last blend $55^\circ\to70^\circ$.\\
+(c) Parabola, straight line (slope $30$), parabola; speed trapezoid $0\to30\to0$; acceleration $+30,\,0,\,-30$ (steps).
+\wfiveTri{\wfiveP{3}{10}{70}{\wfMq}{$\theta$ [$^\circ$]}}{\wfiveP{3}{0}{40}{\wfMv}{$\dot\theta$ [$^\circ$/s]}}{\wfiveP{3}{-40}{40}{\wfMa}{$\ddot\theta$ [$^\circ$/s$^2$]}}
+\drawncap{the sketch an examiner expects (axes labelled with the values $10,25,55,70$; $30$; $\pm30$ and the times $1,2,3$\,s)} \chk
+\end{examq}
+
+\begin{examq}[Planar RR tool on a circle \added\ \mk{marks not published}]
+A planar RR arm ($L_1=0.6$\,m, $L_2=0.4$\,m, base frame $\{B\}$ at the first joint) must move its tool once counter-clockwise round a circle of radius $0.2$\,m centred at $(0.5,0.3)$ in $T=4$\,s at constant speed, starting at $(0.7,0.3)$. (a) Show the path is reachable. (b) Joint angles at $t=T/2$ (branch $q_2>0$). (c) Joint speeds at $t=0$.
+\solution
+Path: $x=0.5+0.2\cos(2\pi t/4)$, $y=0.3+0.2\sin(2\pi t/4)$; speed $\omega r=(2\pi/4)(0.2)=0.314$\,m/s.\\
+(a) Distance of the centre from the base $\sqrt{0.5^2+0.3^2}=0.583$, so path points lie $0.383$ to $0.783$\,m from the base, inside $[|L_1-L_2|,\,L_1+L_2]=[0.2,\,1.0]$ \checkmark; no hole or boundary crossing.\\
+(b) $t=2$: $(0.3,0.3)$. $\cos q_2=\dfrac{0.18-0.52}{0.48}=-0.7083$, $\sin q_2=0.7059$, $q_2=135.10^\circ$. $q_1=\atantwo(0.3,0.3)-\atantwo(0.4(0.7059),\,0.6-0.4(0.7083))=45^\circ-\atantwo(0.2824,0.3167)=45^\circ-41.72^\circ=\boxed{3.28^\circ}$. Other samples ($q_2>0$): $t=0$: $(-8.21^\circ,82.82^\circ)$; $t=1$: $(10.58^\circ,92.39^\circ)$; $t=3$: $(-29.95^\circ,122.80^\circ)$.\\
+(c) At $t=0$: $\dot{\mathbf x}=(0,0.3142)$ m/s. $\mathbf J=\begin{bmatrix}-0.3000&-0.3857\\0.7000&0.1061\end{bmatrix}$ ($q_1=-8.21^\circ$, $q_{12}=74.61^\circ$), $\det\mathbf J=0.2381$ (not singular), $\dot{\mathbf q}=\mathbf J^{-1}\dot{\mathbf x}=\boxed{(0.509,\,-0.396)\ \text{rad/s}}$. \chk\\
+Check FK at $t=2$ gives $(0.3,0.3)$ \checkmark. If $\det\mathbf J\to0$ along the path (arm stretched or folded) the joint speeds would blow up.
+\end{examq}
+
+\begin{examq}[Spot the errors: via speed \mk{marks not published}]
+Two cubics join $0^\circ,40^\circ,60^\circ$ with $T_1=T_2=2$\,s, zero end speeds and continuous acceleration at the via point. A student writes: ``the via speed is $3(q_F-q_0)/(4T)$ with $T=4$\,s, so $\dot q_{via}=11.25^\circ$/s. Segment 1 is the rest-to-rest cubic $a_2=3\Delta/T^2$, $a_3=-2\Delta/T^3$.'' Find the errors and give the correct answer.
+\solution
+\textbf{Error 1:} $T$ in $w=3(q_F-q_0)/(4T)$ is the duration of \emph{each} segment ($2$\,s), not the total: $w=3(60)/(4\cdot2)=\boxed{22.5^\circ/\text{s}}$.\\
+\textbf{Error 2:} segment 1 must \emph{end} at $22.5^\circ$/s, so it is not rest-to-rest; use the general cubic with $(\dot q_0,\dot q_F)=(0,22.5)$, $\Delta=40$: $a_2=\dfrac{120-22.5(2)}{4}=18.75$, $a_3=\dfrac{-80+22.5(2)}{8}=-4.375$. Segment 2 ($22.5\to0$, $\Delta=20$): $b_1=22.5$, $b_2=-7.5$, $b_3=0.625$.\\
+Check: $q_1(2)=75-35=40$ \checkmark; $\dot q_1(2)=2(18.75)(2)+3(-4.375)(4)=75-52.5=22.5$ \checkmark; $\ddot q_1(2)=37.5-52.5=-15=2b_2$ \checkmark; $q_2(2)=40+45-30+5=60$ \checkmark. \chk
+\end{examq}
+
+\end{multicols}

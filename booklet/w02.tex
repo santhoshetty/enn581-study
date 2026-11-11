@@ -1,101 +1,256 @@
+% ---------- W2 (condensed) ----------
+\newcommand{\wtwoDH}[1]{\renewcommand{\arraystretch}{1.05}\begin{tabular}{@{}c|cccc@{}}$i$&$a_{i-1}$&$\alpha_{i-1}$&$d_i$&$\theta_i$\\\hline #1\end{tabular}}
+
 \week{W2}{Forward kinematics: frames, ETS, proximal DH}{2}
 \begin{multicols}{3}
-\hd{Homogeneous transform \pg{12}}
-\begin{fbx}[Pose of \{B\} in \{A\}]
-\[\tr AB=\begin{bmatrix}{}^A\Rm_B & {}^A\mathbf t_B\\ \mathbf 0^\top & 1\end{bmatrix},\quad {}^A\mathbf P=\tr AB\,{}^B\mathbf P,\quad \tr BA=\begin{bmatrix}\Rm^\top & -\Rm^\top\mathbf t\\ \mathbf 0^\top&1\end{bmatrix}\]
-\use{columns of $\Rm$ = B's unit axes in A; $\mathbf t$ = B's origin in A. Inverse: transpose $\Rm$, and the translation becomes $-\Rm^\top\mathbf t$ (not $-\mathbf t$).}
-\end{fbx}
-\begin{fbx}[Compounding \pg{13}]
-$\tr AC=\tr AB\,\tr BC$ (inner indices cancel).\\
-Right-multiply = next move about/along the \emph{current} frame.\\
-Left-multiply = about/along the \emph{fixed} frame.
-\end{fbx}
-\begin{worked}[order matters]
-$R_x(30^\circ)t_z(2)$: C's origin $=(0,-1.000,1.732)$.\\ $t_z(2)R_x(30^\circ)$: origin $=(0,0,2)$. \chk
-\end{worked}
+
+\hd{FK: answer layout \pg{5, 10--11}}
+\premise[FK]{joint variables $\mathbf q$ ($\theta_i$ rad revolute, $d_i$ m prismatic), link constants}{${}^0\T_E(\mathbf q)$: position + orientation of tool $\{E\}$ in base $\{0\}$ (one answer; IK may have 0, 1, many)}
+\begin{recipe}[any FK question]
+\begin{enumerate}
+\item Draw zero pose; name $\{S\}/\{0\}$, $\{E\}/\{T\}$, joint axes, \emph{drawn} sign of each angle.
+\item Rule: ${}^0\T_E={}^0\T_1{}^1\T_2\cdots{}^{n-1}\T_E$ (inner indices cancel).
+\item ETS or DH table, one line per joint; matrix of each intermediate frame if asked.
+\item Multiply symbolically (position column first), numbers last, units.
+\item Box ${}^0\T_E$. Check at $\mathbf q=\mathbf 0$ and at one pose with non-zero angles.
+\end{enumerate}
+\end{recipe}
+\textbf{W13 sample Q1} (RRR arm by ETS, intermediate frames): solved on p.\,\pageref{p:SAMPLE}.
 
 \hd{Planar RRR by trigonometry \pg{6--9}}
-\[x=\textstyle\sum_k L_k\cos\phi_k,\quad y=\sum_k L_k\sin\phi_k,\quad \phi_k=q_1+\dots+q_k,\quad q_E=\phi_3\]
-\begin{worked}
-$L=(0.5,0.4,0.2)$\,m, $q=(30^\circ,45^\circ,-60^\circ)$: $\phi=(30,75,15)^\circ$, $x=0.7297$, $y=0.6881$\,m, $q_E=15^\circ$. \chk
+\slidefig[0.42\linewidth]{w02-lec}{9}{144 119 480 146}{$q_k$ measured from link $k{-}1$}
+\begin{fbx}[Planar RRR \pg{7--9}]
+\begin{gather*}x=L_1c_1+L_2c_{12}+L_3c_{123},\quad q_E=q_1+q_2+q_3\\y=L_1s_1+L_2s_{12}+L_3s_{123}\end{gather*}
+where $c_{12}=\cos(q_1{+}q_2)$ etc.; $\phi_k=q_1+\dots+q_k$ = absolute direction of link $k$ (joint $k$ turns everything beyond it); $q_k$ ccw positive.
+\end{fbx}
+\begin{worked}[numbers]
+$L=(0.5,0.4,0.2)$ m, $q=(30,45,-60)^\circ$, $\phi=(30,75,15)^\circ$: $A=(0.4330,0.2500)$, $B=(0.5365,0.6364)$, $E=(0.7297,0.6881)$ m, $q_E=15^\circ$. \chk
 \end{worked}
 \begin{trap}
-Using the joint angles themselves (cos 45°) instead of the running sums. At $q=0$ everything agrees, so test a non-zero pose.
+Using $q_k$ instead of the running sums $\phi_k$ (agree at $\mathbf q=0$, so test a non-zero pose); $q_E\neq q_3$.
 \end{trap}
+
+\hd{Rotation matrices, homogeneous $\T$, inverse \pg{10--12}}
+\begin{fbx}[${}^A\Rm_B$ and elementary rotations \added]
+\[\Rm_x(\theta)=\begin{bmatrix}1&0&0\\0&c\theta&-s\theta\\0&s\theta&c\theta\end{bmatrix},\
+\Rm_y(\theta)=\begin{bmatrix}c\theta&0&s\theta\\0&1&0\\-s\theta&0&c\theta\end{bmatrix}\]
+\[\Rm_z(\theta)=\begin{bmatrix}c\theta&-s\theta&0\\s\theta&c\theta&0\\0&0&1\end{bmatrix}\]
+\[{}^A\Rm_B=\begin{bmatrix}{}^A\hat x_B&{}^A\hat y_B&{}^A\hat z_B\end{bmatrix},\ \ \Rm^\top\Rm=\mathbf I,\ \det\Rm=+1,\ \ {}^B\Rm_A={}^A\Rm_B^{\top}\]
+$\theta$: right-hand rule about the subscript axis. Reading a pose: write the 3 axes of $\{B\}$ as columns in $\{A\}$; check unit length, orthogonal, $\hat x_B\times\hat y_B=\hat z_B$.
+\end{fbx}
+\begin{fbx}[Homogeneous transform and full inverse \pg{12}]
+\[{}^A\T_B=\begin{bmatrix}{}^A\Rm_B&{}^A\mathbf t\\\mathbf 0^\top&1\end{bmatrix},\quad {}^A\mathbf P={}^A\Rm_B\,{}^B\mathbf P+{}^A\mathbf t,\quad
+{}^B\T_A=\begin{bmatrix}{}^A\Rm_B^\top&-{}^A\Rm_B^\top\,{}^A\mathbf t\\\mathbf 0^\top&1\end{bmatrix}\]
+${}^A\mathbf t$ = origin of $\{B\}$ in $\{A\}$ (m). Inverse is \emph{not} $-\mathbf t$ in the last column.
+\end{fbx}
+\begin{worked}[point and inverse]
+${}^A\Rm_B=\Rm_z(90^\circ)$, ${}^A\mathbf t=(2,1,3)^\top$, ${}^B\mathbf P=(1,0.5,0)^\top$: ${}^A\mathbf P=(-0.5,1,0)^\top+(2,1,3)^\top=(1.5,2,3)^\top$. $-\Rm^\top\mathbf t=(-1,2,-3)^\top$:
+\[{}^B\T_A=\begin{bmatrix}0&1&0&-1\\-1&0&0&2\\0&0&1&-3\\0&0&0&1\end{bmatrix}\]
+Check ${}^B\T_A(1.5,2,3,1)^\top=(1,0.5,0,1)^\top$. \chk
+\end{worked}
+\begin{trap}
+Last column $-\mathbf t=(-2,-1,-3)$ instead of $-\Rm^\top\mathbf t$ (hidden when $\Rm=\mathbf I$).
+\end{trap}
+
+\hd{Compounding: fixed vs current frame \pg{13--14}}
+\slidefig[0.4\linewidth]{w02-lec}{13}{77 108 560 151}{${}^A\T_C=\Rm_x(\theta)\,t_z(d)$}
+\begin{fbx}[Compounding \pg{13}]
+\[{}^A\T_C={}^A\T_B\,{}^B\T_C,\qquad \Rm_x(\theta)\,t_z(d)\]rotate about $x_A$, then slide along the \emph{new} $z$. 
+Inner letters must cancel; ``note the order''.
+\end{fbx}
+\begin{worked}[slide: $\theta=30^\circ$, $d=2$ m]
+\[{}^A\T_C=\Rm_x(30^\circ)t_z(2)=\begin{bmatrix}1&0&0&0\\0&0.866&-0.5&-1\\0&0.5&0.866&1.732\\0&0&0&1\end{bmatrix}\]
+Origin $(0,-1,1.732)$: moved along the \emph{tilted} $z_B$. Reversed $t_z(2)\Rm_x(30^\circ)$: origin $(0,0,2)$. \chk
+\end{worked}
+\begin{twoway}{Left to right = CURRENT frame}{Right to left = FIXED frame}
+Each factor on the right is a move in the frame just reached (joint $i$ turns about its \emph{own} axis).
+\tcblower
+Each factor on the left is a move about the original axes; apply the last factor first.
+\end{twoway}
+\begin{worked}[order matters]
+\[\Rm_z(90^\circ)t_x(1)=\begin{bmatrix}0&-1&0&0\\1&0&0&1\\0&0&1&0\\0&0&0&1\end{bmatrix},\qquad t_x(1)\Rm_z(90^\circ)=\begin{bmatrix}0&-1&0&1\\1&0&0&0\\0&0&1&0\\0&0&0&1\end{bmatrix}\]
+Origins $(0,1,0)$ vs $(1,0,0)$. Link turned by its own joint: $\Rm_z(q)t_x(L)$. \chk
+\end{worked}
 
 \hd{Elementary Transform Sequence (ETS) \pg{15--19}}
-Six moves: $t_x,t_y,t_z,R_x,R_y,R_z$, each with a constant or a joint variable. Walk base → tool, write every move in order, multiply.
-\begin{recipe}[FK by ETS (W13 Q1)]
+\begin{fbx}[Six elementary transforms and the product \pg{16}]
+\[t_{x,y,z}(\eta)=\begin{bmatrix}\mathbf I_3&\eta\hat{\mathbf e}\\\mathbf 0^\top&1\end{bmatrix},\quad \Rm_{x,y,z}(\eta)=\begin{bmatrix}\Rm&\mathbf 0\\\mathbf 0^\top&1\end{bmatrix}\]
+\[{}^B\T_E=E_1(\eta_1)E_2(\eta_2)\cdots E_m(\eta_m)\]
+$\eta_i$ = constant (offset, fixed rotation) or joint variable ($\theta_j$ revolute, $d_j$ prismatic); each $E_i$ acts along/about the \emph{current} frame's axis.
+\end{fbx}
+\begin{recipe}[ETS from a drawing \pg{18}]
 \begin{enumerate}
-\item Draw \{S\}. Mark every joint axis and its drawn positive direction.
-\item Translations to the first joint; then $R_{axis}(\pm\theta_i)$ (minus if the drawn arrow is opposite to the right-hand rule).
-\item Continue to the tool; finish with the constant rotation that matches the drawn \{T\}.
-\item Group per joint: $^{i-1}\T_i$ = “indicate intermediate frames”.
-\item Multiply (at least the position column). Check at all $\theta=0$.
+\item Redraw with every joint displaced from rest.
+\item From $\{B\}$: $t_x,t_y,t_z$ (signed) to the first joint; $\Rm_{axis}(\pm q)$ (minus if the drawn arrow opposes the right-hand rule).
+\item Repeat joint by joint; coincident axes: no translation between rotations.
+\item End with the constant rotation that makes the last frame the drawn $\{E\}$.
+\item Group per joint = ${}^{i-1}\T_i$ (intermediate frames), then multiply.
 \end{enumerate}
 \end{recipe}
-\begin{fbx}[Furuta pendulum \pg{19}]
-$\tr BE=t_z(L_0)R_z(\theta_1)t_x(L_1)$\\ \hspace*{2.2em}$R_x(\theta_2)t_z(-L_2)R_y(\pi)$\\
-$x=L_1c_1-L_2s_1s_2,\ y=L_1s_1+L_2c_1s_2,\ z=L_0-L_2c_2$ \chk
+
+\hd{Example: Furuta pendulum \pg{17--19}}
+\slidefig[0.62\linewidth]{w02-lec}{17}{115 140 557 130}{$\{B\}$, $\{E\}$ ($z_E$ down); displaced pose p.\,19}
+\begin{fbx}[Furuta ETS and result \pg{19}]
+\[{}^B\T_E=t_z(L_0)\Rm_z(\theta_1)\,t_x(L_1)\Rm_x(\theta_2)\,t_z(-L_2)\Rm_y(\pi)\]
+{\footnotesize\[{}^B\T_1=\begin{bmatrix}c_1&-s_1&0&0\\s_1&c_1&0&0\\0&0&1&L_0\\0&0&0&1\end{bmatrix},\ 
+{}^1\T_2=\begin{bmatrix}1&0&0&L_1\\0&c_2&-s_2&0\\0&s_2&c_2&0\\0&0&0&1\end{bmatrix}\]
+\[{}^2\T_E=\begin{bmatrix}-1&0&0&0\\0&1&0&0\\0&0&-1&-L_2\\0&0&0&1\end{bmatrix}\]}
+\[{}^B\T_E=\begin{bmatrix}-c_1&-s_1c_2&-s_1s_2&L_1c_1-L_2s_1s_2\\-s_1&c_1c_2&c_1s_2&L_1s_1+L_2c_1s_2\\0&s_2&-c_2&L_0-L_2c_2\\0&0&0&1\end{bmatrix}\]
+$L_0$ post, $L_1$ arm, $L_2$ pendulum (m); $\theta_1$ about $z_B$, $\theta_2$ about the arm's $x$. $\Rm_y(\pi)$ flips $z$ down.
 \end{fbx}
-\begin{worked}
-$L=(0.5,0.4,0.3)$, $\theta=(60^\circ,45^\circ)$: $\mathbf p=(0.0163,\,0.4525,\,0.2879)$\,m. Workspace: $\rho^2+(z-L_0)^2=L_1^2+L_2^2$, a spherical band $|z-L_0|\le L_2$ (not a torus). \chk
+\begin{worked}[Furuta numbers]
+$L=(0.5,0.4,0.3)$, $\theta=(60,45)^\circ$:
+\[{}^B\T_E=\begin{bmatrix}-0.5&-0.6124&-0.6124&0.0163\\-0.8660&0.3536&0.3536&0.4525\\0&0.7071&-0.7071&0.2879\\0&0&0&1\end{bmatrix}\]
+At $\theta=0$: tip $(L_1,0,L_0-L_2)$. Workspace (\added): sphere $x^2+y^2+(z-L_0)^2=L_1^2+L_2^2$, band $|z-L_0|\le L_2$. \chk
 \end{worked}
 
-\columnbreak
-\hd{Proximal (modified, Craig) DH \pg{21--36}}
-\begin{fbx}[Link transform \pg{28}]
-\[{}^{i-1}\T_i=R_x(\alpha_{i-1})\,t_x(a_{i-1})\,R_z(\theta_i)\,t_z(d_i)\]\[=\begin{bmatrix}c\theta_i&-s\theta_i&0&a_{i-1}\\ s\theta_ic\alpha_{i-1}&c\theta_ic\alpha_{i-1}&-s\alpha_{i-1}&-s\alpha_{i-1}d_i\\ s\theta_is\alpha_{i-1}&c\theta_is\alpha_{i-1}&c\alpha_{i-1}&c\alpha_{i-1}d_i\\0&0&0&1\end{bmatrix}\]
-\use{then ${}^0\T_n={}^0\T_1\,{}^1\T_2\cdots{}^{n-1}\T_n$. Revolute variable $\theta_i$; prismatic variable $d_i$.}
+\hd{Proximal DH (Craig) \pg{20--36}}
+Frame $\{i\}$ on joint axis $i$ at the \emph{near} end of link $i$; link 0 = base; joint $i$ joins link $i{-}1$ to $i$ (\pg{23}).
+\slidefig[0.45\linewidth]{w02-lec}{28}{77 97 518 151}{parameters between axes $i{-}1$ and $i$}
+\begin{fbx}[Four parameters \pg{24--27, 30}]
+\begin{symbols}
+$a_{i-1}$ & link length: $z_{i-1}\to z_i$ along $x_{i-1}$, $\ge0$ & m\\
+$\alpha_{i-1}$ & twist: $z_{i-1}\to z_i$ about $x_{i-1}$ & rad\\
+$d_i$ & offset: $x_{i-1}\to x_i$ along $z_i$ (variable if prismatic) & m\\
+$\theta_i$ & angle: $x_{i-1}\to x_i$ about $z_i$ (variable if revolute) & rad\\
+\end{symbols}
 \end{fbx}
-\begin{tabularx}{\linewidth}{@{}lX@{}}\toprule
-$a_{i-1}$ & distance $z_{i-1}\to z_i$ along $x_{i-1}$ (common normal), $\ge0$\\
-$\alpha_{i-1}$ & angle $z_{i-1}\to z_i$ about $x_{i-1}$\\
-$d_i$ & distance $x_{i-1}\to x_i$ along $z_i$ (signed)\\
-$\theta_i$ & angle $x_{i-1}\to x_i$ about $z_i$\\\bottomrule
-\end{tabularx}
-\begin{recipe}[Assign proximal frames \pg{29}]
+\begin{fbx}[Proximal link transform \pg{28, 35}]
+\[{}^{i-1}\T_i=\Rm_{x}(\alpha_{i-1})t_{x}(a_{i-1})\Rm_{z}(\theta_i)t_{z}(d_i)\]
+{\footnotesize\[=\begin{bmatrix}c\theta_i&-s\theta_i&0&a_{i-1}\\ s\theta_ic\alpha_{i-1}&c\theta_ic\alpha_{i-1}&-s\alpha_{i-1}&-s\alpha_{i-1}d_i\\ s\theta_is\alpha_{i-1}&c\theta_is\alpha_{i-1}&c\alpha_{i-1}&c\alpha_{i-1}d_i\\0&0&0&1\end{bmatrix}\]}
+${}^0\T_n={}^0\T_1\cdots{}^{n-1}\T_n$. Operator order $\Rm_x\,t_x\,\Rm_z\,t_z$ (distal differs).
+\end{fbx}
+\begin{deriv}[link transform]
+$\Rm_x(\alpha)t_x(a)$ (the $x$-shift is on the rotation axis) $=\begin{bmatrix}1&0&0&a\\0&c\alpha&-s\alpha&0\\0&s\alpha&c\alpha&0\\0&0&0&1\end{bmatrix}$, $\ \Rm_z(\theta)t_z(d)=\begin{bmatrix}c\theta&-s\theta&0&0\\s\theta&c\theta&0&0\\0&0&1&d\\0&0&0&1\end{bmatrix}$.
+Product rotation rows: $(c\theta,-s\theta,0)$, $(c\alpha s\theta,c\alpha c\theta,-s\alpha)$, $(s\alpha s\theta,s\alpha c\theta,c\alpha)$; translation $\Rm_x(\alpha)(0,0,d)^\top+(a,0,0)^\top=(a,-s\alpha d,c\alpha d)^\top$. \added
+\end{deriv}
+\begin{recipe}[Proximal frame assignment \pg{29}]
 \begin{enumerate}
-\item Joint axes. For axes $i$, $i{+}1$ find the common normal (or the intersection).
-\item Origin of $\{i\}$ where the normal meets axis $i$; $z_i$ along axis $i$.
-\item $x_i$ along the normal towards axis $i{+}1$ (if the axes intersect: normal to their plane).
-\item $y_i$ completes a right-handed frame.
-\item $\{0\}=\{1\}$ at $q_1=0$; choose $\{N\}$ to zero as many parameters as possible.
-\item Row $i$: $a_{i-1},\alpha_{i-1}$ look back (axis $i{-}1\to i$); $d_i,\theta_i$ along axis $i$.
+\item Joint axes; for axes $i,i{+}1$ find the common normal (or their intersection).
+\item Origin of $\{i\}$ = where axis $i$ meets that normal; $z_i$ along axis $i$.
+\item $x_i$ along the normal towards axis $i{+}1$ (intersecting axes: $x_i\perp$ their plane, either sign); $y_i=z_i\times x_i$.
+\item $\{0\}=\{1\}$ at $q_1=0$; $\{N\}$: origin, $x_N$ free so most parameters vanish.
+\item Read $a_{i-1},\alpha_{i-1},d_i,\theta_i$ from the box above.
 \end{enumerate}
 \end{recipe}
-\begin{worked}[Furuta DH table \pg{34}]
-\begin{tabular}{@{}ccccc@{}}$i$&$a_{i-1}$&$\alpha_{i-1}$&$d_i$&$\theta_i$\\\hline 1&0&0&$L_0$&$q_1{+}90^\circ$\\2&0&$90^\circ$&$L_1$&$q_2$\\3&0&$90^\circ$&$L_2$&$0$\end{tabular}\\
-$\{3\}\ne\{E\}$: ${}^3\T_E=R_z(-90^\circ)$ makes the product equal the ETS for all $q$. \chk
-\end{worked}
-\begin{fbx}[Franka Panda, published proximal DH]
-$a$: 0, 0, 0, 0.0825, $-$0.0825, 0, 0.088;\quad $\alpha$: 0, $-90$, 90, 90, $-90$, 90, 90°\\
-$d$: 0.333, 0, 0.316, 0, 0.384, 0, 0; flange $d=0.107$. At $q=0$: flange at $(0.088, 0, 0.926)$\,m. \chk
-\end{fbx}
-
-\hd{Distal (standard) DH \pg{37--40}}
-${}^{i-1}\T_i=R_z(\theta_i)\,t_z(d_i)\,t_x(a_i)\,R_x(\alpha_i)$; frame $\{i\}$ sits on axis $i{+}1$; joint $i$ turns about $z_{i-1}$.
 \begin{trap}
-Never mix: a proximal table in the distal matrix gives a different robot. Corke's toolbox \texttt{DHRobot} is distal (\texttt{RevoluteMDH} for proximal). Write ``proximal (Craig) DH'' on your answer.
+${}^0\T_n$ is the pose of the \emph{last joint frame}, not the tool: add a row (planar) or a constant ${}^n\T_E$. Only $a_{i-1}\ge0$; the others are signed.
 \end{trap}
+\begin{worked}[Furuta DH table \pg{31--36}]
+\slidefig[0.4\linewidth]{w02-lec}{32}{480 130 115 113}{frames $\{0\}$..$\{3\}$; $\{3\}\neq\{E\}$}
+\begin{center}\wtwoDH{1&0&0&$L_0$&$q_1+90^\circ$\\2&0&$90^\circ$&$L_1$&$q_2$\\3&0&$90^\circ$&$L_2$&$0$}\end{center}
+\[{}^0\T_3=\begin{bmatrix}-s_1c_2&c_1&-s_1s_2&L_1c_1-L_2s_1s_2\\c_1c_2&s_1&c_1s_2&L_1s_1+L_2c_1s_2\\s_2&0&-c_2&L_0-L_2c_2\\0&0&0&1\end{bmatrix},\ {}^3\T_E=\Rm_z(-90^\circ)\]
+${}^0\T_3\,{}^3\T_E={}^B\T_E$ (ETS) for all $q_1,q_2$ (slide 36 homework). ETS: 6 moves, no rules; DH: rules fix frames, tool needs a constant. \chk
+\end{worked}
 
-\columnbreak
-\hd{Why 4 parameters? \pg{42--44}}
-6 numbers relate two bodies; DH imposes 2 rules (proximal: $x_i\perp z_{i+1}$ and $x_i$ meets $z_{i+1}$), so $6-2=4$. Cost: a frame may lie off the link. A good model is \textbf{complete}, \textbf{continuous} (DH fails for nearly parallel axes: the common normal jumps) and \textbf{minimal}.
+\hd{Simple robots: DH rows, ETS, ${}^0\T_E$ \added}
+All $(a_{i-1},\alpha_{i-1},d_i,\theta_i)$; $c_{12}=\cos(q_1{+}q_2)$. Figures: see Standard robots, p.\,\pageref{p:ROBOTS}.
+\begin{center}\renewcommand{\arraystretch}{1.05}\footnotesize\begin{tabular}{@{}l@{\ }p{0.7\linewidth}@{}}
+RR&$(0,0,0,q_1)$ $(L_1,0,0,q_2)$ $(L_2,0,0,0)$\\
+RRR&$(0,0,0,q_1)$ $(L_1,0,0,q_2)$ $(L_2,0,0,q_3)$ $(L_3,0,0,0)$\\
+RP&$(0,0,0,q_1{-}90^\circ)$ $(0,{-}90^\circ,d_2,0)$; then ${}^2\T_E=\Rm_x(90^\circ)\Rm_z(90^\circ)$ (slider along $z_2$, tool $x_E$ along it)\\
+PR&$(0,0,d_1,0)$ $(0,90^\circ,0,q_2{+}90^\circ)$ $(L_2,0,0,0)$, with ${}^S\T_0=\Rm_y(90^\circ)\Rm_z(-90^\circ)$ ($z_0=x_S$ along the slide)\\
+SCARA RRP&$(0,0,H,q_1)$ $(a_1,0,0,q_2)$ $(a_2,180^\circ,d_3,0)$\\
+\end{tabular}\end{center}
+\begin{fbx}[ETS and ${}^0\T_E$ (equal to the DH product)]
+\textbf{RR:} $\Rm_z(q_1)t_x(L_1)\Rm_z(q_2)t_x(L_2)$
+\[\begin{bmatrix}c_{12}&-s_{12}&0&L_1c_1+L_2c_{12}\\s_{12}&c_{12}&0&L_1s_1+L_2s_{12}\\0&0&1&0\\0&0&0&1\end{bmatrix}\]
+$L{=}(0.4,0.3)$, $q{=}(40,50)^\circ$: tip $(0.3064,0.5571)$ m.
+\textbf{RRR:} $\Rm_z(q_1)t_x(L_1)\Rm_z(q_2)t_x(L_2)\Rm_z(q_3)t_x(L_3)$
+{\footnotesize\[\begin{bmatrix}c_{123}&-s_{123}&0&L_1c_1+L_2c_{12}+L_3c_{123}\\s_{123}&c_{123}&0&L_1s_1+L_2s_{12}+L_3s_{123}\\0&0&1&0\\0&0&0&1\end{bmatrix}\]}
+Numbers of p.\,6--9: $\Rm=\begin{bmatrix}0.9659&-0.2588\\0.2588&0.9659\end{bmatrix}$, tip $(0.7297,0.6881)$; $q_E=\operatorname{atan2}(T_{21},T_{11})=15^\circ$.\\
+\textbf{RP:} $\Rm_z(q_1)t_x(d_2)$
+\[\begin{bmatrix}c_1&-s_1&0&d_2c_1\\s_1&c_1&0&d_2s_1\\0&0&1&0\\0&0&0&1\end{bmatrix}\]
+$q_1{=}35^\circ$, $d_2{=}0.6$: tip $(0.4915,0.3441)$ m.
+\textbf{PR:} $t_x(d_1)\Rm_z(q_2)t_x(L_2)$
+\[{}^S\T_E=\begin{bmatrix}c_2&-s_2&0&d_1+L_2c_2\\s_2&c_2&0&L_2s_2\\0&0&1&0\\0&0&0&1\end{bmatrix},\ {}^S\T_0=\begin{bmatrix}0&0&1&0\\-1&0&0&0\\0&-1&0&0\\0&0&0&1\end{bmatrix}\]
+$d_1{=}0.3,\,q_2{=}60^\circ,\,L_2{=}0.4$: tip $(0.5,\,0.3464)$ m. Vertical slide: rows $(0,0,d_1,0)$ $(0,0,0,q_2)$ $(L_2,0,0,0)$.\\
+\textbf{SCARA:} $t_z(H)\Rm_z(q_1)t_x(a_1)\Rm_z(q_2)t_x(a_2)t_z(-d_3)\Rm_x(180^\circ)$
+\[\begin{bmatrix}c_{12}&s_{12}&0&a_1c_1+a_2c_{12}\\s_{12}&-c_{12}&0&a_1s_1+a_2s_{12}\\0&0&-1&H-d_3\\0&0&0&1\end{bmatrix}\]
+$H{=}0.5$, $a{=}(0.4,0.3)$, $q{=}(40,50)^\circ$, $d_3{=}0.15$: tip $(0.3064,0.5571,0.35)$ m. 
+$\Rm_x(180^\circ)$ points $z_E$ down: positive $d_3$ lowers the tool. \chk
+\end{fbx}
 
-\hd{URDF \pg{45--47}}
-XML of \texttt{<link>}s and \texttt{<joint>}s: joint \texttt{origin} = constant ETS steps; \texttt{axis} = which $R$ the joint is. Slide example = $R_z(q_1)t_x(1)R_z(q_2)t_x(1)$.
-
-\hd{Notebook exercises}
-\textbf{Two frames (Q3).} Origin $(3,5,2)$; $x_B=-z_A$, $z_B=+y_A$, so $y_B=-x_A$:
-\[\tr AB=\begin{bmatrix}0&-1&0&3\\0&0&1&5\\-1&0&0&2\\0&0&0&1\end{bmatrix}\]\[=t(3,5,2)\,R_y(90^\circ)\,R_x(-90^\circ)\ \chk\]
-\textbf{PUMA by ETS (Q5).} \[t_z(L_b)R_z(q_1)R_y(q_2)t_z(L_u)R_y(q_3)\,t_z(L_f)R_z(q_4)R_y(q_5)R_z(q_6)\] Coincident axes: no translation between consecutive rotations (shoulder; spherical wrist). The wrist centre does not move with $q_4..q_6$. \chk
-\begin{slideerr}[notebook]
-Cell 35 writes \texttt{tz(-30)} for $-0.30$\,m, so its printed pose is wrong. A filled-in Q3 answer \texttt{ty(5) tx(3) Ry(90) Rx(90)} misses $t_z(2)$ and the sign of the last rotation.
+\hd{Puma 560 and Franka Panda \added}
+Not on the slides (photos only, \pg{10}); notebook Q1, Q2, Q5.
+\begin{twoway}{Puma-like ETS ($L_b{=}1.0,L_u{=}0.5,L_f{=}0.3$ m)}{proximal DH}
+$t_z(L_b)\Rm_z(q_1)\Rm_y(q_2)t_z(L_u)$ $\Rm_y(q_3)t_z(L_f)\Rm_z(q_4)\Rm_y(q_5)\Rm_z(q_6)$; coincident axes: no translation.
+\tcblower
+\scriptsize\renewcommand{\arraystretch}{1}\begin{tabular}{@{}c|cccc@{}}$i$&$a_{i-1}$&$\alpha_{i-1}$&$d_i$&$\theta_i$\\\hline
+1&0&0&$L_b$&$q_1$\\2&0&$-90^\circ$&0&$q_2{-}90^\circ$\\3&$L_u$&0&0&$q_3{+}90^\circ$\\4&0&$90^\circ$&$L_f$&$q_4$\\5&0&$-90^\circ$&0&$q_5$\\6&0&$90^\circ$&0&$q_6$\end{tabular}
+\end{twoway}
+Home: ${}^0\T_E=\begin{bmatrix}\mathbf I_3&(0,0,1.8)^\top\\\mathbf 0^\top&1\end{bmatrix}$. $q=(30,20,-40,0,0,0)^\circ$: wrist centre $(c_1\rho,s_1\rho,L_b+L_uc_2+L_fc_{23})$, $\rho=L_us_2+L_fs_{23}$ $=(0.0592,0.0342,1.7518)$; $q_4..q_6$ do not move it. \chk
+\begin{fbx}[Franka Panda proximal DH]
+\scriptsize\renewcommand{\arraystretch}{1.05}\begin{tabular}{@{}c|ccccccc@{}}$i$&1&2&3&4&5&6&7\\\hline
+$a_{i-1}$&0&0&0&0.0825&$-0.0825$&0&0.088\\
+$\alpha_{i-1}$&0&$-90^\circ$&$90^\circ$&$90^\circ$&$-90^\circ$&$90^\circ$&$90^\circ$\\
+$d_i$&0.333&0&0.316&0&0.384&0&0\\
+$\theta_i$&$q_1$&$q_2$&$q_3$&$q_4$&$q_5$&$q_6$&$q_7$\end{tabular}\par
+Flange $t_z(0.107)$. At $\mathbf q=0$: $\begin{bmatrix}1&0&0&0.088\\0&-1&0&0\\0&0&-1&0.926\\0&0&0&1\end{bmatrix}$. \chk
+\end{fbx}
+\begin{slideerr}[notebook cell 42, 35]
+Printed Panda ETS gives flange $(0.316,0,0.9945)$ at $\mathbf q=0$, not $(0.088,0,0.926)$: use the DH rows. Cell 35: \texttt{tz(-30)} should be \texttt{tz(-0.30)}. \chk
 \end{slideerr}
 
-\hd{W13 Q1 arm (answer shape)}
-$\tr ST=R_z(\theta_1)t_z(L_1{+}L_2)R_y(-\theta_2)t_x(L_3)$\\ \hspace*{2.2em}$R_y(-\theta_3)t_x(L_4)R_x(90^\circ)$
-\[\tr ST=\begin{bmatrix}c_1c_{23}&-c_1s_{23}&s_1&c_1r\\ s_1c_{23}&-s_1s_{23}&-c_1&s_1r\\ s_{23}&c_{23}&0&L_1{+}L_2{+}L_3s_2{+}L_4s_{23}\\0&0&0&1\end{bmatrix}\]
-$r=L_3c_2+L_4c_{23}$. Check $\theta=0$: tip $(L_3{+}L_4,0,L_1{+}L_2)$, $y_T=z_S$. \chk
+\hd{Distal (standard) DH \pg{37--41}}
+\slidefig[0.8\linewidth]{w02-lec}{38}{48 119 58 119}{proximal (left) vs distal (right) frame placement}
+\begin{twoway}{Proximal (Craig) \pg{40}}{Distal (standard) \pg{39--40}}
+Frame $\{i\}$ on axis $i$, near end of link $i$.\\ $a_{i-1},\alpha_{i-1}$ at $x_{i-1}$; $d_i,\theta_i$ at $z_i$.\\
+$\Rm_x(\alpha_{i-1})t_x(a_{i-1})\Rm_z(\theta_i)t_z(d_i)$
+\tcblower
+Frame $\{i{-}1\}$ on axis $i$, far end of link $i{-}1$.\\ $a_i,\alpha_i$ at $x_i$; $d_i,\theta_i$ at $z_{i-1}$.\\
+$\Rm_z(\theta_i)t_z(d_i)t_x(a_i)\Rm_x(\alpha_i)$
+\end{twoway}
+\begin{fbx}[Distal link transform \pg{40}]
+\[{}^{i-1}\T_i=\begin{bmatrix}c\theta_i&-s\theta_i c\alpha_i&s\theta_i s\alpha_i&a_ic\theta_i\\s\theta_i&c\theta_i c\alpha_i&-c\theta_i s\alpha_i&a_is\theta_i\\0&s\alpha_i&c\alpha_i&d_i\\0&0&0&1\end{bmatrix}\]
+Toolbox: \texttt{RevoluteDH} = distal; \texttt{RevoluteMDH}/\texttt{PrismaticMDH} = proximal (this unit).
+\end{fbx}
+\begin{worked}[proximal $\to$ distal \added]
+Distal row $i$: same $(\theta_i,d_i)$, but $(a_i,\alpha_i)$ from the \emph{next} proximal row; no tool row. RR: $(\theta,d,a,\alpha)=(q_1,0,L_1,0),(q_2,0,L_2,0)$. SCARA: $(q_1,H,a_1,0),(q_2,0,a_2,180^\circ),(0,d_3,0,0)$. Furuta: $(q_1{+}90^\circ,L_0,0,90^\circ),(q_2,L_1,0,90^\circ),(0,L_2,0,0)$. All reproduce the proximal results. \chk
+\end{worked}
+\begin{trap}
+Mixing conventions: slide-40 numbers $(a,\alpha,d,\theta)=(0.2,90^\circ,0.05,-20^\circ)$ in the wrong formula move $\{2\}$ from $(0.1982,0.0567,0.30)$ to $(0.1970,0.0347,0.35)$ m. \chk
+\end{trap}
+\textbf{Other conventions \pg{41--47}.} Variants exist (Handbook of Robotics), plus screw/POE and URDF: state yours. \emph{Why 4 not 6?} DH places frames by rule ($x_i\perp$ and intersecting $z_{i+1}$), removing 2 freedoms; price: frame need not lie on the link, and the common normal jumps for near-parallel axes (not continuous). Good model: complete, continuous, minimal \pg{44}. \emph{URDF} \pg{45--47}: \texttt{<joint>} with \texttt{type}, parent, child, \texttt{origin xyz} (constant $t$), \texttt{axis xyz}: $\Rm_z(q_1)\,t_x(1)\Rm_z(q_2)\,t_x(1)$ for the planar example.
+
+\hd{Notebook exercises, solved}
+\textbf{Q1/Q2 Panda:} $\Rm_x(\alpha)t_x(a)\Rm_z(q)t_z(d)$ for the 7 rows, then $t_z(0.107)$; flange $(0.088,0,0.926)$ at $\mathbf q=0$. \chk\\
+\textbf{Q3 two frames:} $\{B\}$ at $(3,5,2)$, $x_B=-z_A$, $z_B=y_A$, $y_B=-x_A$ ($=t(3,5,2)\Rm_y(90^\circ)\Rm_x(-90^\circ)$):
+\[{}^A\T_B=\begin{bmatrix}0&-1&0&3\\0&0&1&5\\-1&0&0&2\\0&0&0&1\end{bmatrix}\]
+\textbf{Q4:} the transform is the ordered product $E_1E_2\cdots E_m$ of the six elementary matrices.\\
+\textbf{Q5 Puma:} $t_z(L_b)\Rm_z(q_1)\Rm_y(q_2)t_z(L_u)\Rm_y(q_3)t_z(L_f)\Rm_z(q_4)\Rm_y(q_5)\Rm_z(q_6)$; ${}^0\T_1=t_z(L_b)\Rm_z(q_1)$, ${}^1\T_2=\Rm_y(q_2)$, ${}^2\T_3=t_z(L_u)\Rm_y(q_3)$, ${}^3\T_4=t_z(L_f)\Rm_z(q_4)$, ${}^4\T_5=\Rm_y(q_5)$, ${}^5\T_6=\Rm_z(q_6)$. \chk\\
+\textbf{Q6 workspaces:} Furuta: sphere zone above. Puma wrist centre: shell of radii 0.2--0.8 m about $(0,0,1.0)$ (2R annulus $|L_u{-}L_f|$..$L_u{+}L_f$ spun by $q_1$). \chk
+\begin{slideerr}[notebook Q3 answer, cell 46]
+\texttt{ty(5) tx(3) Ry(90) Rx(90)} misses $t_z(2)$; last rotation must be $\Rm_x(-90^\circ)$ (it gives origin $(3,5,0)$ and flips $y_B,z_B$). \chk
+\end{slideerr}
+
+\begin{trap}[W2: top five lost marks]
+(1) Multiplication order. (2) DH frame taken as tool. (3) Proximal vs distal mix. (4) Drawn arrow opposite to right-hand rule. (5) Inverse as $-\mathbf t$. Calculator in degrees vs radians.
+\end{trap}
+
+\begin{examq}[Elbow arm: proximal DH table \mk{marks not published}]
+Post $L_0$; joint 1 vertical; joint 2 horizontal axis at the post top; upper arm $L_2$; joint 3 parallel to 2 (elbow); forearm $L_3$ to the tool. At $q_2{=}q_3{=}0$ both links point along $+x_1$; $+q_2$ raises the arm. (a) Table incl. tool row. (b) ETS. (c) Tool point for $L_0,L_2,L_3=0.45,0.40,0.30$ m, $q=(35,50,-30)^\circ$.
+\solution
+(a) Axes 1,2 perpendicular: $\alpha_1=90^\circ$; 2,3 parallel: $\alpha_2=0$. Rows: $(0,0,L_0,q_1)$, $(0,90^\circ,0,q_2)$, $(L_2,0,0,q_3)$, tool $(L_3,0,0,0)$.
+(b) $t_z(L_0)\Rm_z(q_1)\Rm_x(90^\circ)\Rm_z(q_2)t_x(L_2)\Rm_z(q_3)t_x(L_3)$.
+(c) $r=L_2c_2+L_3c_{23}=0.5390$, $z=L_0+L_2s_2+L_3s_{23}=0.8590$; spin by $q_1$:
+\[\boxed{\mathbf p=(0.4415,\,0.3092,\,0.8590)\text{ m}}\ \chk\]
+Check: omitting the $90^\circ$ twist leaves $z=0.45$.
+\end{examq}
+\begin{examq}[Camera on the wrist \mk{marks not published}]
+${}^B\T_W=t(0.5,0.2,0.6)\Rm_z(90^\circ)$, ${}^W\T_C=t(0.05,0,0.1)\Rm_y(90^\circ)$ (m). An object is 0.8 m along $z_C$. Find it in $\{B\}$.
+\solution
+${}^B\mathbf P={}^B\T_W{}^W\T_C{}^C\mathbf P$, ${}^C\mathbf P=(0,0,0.8)^\top$. $\Rm_y(90^\circ)$ sends $z\to x$: ${}^W\mathbf P=(0.85,0,0.10)$. $\Rm_z(90^\circ)$: $(0,0.85,0.10)$, plus $(0.5,0.2,0.6)$:
+\[\boxed{{}^B\mathbf P=(0.50,\,1.05,\,0.70)\text{ m}}\ \chk\]
+Reversed order gives $(1.45,0.2,-0.4)$: inner subscripts do not cancel.
+\end{examq}
+\begin{examq}[Find the frame from the transform \added \mk{marks not published}]
+${}^A\T_B=\begin{bmatrix}0&0&1&0.4\\1&0&0&0.2\\0&1&0&0.5\\0&0&0&1\end{bmatrix}$. (a) Origin and axes of $\{B\}$; valid? (b) ETS. (c) ${}^A\mathbf P$ for ${}^B\mathbf P=(0,0,0.1)^\top$. (d) ${}^B\T_A$.
+\solution
+(a) Origin $(0.4,0.2,0.5)$; $\hat x_B=\hat y_A$, $\hat y_B=\hat z_A$, $\hat z_B=\hat x_A$; $\hat y_A\times\hat z_A=\hat x_A$ so $\det=+1$.
+(b) $t(0.4,0.2,0.5)\Rm_y(90^\circ)\Rm_z(90^\circ)$.
+(c) $(0.1,0,0)+(0.4,0.2,0.5)=(0.5,0.2,0.5)$ m.
+(d) $-\Rm^\top\mathbf t=-(0.2,0.5,0.4)^\top$:
+\[\boxed{{}^B\T_A=\begin{bmatrix}0&1&0&-0.2\\0&0&1&-0.5\\1&0&0&-0.4\\0&0&0&1\end{bmatrix}}\ \chk\]
+\end{examq}
 \end{multicols}

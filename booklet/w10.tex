@@ -1,113 +1,295 @@
+% W10 Wheeled robot kinematics -- booklet v3 (condensed). Numbers: vcheck/v2_w10.py (and site/src/checks/w10.py).
+\newcommand{\wXx}[1]{{}^{C}x_{W_{#1}}}
+\newcommand{\wXy}[1]{{}^{C}y_{W_{#1}}}
+\newcommand{\wXz}{\boldsymbol\zeta}
+\newcommand{\wXn}{\boldsymbol\nu}
+\newcommand{\wXp}{\dot{\boldsymbol\varphi}}
+\newcommand{\wXt}{\dot\theta}
+
 \week{W10}{Wheeled robot kinematics}{10}
 \begin{multicols}{3}
-\hd{Frames and chassis velocity \pg{11--17}}
-\begin{fbx}[Chassis velocity $\boldsymbol\zeta=(u,v,\dot\theta)$ in $\{C\}$; $\boldsymbol\nu=(\dot x,\dot y,\dot\theta)$ in $\{O\}$]
-\[\boldsymbol\nu=\mathbf J(\theta)\boldsymbol\zeta=\begin{bmatrix}c\theta&-s\theta&0\\s\theta&c\theta&0\\0&0&1\end{bmatrix}\!\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix},\quad \boldsymbol\zeta=\mathbf J^{-1}\boldsymbol\nu=\mathbf J^{\top}\boldsymbol\nu\]
-\use{$u$ forwards along $x_C$, $v$ sideways along $y_C$, $\theta$ anticlockwise from $x_O$. Wheel speeds are commanded: $\boldsymbol\zeta=\mathbf W\dot{\boldsymbol\varphi}$. Forward kinematics (wheels $\to$ motion) = simulation; inverse (motion $\to$ wheels) = control.}
-\end{fbx}
 
-\hd{Wheel types and pure rolling \pg{18--25}}
-Fixed standard (axle fixed), steerable standard (axle turns about vertical), castor (offset, passive), Swedish/omni (rollers on rim), spherical. \textbf{Only the two standard wheels constrain the chassis} (cannot slide sideways). Castor, Swedish, spherical: no constraint. Assume pure rolling, no slip \pg{20}.
-\begin{fbx}[Omni wheel in its own frame \pg{22--25}]
-\[\dot\varphi=\frac{v_{drive}}{r}=\begin{bmatrix}\tfrac1r&\tfrac{\tan\gamma}{r}\end{bmatrix}\begin{bmatrix}v_x\\v_y\end{bmatrix},\quad v_{drive}=v_x+v_y\tan\gamma\]
-\use{$x_W$ = drive direction, $y_W$ = wheel-plane normal; rollers free along angle $\gamma$ from $y_W$. Rollers $\perp$ drive $\Rightarrow\gamma=0$, $\dot\varphi=v_x/r$ (sideways component ignored).}
+\hd{Frames $\{O\}$, $\{C\}$ and $\mathbf J(\theta)$ \pg{11--17}}
+\premise{pose $(x,y,\theta)$, wheel layout, $\wXp$ (forward) or wanted motion (inverse)}{$\wXz=(u,v,\wXt)$ in $\{C\}$, $\wXn=(\dot x,\dot y,\wXt)$ in $\{O\}$; or $\wXp$}
+\slidefig[0.55\linewidth]{w10-lec}{13}{19 108 557 184}{$\{O\}$, $\{C\}$, $(u,v)$ along chassis axes, heading $\theta$}
+\begin{fbx}[World $\leftrightarrow$ chassis \pg{14--16}]
+\[\underbrace{\begin{bmatrix}\dot x\\\dot y\\\dot\theta\end{bmatrix}}_{\wXn}=\underbrace{\begin{bmatrix}\cos\theta&-\sin\theta&0\\\sin\theta&\cos\theta&0\\0&0&1\end{bmatrix}}_{\mathbf J(\theta)}\underbrace{\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix}}_{\wXz}\]
+\[\wXz=\mathbf J^{\top}\wXn=\begin{bmatrix}\cos\theta&\sin\theta&0\\-\sin\theta&\cos\theta&0\\0&0&1\end{bmatrix}\begin{bmatrix}\dot x\\\dot y\\\dot\theta\end{bmatrix}\]
+where $\{O\}$ = world, $z$ up; $\{C\}$ on the robot, $\hat x_C$ forward, $\hat y_C$ left; $\theta$ = angle $\hat x_O\to\hat x_C$ (ccw $+$); $u,v$ = velocity of $C$ along $\hat x_C,\hat y_C$; $\dot\theta$ same in both frames. $\mathbf J^{-1}=\mathbf J^\top$, $\det\mathbf J=1$. Slides call $\mathbf J^{-1}$ ``$\mathbf R^{-1}(\theta)$'' \pg{36, 68}.
 \end{fbx}
-
-\hd{Generalised wheel model \pg{26--36}}
-\begin{fbx}[Wheel $i$: position $({}^Cx_i,{}^Cy_i)$, drive angle $\beta_i$ (from $x_C$), roller angle $\gamma_i$, radius $r_i$]
-\[\dot\varphi_i=\tfrac1{r_i}\begin{bmatrix}1&\tan\gamma_i\end{bmatrix}\!\begin{bmatrix}c\beta_i&s\beta_i\\-s\beta_i&c\beta_i\end{bmatrix}\!\begin{bmatrix}1&0&-{}^Cy_i\\0&1&{}^Cx_i\end{bmatrix}\!\mathbf J^{-1}(\theta)\boldsymbol\nu\]
-\use{read right to left: inertial $\to$ chassis; twist $\to$ contact-point velocity $(u-\dot\theta y,\ v+\dot\theta x)$; chassis axes $\to$ wheel axes; keep the driven part; divide by $r$. Start from $\boldsymbol\zeta$ and drop $\mathbf J^{-1}$ if the question gives chassis velocities.}
-\end{fbx}
-\begin{fbx}[Standard wheel ($\gamma=0$): rolling row \textbf{and} no-slide row \pg{37--42,68}]
-\[r\dot\varphi_i=c\beta_i\,(u-\dot\theta\,{}^Cy_i)+s\beta_i\,(v+\dot\theta\,{}^Cx_i)\]
-\[0=-s\beta_i\,(u-\dot\theta\,{}^Cy_i)+c\beta_i\,(v+\dot\theta\,{}^Cx_i)\]
-\use{the no-slide rows are the non-holonomic constraints. Fixed wheel: $\beta$ constant; steerable: $\beta=\beta(t)$.}
-\end{fbx}
-\begin{recipe}[Wheel speeds of any wheeled robot (W13 Q10)]
-\begin{enumerate}
-\item Draw $\{C\}$. For each wheel write ${}^Cx,{}^Cy,\beta,\gamma,r$ and which way positive $\dot\varphi$ drives.
-\item One row per wheel: $r\dot\varphi_i=\cos\beta_i(u-\dot\theta y_i)+\sin\beta_i(v+\dot\theta x_i)$ ($\gamma=0$).
-\item Standard wheels: add the no-slide row (usually forces $v=0$).
-\item Stack: $\dot{\boldsymbol\varphi}=\mathbf W^{-1}\boldsymbol\zeta$. Invert (or pseudo-invert) for $\boldsymbol\zeta=\mathbf W\dot{\boldsymbol\varphi}$; $\det\ne0\Rightarrow$ all of $(u,v,\dot\theta)$ reachable (holonomic).
-\item $\boldsymbol\nu=\mathbf J(\theta)\boldsymbol\zeta$ for world velocities. \textbf{Check:} straight ahead, and spin on the spot.
-\end{enumerate}
-\end{recipe}
+\begin{deriv}[of $\mathbf J$ \added]
+$\hat x_C=(\cos\theta,\sin\theta)$, $\hat y_C=(-\sin\theta,\cos\theta)$ in $\{O\}$; velocity of $C=u\hat x_C+v\hat y_C$ $\Rightarrow$ $\dot x=u\cos\theta-v\sin\theta$, $\dot y=u\sin\theta+v\cos\theta$. Orthonormal columns $\Rightarrow\mathbf J^{-1}=\mathbf J^\top$.
+\end{deriv}
+\begin{worked}[$\theta=30^\circ$ \added]
+$\wXn=(0.5,0.2,0.3)$: $u=0.8660(0.5)+0.5(0.2)=\mathbf{0.5330}$, $v=-0.5(0.5)+0.8660(0.2)=\mathbf{-0.0768}$ m/s. Back: $\dot x=0.8660(0.5330)-0.5(-0.0768)=0.5$, $\dot y=0.2$ \checkmark. Speed kept: $0.5385$ m/s. \chk
+\end{worked}
 \begin{trap}
-(1) Sign of the $C_y$ term: it is $-\dot\theta\,{}^Cy$ in the $x$-row. (2) $\mathbf R(\theta)$ where $\mathbf R^{-1}(\theta)$ is needed. (3) $\gamma\neq0$ for a standard wheel (it is 0, and the wheel also cannot slide sideways). (4) Forgetting the no-slide equation, which is where non-holonomy comes from.
+$\mathbf J$ vs $\mathbf J^\top$ ($\theta\to-\theta$). Test: at $\theta=90^\circ$, $u>0$ must move along $+y_O$.
 \end{trap}
+\textbf{Euler update:} $x_{k+1}=x_k+\dot x_k\Delta t$ etc., $(\dot x,\dot y)$ from $\mathbf J(\theta_k)$.
+\textbf{Two maps (\pg{17, 47}):} $\wXz=\mathbf W\wXp$ ($3\times n$) and $\wXp=\mathbf M\wXz$ ($n\times3$, one row per wheel). Write $\mathbf M$ first; $\mathbf W=\mathbf M^{-1}$ if $n=3$, $\det\neq0$; $n=2$: add $v=0$.
 
-\columnbreak
-\hd{Differential drive and skid-steer \pg{43--52}}
-\begin{fbx}[Two fixed wheels at $(0,\pm a)$, left $=+a$ \pg{44--47}]
-\[\dot\varphi_1=\tfrac{u-a\dot\theta}{r}\ (\text{left}),\quad\dot\varphi_2=\tfrac{u+a\dot\theta}{r}\ (\text{right}),\quad v=0\]
-\[\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix}=\begin{bmatrix}\tfrac r2&\tfrac r2\\0&0\\-\tfrac r{2a}&\tfrac r{2a}\end{bmatrix}\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\end{bmatrix}\]
-\[y_{ICR}=\frac u{\dot\theta}=a\,\frac{\dot\varphi_1+\dot\varphi_2}{\dot\varphi_2-\dot\varphi_1}\ (\text{on the axle, }x=0)\]
-\use{equal speeds: ICR at infinity (straight). Opposite speeds: ICR at the centre (spin). $r$ cancels in $y_{ICR}$. Slower wheel is on the ICR side. Turning left slows the \emph{left} wheel.}
-\end{fbx}
-\begin{worked}[P10.3 and slide-style numbers]
-$r=0.05$, $a=0.15$, $\dot{\boldsymbol\varphi}=(4,6)$: $u=0.05(10)/2=0.25$ m/s, $\dot\theta=0.05(2)/0.3=0.3333$ rad/s, ICR $y=0.75$ m left. \chk\\
-$a=0.3$, $\dot{\boldsymbol\varphi}=(2,5)$: $y_{ICR}=0.3\cdot7/3=0.7$ m. \chk\\
-$r=0.1$, $a=0.2$, $\dot{\boldsymbol\varphi}=(-5,5)$: $u=0$, $\dot\theta=0.1(10)/0.4=2.5$ rad/s, a spin about $C$.
-\end{worked}
-\textbf{Skid-steer} (4 standard wheels at $(\pm b,\pm a)$ \pg{49--52}): rows $\tfrac1r[1,0,-a]$ (left pair), $\tfrac1r[1,0,+a]$ (right pair); $b$ drops out. Slide's $3\times4$ inverse $u=\tfrac r4\sum\dot\varphi_i$, $\dot\theta=\tfrac r{4a}(-\dot\varphi_1-\dot\varphi_2+\dot\varphi_3+\dot\varphi_4)$ is the least-squares inverse. A real skid-steer must slip to turn; pure rolling ignores that.
-
-\hd{Omnidirectional triangle \pg{53--55}}
-Three Swedish wheels, centre-to-wheel $d$, drive directions tangential (clockwise), $\gamma=0$. Wheels at $(0,d)$, $(\tfrac{\sqrt3}2d,-\tfrac d2)$, $(-\tfrac{\sqrt3}2d,-\tfrac d2)$ with $\beta=0^\circ,-120^\circ,+120^\circ$.
-\begin{fbx}[Sample Q10 / practical Q1]
-\[\dot{\boldsymbol\varphi}=\frac1r\begin{bmatrix}1&0&-d\\-\tfrac12&-\tfrac{\sqrt3}2&-d\\-\tfrac12&\tfrac{\sqrt3}2&-d\end{bmatrix}\boldsymbol\zeta\]
-\[\boldsymbol\zeta=\frac r3\begin{bmatrix}2&-1&-1\\0&-\sqrt3&\sqrt3\\-\tfrac1d&-\tfrac1d&-\tfrac1d\end{bmatrix}\dot{\boldsymbol\varphi}\]
-\use{row 1: $r\dot\varphi_1=u-d\dot\theta$. $\det$ of the unscaled matrix $=3\sqrt3d/2\ne0\Rightarrow$ invertible, any $(u,v,\dot\theta)$ possible: holonomic. Four-Swedish layout (p.\,55) is the same with $45^\circ$ rollers ($\tan\gamma\ne0$).}
-\end{fbx}
-\begin{worked}[P10.2: where does it go?]
-$d=0.10$, $r=0.05$, $\dot{\boldsymbol\varphi}=(4,-1,-1)$: $u=\tfrac{0.05}3(8+1+1)=0.1667$ m/s, $v=\tfrac{0.05}{\sqrt3}(-1+1)=0$, $\dot\theta=-\tfrac{0.05}{0.3}(4-1-1)=-0.3333$ rad/s. ICR $(0,u/\dot\theta)=(0,-0.5)$: clockwise circle, radius 0.5 m. After 2 s: $\theta=-0.6667$, $x=0.5\sin0.6667=0.3092$, $y=-0.5(1-\cos0.6667)=-0.1071$ m. Euler $dt=0.01$ s is within 0.55 mm. \chk
-\end{worked}
-
-\columnbreak
-\hd{Tricycle, Ackermann, bicycle \pg{56--61,69}}
-\begin{fbx}[Tricycle: front wheel at $(b,0)$ driven + steered; rear axle through $C$ so $v=0$ \pg{56--58}]
-\[\dot\varphi_1=\tfrac1r\sqrt{u^2+b^2\dot\theta^2},\qquad\beta_1=\atantwo(b\dot\theta,\,u)\]
-\use{front contact velocity is $(u,\,b\dot\theta)$ and equals $r\dot\varphi_1(\cos\beta_1,\sin\beta_1)$. The slide assumes the rear axle passes through $C$ without saying so.}
-\end{fbx}
-\begin{worked}[P10.5]
-$b=0.6$, $r=0.1$, $u=0.4$, $\dot\theta=0.5$: contact velocity $(0.4,0.3)$, $|{\cdot}|=0.5$ m/s, $\dot\varphi_1=5$ rad/s, $\beta_1=\atantwo(0.3,0.4)=36.870^\circ$. \chk
-\end{worked}
-\begin{fbx}[Bicycle: rear wheel fixed at $C$ (driven), front at $(L,0)$ steered by $\beta$ \pg{69}]
-Rear: $r\dot\varphi_r=u$, no-slide $v=0$. Front no-slide: $-u\sin\beta+L\dot\theta\cos\beta=0$
-\[\dot\theta=\frac{u\tan\beta}{L},\qquad R=\frac L{\tan\beta},\qquad\dot x=u\cos\theta,\ \dot y=u\sin\theta\]
-\use{$\beta=0$ (jammed straight): $\dot\theta=0$, $v=0$, only forward/back.}
-\end{fbx}
-\begin{worked}[P10.4]
-$u=2$, $\beta=20^\circ$, $L=1.2$: $\dot\theta=2\tan20^\circ/1.2=0.6066$ rad/s, $R=3.297$ m. \chk
-\end{worked}
-\begin{fbx}[Ackermann steering \pg{61}\ \added]
-Front wheels steered differently so every axle line meets one ICR on the rear-axle line: no scrub. $\cot\beta_{out}-\cot\beta_{in}=\text{track}/\text{wheelbase}$.
-\end{fbx}
-Example: wheelbase 2.5, track 1.5, $R=6$ m about the rear-axle midpoint: inner $25.463^\circ$, outer $20.323^\circ$. \chk
-
-\hd{Manoeuvrability \pg{62--64}}
-$\delta_M=\delta_m+\delta_s$. Informally: $\delta_m$ = directions the chassis can be driven directly; $\delta_s$ = independent steering angles. Precise \added: stack the no-slide rows of all standard wheels into $C_1$; $\delta_m=3-\operatorname{rank}C_1$, $\delta_s=\operatorname{rank}C_{1s}$ (steered wheels' rows).
-\begin{tabularx}{\linewidth}{@{}Xccc@{}}\toprule
-Robot (slide p.\,64) & $\delta_m$ & $\delta_s$ & $\delta_M$\\\midrule
-2 fixed on one axle + castor (diff.\ drive) & 2&0&2\\
-2 fixed + 1 steered standard (tricycle, car) & 1&1&2\\
-2 steered standard + 1 Swedish & 1&2&3\\
-3 Swedish (omni triangle) & 3&0&3\\\bottomrule
+\hd{Wheel types and constraints \pg{18--20}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}Xc@{}}\toprule
+Wheel \pg{18} & what it is & constrains chassis?\\\midrule
+Fixed standard & axle fixed, $\beta_i$ const, $\gamma_i=0$; rolls, \emph{cannot slide sideways} & yes: roll + no-slide\\
+Steerable standard & axle turns about vertical axis, $\beta_i(t)$, $\gamma_i=0$ & yes: roll + no-slide\\
+Castor & offset steering axis, passive & no\\
+Swedish (omni) & rollers free along $\gamma_i$ from wheel-plane normal & no: roll only\\
+Spherical & ball, rolls any way & no\\\bottomrule
 \end{tabularx}
+\pg{19}: only standard wheels constrain the chassis (no lateral motion). \pg{20}: pure rolling, no slip: contact point moves at $v_{drive}=r\dot\varphi$.
 
-\hd{Holonomic vs non-holonomic \pg{65--68}}
-\begin{fbx}[Definitions]
-\textbf{Holonomic constraint}: positions only, $f(x,y,\theta,\dots)=0$. \textbf{Non-holonomic}: involves velocities and cannot be integrated into a position-only equation. Classic: differential-drive no-slide $-\dot x\sin\theta+\dot y\cos\theta=0$.
+\hd{Generalised wheel model \pg{21--36}}
+\premise[wheel $i$ on chassis]{position $(\wXx i,\wXy i)$ in $\{C\}$, drive direction $\beta_i$, roller angle $\gamma_i$, radius $r_i$, $\wXz$ or $\wXn$}{wheel speed $\dot\varphi_i$}
+\slidefig[0.5\linewidth]{w10-lec}{22}{221 194 211 151}{omni wheel in $\{W\}$: $\hat x_W$ drive, $\hat y_W$ plane normal, rollers free along $\gamma$ from $\hat y_W$}
+\begin{deriv}[omni wheel in its own frame \pg{23--25}]
+$\begin{bmatrix}v_x\\v_y\end{bmatrix}=v_{drive}\begin{bmatrix}1\\0\end{bmatrix}+v_{free}\begin{bmatrix}-\sin\gamma\\\cos\gamma\end{bmatrix}$: $v_y=v_{free}\cos\gamma$, $v_x=v_{drive}-\sin\gamma\,v_{free}$ $\Rightarrow v_{drive}=v_x+v_y\tan\gamma$, so $\dot\varphi=\begin{bmatrix}\frac1r&\frac{\tan\gamma}r\end{bmatrix}\begin{bmatrix}v_x\\v_y\end{bmatrix}$. $\gamma=0$: $\dot\varphi=v_x/r$.
+\end{deriv}
+\begin{deriv}[the step chain \pg{27--35}]
+\textbf{1 (\pg{28}):} wheel frame $\to\{C\}$: ${}^C\mathbf v_{W_i}=\begin{bmatrix}\cos\beta_i&-\sin\beta_i\\\sin\beta_i&\cos\beta_i\end{bmatrix}\begin{bmatrix}v_x\\v_y\end{bmatrix}$.
+\textbf{2 (\pg{29--30}):} body point $=\mathbf v_C+\dot\theta\hat z\times\mathbf p$, $\dot\theta\hat z\times(x,y)=\dot\theta(-y,x)$: ${}^C\mathbf v_{W_i}=\begin{bmatrix}u-\dot\theta\wXy i\\v+\dot\theta\wXx i\end{bmatrix}=\begin{bmatrix}1&0&-\wXy i\\0&1&\wXx i\end{bmatrix}\wXz$.
+\textbf{3 (\pg{32, 34}):} equate, multiply by the transpose: $\begin{bmatrix}v_x\\v_y\end{bmatrix}=\begin{bmatrix}\cos\beta_i&\sin\beta_i\\-\sin\beta_i&\cos\beta_i\end{bmatrix}\begin{bmatrix}1&0&-\wXy i\\0&1&\wXx i\end{bmatrix}\wXz$.
+\textbf{4:} $\dot\varphi_i=\frac1{r_i}[1\ \tan\gamma_i](v_x,v_y)^\top$; world frame: $\wXz=\mathbf R^{-1}(\theta)\wXn$ \pg{35}.
+\end{deriv}
+\begin{fbx}[Generalised model of a wheeled robot \pg{36}]
+\[\dot\varphi_i=\begin{bmatrix}\tfrac1{r_i}&\tfrac{\tan\gamma_i}{r_i}\end{bmatrix}\!\begin{bmatrix}\cos\beta_i&\sin\beta_i\\-\sin\beta_i&\cos\beta_i\end{bmatrix}\!\begin{bmatrix}1&0&-\wXy i\\0&1&\wXx i\end{bmatrix}\wXz\]
+\[\wXz=\underbrace{\begin{bmatrix}\cos\theta&\sin\theta&0\\-\sin\theta&\cos\theta&0\\0&0&1\end{bmatrix}}_{\mathbf R^{-1}(\theta)=\mathbf J^\top}\!\begin{bmatrix}\dot x\\\dot y\\\dot\theta\end{bmatrix}\]
+where $\beta_i$ = angle from $\hat x_C$ to $v_{drive}$; $\gamma_i$ = angle between $v_{free}$ and plane normal; $\dot\varphi_i>0$ drives the robot along $\beta_i$. Given $\wXz$ directly: drop $\mathbf R^{-1}$.
 \end{fbx}
-It forbids sideways \emph{velocity} at every instant, not any final pose (parallel parking works, just not directly). Holonomic robot: no non-holonomic constraints, $\delta_M=\delta_m=3$ (omni triangle).
-\begin{recipe}[``Is the bicycle / car / diff.\ drive holonomic?'' (explain-type)]
+\begin{fbx}[Multiplied out and stacked \added]
+\[\dot\varphi_i=\frac1{r_i\cos\gamma_i}\Big[\cos(\beta_i{+}\gamma_i)\ \ \sin(\beta_i{+}\gamma_i)\]
+\[\hspace{4em}\wXx i\sin(\beta_i{+}\gamma_i)-\wXy i\cos(\beta_i{+}\gamma_i)\Big]\wXz\]
+$\gamma_i=0$: $\ r_i\dot\varphi_i=\cos\beta_i(u-\dot\theta\wXy i)+\sin\beta_i(v+\dot\theta\wXx i)$. Stacked: $\wXp=\mathbf M\wXz$,
+$m_{i1}=\frac{\cos\beta_i-\tan\gamma_i\sin\beta_i}{r_i}$, $m_{i2}=\frac{\sin\beta_i+\tan\gamma_i\cos\beta_i}{r_i}$, $m_{i3}=-\wXy i\,m_{i1}+\wXx i\,m_{i2}$. World data: $\wXp=\mathbf M\mathbf R^{-1}(\theta)\wXn$. \chk
+\end{fbx}
+\begin{recipe}[wheel speeds of any wheeled robot]
 \begin{enumerate}
-\item Name the constraint: rear no-slide $-\dot x\sin\theta+\dot y\cos\theta=0$.
-\item Say ``velocity, not position; not integrable''.
-\item Consequence: it can still reach any $(x,y,\theta)$ by manoeuvring, but not along any path.
-\item Omni triangle: $\det\ne0$, no no-slide row, so holonomic.
+\item Draw $\{C\}$, every wheel; list $(\wXx i,\wXy i)$, $r_i$, $\beta_i$ (ccw from $\hat x_C$), $\gamma_i$.
+\item Write the row; substitute \emph{each wheel on its own line}.
+\item Standard wheel: add no-slide row $0=-\sin\beta_i(u-\dot\theta\wXy i)+\cos\beta_i(v+\dot\theta\wXx i)$.
+\item Stack $\wXp=\mathbf M\wXz$; invert if $n=3$, $\det\ne0$.
+\item World data: $\wXz=\mathbf J^\top\wXn$ first; output $\wXn=\mathbf J\wXz$.
+\item Check: pure $u$ and pure $\dot\theta$ give sensible signs.
 \end{enumerate}
 \end{recipe}
-\begin{trap}
-Left wheel at $+a$ is $(u-a\dot\theta)/r$, not $+$; and fixed standard wheels force $v=0$ (not ``any $v$'').
+
+\hd{Standard wheels: rolling and no-sliding \pg{37--42, 68}}
+\begin{fbx}[$\gamma_i=0$: fixed wheel $\beta_i$ const \pg{39}; steerable $\beta_i(t)$, extra input $\dot\beta_i$ \pg{42}]
+Slide form: $\dot\varphi_i=\begin{bmatrix}\frac1{r_i}&0\end{bmatrix}\begin{bmatrix}\cos\beta_i&\sin\beta_i\\-\sin\beta_i&\cos\beta_i\end{bmatrix}\begin{bmatrix}1&0&-\wXy i\\0&1&\wXx i\end{bmatrix}\mathbf R^{-1}(\theta)\wXn$; $v_y$ unused, must be \emph{zero} \pg{68}.
+\begin{align*}
+\text{rolling:}\ \ r_i\dot\varphi_i&=\cos\beta_i(u-\dot\theta\wXy i)+\sin\beta_i(v+\dot\theta\wXx i)\\
+&=\big[\cos\beta_i\ \ \sin\beta_i\ \ \wXx i\sin\beta_i-\wXy i\cos\beta_i\big]\mathbf R^{-1}\wXn\\
+\text{no-sliding:}\ \ 0&=-\sin\beta_i(u-\dot\theta\wXy i)+\cos\beta_i(v+\dot\theta\wXx i)\\
+&=\big[-\sin\beta_i\ \ \cos\beta_i\ \ \wXy i\sin\beta_i+\wXx i\cos\beta_i\big]\mathbf R^{-1}\wXn
+\end{align*}
+All standard wheels: $\mathbf C_1(\beta)\wXz=\mathbf 0$, rows $[-\sin\beta_k,\ \cos\beta_k,\ \wXy k\sin\beta_k+\wXx k\cos\beta_k]$. No-sliding rows are constraints on $\wXz$: source of non-holonomy \pg{68}.
+\end{fbx}
+
+\hd{Differential drive and ICR \pg{43--47, 61}}
+\premise{$\dot\varphi_1$ (left, $y=+a$), $\dot\varphi_2$ (right, $y=-a$), radius $r$, half track $a$}{$u,v,\dot\theta$, ICR; or the inverse}
+\slidefig[0.55\linewidth]{w10-lec}{45}{19 162 619 108}{two fixed standard wheels at $(0,a)$, $(0,-a)$}
+\begin{tabularx}{\linewidth}{@{}c*{5}{>{\centering\arraybackslash}X}@{}}\toprule
+wheel \pg{45} & $r_i$ & $\gamma_i$ & $\beta_i$ & $\wXx i$ & $\wXy i$\\\midrule
+$W_1$ & $r$ & 0 & 0 & 0 & $a$\\
+$W_2$ & $r$ & 0 & 0 & 0 & $-a$\\\bottomrule
+\end{tabularx}
+\begin{deriv}[rows \pg{45--47}]
+$\dot\varphi_1=\begin{bmatrix}\frac1r&0\end{bmatrix}\begin{bmatrix}1&0&-a\\0&1&0\end{bmatrix}\wXz=\frac1r(u-a\dot\theta)$; $\ \dot\varphi_2=\begin{bmatrix}\frac1r&0\end{bmatrix}\begin{bmatrix}1&0&a\\0&1&0\end{bmatrix}\wXz=\frac1r(u+a\dot\theta)$. Add, subtract: $\dot\varphi_1+\dot\varphi_2=2u/r$, $\dot\varphi_2-\dot\varphi_1=2a\dot\theta/r$. No-slide ($\beta=0,x=0$): $0=v$.
+\end{deriv}
+\begin{fbx}[$\wXp=\mathbf M\wXz$, $\wXz=\mathbf W\wXp$ \pg{47}]
+\[\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\end{bmatrix}=\begin{bmatrix}\frac1r&0&-\frac ar\\\frac1r&0&\frac ar\end{bmatrix}\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix},\qquad
+\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix}=\begin{bmatrix}\frac r2&\frac r2\\0&0\\-\frac r{2a}&\frac r{2a}\end{bmatrix}\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\end{bmatrix}\]
+$u=\frac r2(\dot\varphi_1+\dot\varphi_2)$, $\dot\theta=\frac r{2a}(\dot\varphi_2-\dot\varphi_1)$ (ccw $+$), $v=0$. Left wheel at $+a$ \emph{slows} when turning left.
+\end{fbx}
+\begin{worked}[\chk]
+$r=0.05$, $a=0.15$, $\wXp=(4,6)$: $u=0.05(10)/2=\mathbf{0.25}$ m/s, $\dot\theta=0.05(2)/0.3=\mathbf{0.3333}$ rad/s. Back: $\dot\varphi_1=(0.25-0.05)/0.05=4$ \checkmark, $\dot\varphi_2=6$ \checkmark.
+\end{worked}
+\sh{ICR (practical Q3)}
+\begin{fbx}[Instantaneous centre of rotation]
+\[(x_{ICR},y_{ICR})=\Big(-\frac v{\dot\theta},\frac u{\dot\theta}\Big)\]
+\[\text{diff.\ drive: }x_{ICR}=0,\ \ y_{ICR}=\frac u{\dot\theta}=a\,\frac{\dot\varphi_1+\dot\varphi_2}{\dot\varphi_2-\dot\varphi_1},\ \ R=|y_{ICR}|\]
+$y_{ICR}>0$ = left. Equal speeds: $\infty$ (line). $\dot\varphi_2=-\dot\varphi_1$: ICR at $C$ (spin). $\dot\varphi_1=0$: pivot on left wheel ($y=a$). $r$ cancels.
+\end{fbx}
+\begin{deriv}[\added]
+Chassis point $(x,y)$ moves at $(u-\dot\theta y,\ v+\dot\theta x)$ = 0 at $y=u/\dot\theta$, $x=-v/\dot\theta$. Wheel rim speeds $=\dot\theta\times$ distance to ICR: $r\dot\varphi_1=\dot\theta(y_{ICR}-a)$, $r\dot\varphi_2=\dot\theta(y_{ICR}+a)$.
+\end{deriv}
+\begin{center}
+\begin{tikzpicture}[scale=0.62,>={Latex[length=1.4mm]}]
+\def\Rr{2.4}\def\aa{0.75}
+\draw[fill=g1,line width=0.5pt] (-0.9,-0.45) rectangle (0.9,0.45);
+\draw[fill=g2,rounded corners=1pt,line width=0.5pt] (-0.35,\aa-0.09) rectangle (0.35,\aa+0.09);
+\draw[fill=g2,rounded corners=1pt,line width=0.5pt] (-0.35,-\aa-0.09) rectangle (0.35,-\aa+0.09);
+\fill (0,0) circle (1.4pt);
+\draw[->,line width=0.6pt] (0,0) -- (0.6,0) node[below,font=\scriptsize]{$x_C$};
+\draw[->,line width=0.6pt] (0,0) -- (0,0.35) node[right,font=\scriptsize]{$y_C$};
+\draw[dashed,line width=0.4pt] (0,-\aa-0.3) -- (0,\Rr);
+\fill[red!70!black] (0,\Rr) circle (2pt) node[above left,font=\scriptsize]{ICR $(0,u/\dot\theta)$};
+\draw[->,line width=0.8pt] (0.35,\aa) -- ++({0.5*(\Rr-\aa)},0) node[right,font=\scriptsize]{$u-a\dot\theta$};
+\draw[->,line width=0.8pt] (0.9,0) -- ++({0.5*\Rr},0) node[right,font=\scriptsize]{$u$};
+\draw[->,line width=0.8pt] (0.35,-\aa) -- ++({0.5*(\Rr+\aa)},0) node[right,font=\scriptsize]{$u+a\dot\theta$};
+\node[font=\scriptsize,anchor=east] at (-0.4,\aa) {$W_1$};
+\node[font=\scriptsize,anchor=east] at (-0.4,-\aa) {$W_2$};
+\draw[<->,line width=0.4pt] (-1.3,0) -- node[left,font=\scriptsize]{$R$} (-1.3,\Rr);
+\end{tikzpicture}
+\end{center}
+\drawncap{turning left: arrows $\propto\dot\theta\times$ distance to ICR (these are $r\dot\varphi_i$)}
+
+\sh{Diff-drive scenarios \added}
+\begin{recipe}[circle radius $R$, speed $v_0$, ccw]
+\begin{enumerate}
+\item $u=v_0$, $\dot\theta=v_0/R$ (clockwise: $-$), $v=0$.
+\item $\dot\varphi_{1}=\frac{v_0}r(1-\frac aR)$ left, $\dot\varphi_2=\frac{v_0}r(1+\frac aR)$ right; lap $2\pi R/v_0$.
+\item Check ICR $=R$; $R=a$: $\dot\varphi_1=0$; $R<a$: left wheel reverses.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[$r=0.05$, $a=0.15$ \chk]
+\textbf{Circle} $R=1$, $v_0=0.4$: $\dot\theta=0.4$; $\dot\varphi=(\mathbf{6.8},\mathbf{9.2})$ rad/s; ICR $0.15\cdot16/2.4=1.0$ \checkmark; lap $\mathbf{15.71}$ s. Clockwise: $(9.2,6.8)$. $R=a$: $(0,16)$.\\
+\textbf{Spin} $\omega=0.5$: $\dot\varphi=\mp a\omega/r=(-1.5,+1.5)$; $90^\circ$ in $3.142$ s.\\
+\textbf{Rectangle} $2\times1$, $u=0.25$: straights $(5,5)$ for $8$ s and $4$ s; corners $(-1.5,1.5)$ for $3.142$ s each; total $2(8+4)+4(3.142)=\mathbf{36.57}$ s.\\
+\textbf{Wheel speeds to motion:} $r=0.1$, $a=0.25$, $\wXp=(10,2)$: $u=\mathbf{0.6}$, $\dot\theta=\mathbf{-1.6}$, $y_{ICR}=\mathbf{-0.375}$ m (right, beyond the slow wheel).
+\end{worked}
+\begin{fbx}[Exact pose, constant $(u,\dot\theta)$, $v=0$ \added]
+\[\theta_1=\theta_0+\dot\theta T,\ \ x_1=x_0+\tfrac u{\dot\theta}(\sin\theta_1-\sin\theta_0),\ \ y_1=y_0-\tfrac u{\dot\theta}(\cos\theta_1-\cos\theta_0)\]
+Circle radius $u/\dot\theta$; radians. $u=0.4$, $\dot\theta=0.8$, $(0,0,30^\circ)$, $T=1.5$: $(0.2442,0.5091)$ m. Constraint any pose: $-\dot x\sin\theta+\dot y\cos\theta=0$. \chk
+\end{fbx}
+
+\hd{Skid-steer and 4 Swedish wheels \pg{48--55}}
+\premise{4 standard wheels (left pair, right pair), radius $r$; or 4 Swedish wheels with given $\gamma_i$}{$\wXp=\mathbf M\wXz$ ($4\times3$) and the least-squares $\wXz$}
+\begin{fbx}[Skid-steer \pg{50, 52}: $W_1(-b,a)$, $W_2(b,a)$, $W_3(-b,-a)$, $W_4(b,-a)$, $\beta=\gamma=0$]
+\[\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\\\dot\varphi_3\\\dot\varphi_4\end{bmatrix}=\begin{bmatrix}1/r&0&-a/r\\1/r&0&-a/r\\1/r&0&a/r\\1/r&0&a/r\end{bmatrix}\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix},\quad
+\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix}=\begin{bmatrix}\frac r4&\frac r4&\frac r4&\frac r4\\0&0&0&0\\-\frac r{4a}&-\frac r{4a}&\frac r{4a}&\frac r{4a}\end{bmatrix}\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\\\dot\varphi_3\\\dot\varphi_4\end{bmatrix}\]
+$3\times4$ = least-squares inverse (average). Wheels 1,2 left, 3,4 right. $r=0.1$, $a=0.2$, $\wXp=(4,4,6,6)$: $u=0.5$, $\dot\theta=0.5$. \chk
+\end{fbx}
+\textbf{Trap.} Four no-slide rows $[0,1,\wXx i]$, $\wXx i=\mp b$: rank 2 ($v=0$, $\dot\theta=0$), so a real skid-steer \emph{cannot} turn without slip; the slide keeps $v=0$ only \added.
+\begin{fbx}[4 Swedish wheels \pg{55}, $\beta_i=0$, wheels at $(\pm\ell,\pm w)$ \added]
+\[\dot\varphi_i=\tfrac1r\begin{bmatrix}1&\tan\gamma_i&\tan\gamma_i\wXx i-\wXy i\end{bmatrix}\wXz\]
+Pattern FL $-45^\circ$, FR $+45^\circ$, RL $+45^\circ$, RR $-45^\circ$ (take signs from the question):
+\[\begin{bmatrix}\dot\varphi_{FL}\\\dot\varphi_{FR}\\\dot\varphi_{RL}\\\dot\varphi_{RR}\end{bmatrix}=\frac1r\begin{bmatrix}1&-1&-(\ell+w)\\1&1&\ell+w\\1&1&-(\ell+w)\\1&-1&\ell+w\end{bmatrix}\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix},\quad
+\]
+\[\wXz=\frac r4\begin{bmatrix}1&1&1&1\\-1&1&1&-1\\-\frac1{\ell+w}&\frac1{\ell+w}&-\frac1{\ell+w}&\frac1{\ell+w}\end{bmatrix}\wXp\]
+Rank 3, holonomic. $r=0.05$, $\ell=0.20$, $w=0.15$: $v=0.2\to(-4,4,4,-4)$; $u=0.3\to(6,6,6,6)$ rad/s. \chk
+\end{fbx}
+
+\hd{Omni triangle: all steps \pg{53--54}}
+\premise[W13 Q10 / practical Q1]{3 omni wheels at triangle vertices, distance $d$ from $C$, rollers $\perp$ drive, radius $r$}{$\wXp=\mathbf M\wXz$, $\wXz=\mathbf W\wXp$, holonomic?}
+\noindent\begin{minipage}{0.47\linewidth}
+\begin{tikzpicture}[scale=0.55,>={Latex[length=1.3mm]}]
+\def\dd{1.6}
+\draw[line width=0.5pt,fill=g1] (0,\dd) -- ({0.866*\dd},{-0.5*\dd}) -- ({-0.866*\dd},{-0.5*\dd}) -- cycle;
+\fill (0,0) circle (1.4pt);
+\draw[->,line width=0.6pt] (0,0) -- (0.7,0) node[right,font=\scriptsize]{$x_C$};
+\draw[->,line width=0.6pt] (0,0) -- (0,0.7) node[above,font=\scriptsize]{$y_C$};
+\foreach \px/\py/\ang in {0/{\dd}/0,{0.866*\dd}/{-0.5*\dd}/-120,{-0.866*\dd}/{-0.5*\dd}/120}{
+  \begin{scope}[shift={(\px,\py)},rotate=\ang]
+    \draw[fill=g2,rounded corners=1pt,line width=0.5pt] (-0.4,-0.09) rectangle (0.4,0.09);
+    \draw[->,line width=1pt] (0.4,0) -- (1.05,0);
+  \end{scope}
+  \fill (\px,\py) circle (1.4pt);
+}
+\node[font=\scriptsize,above left] at (0,{\dd}) {$W_1$};
+\node[font=\scriptsize,below right] at ({0.866*\dd},{-0.5*\dd-0.1}) {$W_2$};
+\node[font=\scriptsize,below left] at ({-0.866*\dd},{-0.5*\dd-0.1}) {$W_3$};
+\draw[dashed,line width=0.4pt] (0,0) -- node[above right,font=\scriptsize,pos=0.55]{$d$} ({0.866*\dd},{-0.5*\dd});
+\draw[dashed,line width=0.4pt] (0,0) -- (0,\dd);
+\draw[dashed,line width=0.4pt] (0,0) -- ({-0.866*\dd},{-0.5*\dd});
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.51\linewidth}\small
+\begin{tabular}{@{}c@{\,}c@{\,}c@{\,}c@{\,}c@{\,}c@{}}\toprule
+$i$ & $\wXx i$ & $\wXy i$ & $\beta_i$ & $\cos$ & $\sin$\\\midrule
+1 & $0$ & $d$ & $0^\circ$ & $1$ & $0$\\
+2 & $\frac{\sqrt3}2d$ & $-\frac d2$ & $-120^\circ$ & $-\frac12$ & $-\frac{\sqrt3}2$\\
+3 & $-\frac{\sqrt3}2d$ & $-\frac d2$ & $120^\circ$ & $-\frac12$ & $\frac{\sqrt3}2$\\\bottomrule\end{tabular}
+\end{minipage}\par
+\drawncap{drive arrows tangential, clockwise (read from the slide figure, \figsrc{w10-lec}{54}); $\beta_i=\phi_i-90^\circ$, $\phi_i=90^\circ,-30^\circ,210^\circ$; $\gamma_i=0$. Anticlockwise: every $-d$ becomes $+d$ \added}
+\begin{deriv}[Step 2: each wheel's row from $r\dot\varphi_i=\cos\beta_i(u-\dot\theta\wXy i)+\sin\beta_i(v+\dot\theta\wXx i)$ \added]
+\textbf{W1:} $r\dot\varphi_1=1(u-\dot\theta d)+0=u-d\dot\theta$.\\
+\textbf{W2:} $r\dot\varphi_2=-\tfrac12\big(u+\tfrac d2\dot\theta\big)-\tfrac{\sqrt3}2\big(v+\tfrac{\sqrt3}2d\dot\theta\big)=-\tfrac12u-\tfrac{\sqrt3}2v-\big(\tfrac14+\tfrac34\big)d\dot\theta$.\\
+\textbf{W3:} $r\dot\varphi_3=-\tfrac12\big(u+\tfrac d2\dot\theta\big)+\tfrac{\sqrt3}2\big(v-\tfrac{\sqrt3}2d\dot\theta\big)=-\tfrac12u+\tfrac{\sqrt3}2v-d\dot\theta$.\\
+\textbf{W2 by the slide chain \pg{36}:} $[\tfrac1r\ 0]\begin{bmatrix}-\frac12&-\frac{\sqrt3}2\\\frac{\sqrt3}2&-\frac12\end{bmatrix}\begin{bmatrix}1&0&\frac d2\\0&1&\frac{\sqrt3}2d\end{bmatrix}=\frac1r[-\tfrac12\ \ -\tfrac{\sqrt3}2\ \ -\tfrac d4-\tfrac{3d}4]=\frac1r[-\tfrac12\ \ -\tfrac{\sqrt3}2\ \ -d]$.
+\end{deriv}
+\begin{fbx}[Full $3\times3$ matrix and inverse (Sample Q10) \pg{54}]
+\[\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\\\dot\varphi_3\end{bmatrix}=\frac1r\begin{bmatrix}1&0&-d\\-\frac12&-\frac{\sqrt3}2&-d\\-\frac12&\frac{\sqrt3}2&-d\end{bmatrix}\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix},\quad
+\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix}=\frac r3\begin{bmatrix}2&-1&-1\\0&-\sqrt3&\sqrt3\\-\frac1d&-\frac1d&-\frac1d\end{bmatrix}\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\\\dot\varphi_3\end{bmatrix}\]
+$\det$ (unscaled) $=\frac{3\sqrt3}2d\ne0$; no no-slide rows $\Rightarrow$ $u,v,\dot\theta$ all free: holonomic, $\delta_m=3$. Check: spin $\Rightarrow$ all $\dot\varphi_i=-d\dot\theta/r$; translation $\Rightarrow\sum\dot\varphi_i=0$. \chk
+\end{fbx}
+\begin{deriv}[Step 3: inverse by elimination \added]
+$a_i=r\dot\varphi_i$. Sum: $a_1+a_2+a_3=-3d\dot\theta\Rightarrow\dot\theta=-\frac{a_1+a_2+a_3}{3d}$. Difference: $a_3-a_2=\sqrt3v\Rightarrow v=\frac{a_3-a_2}{\sqrt3}$. Row 1: $u=a_1+d\dot\theta=\frac{2a_1-a_2-a_3}3$. $\det$ along row 1: $1[\frac{\sqrt3}2d+\frac{\sqrt3}2d]-d[-\frac{\sqrt3}4-\frac{\sqrt3}4]=\sqrt3d+\frac{\sqrt3}2d=\frac{3\sqrt3}2d$.
+\end{deriv}
+\begin{worked}[$d=0.10$, $r=0.05$ \chk]
+$u=0.2$: $\frac1{0.05}(0.2,-0.1,-0.1)=\mathbf{(4,-2,-2)}$ rad/s (W13 numbers). $v=0.2$: $(0,-3.464,3.464)$. $\dot\theta=0.5$: $(-1,-1,-1)$.
+Heading $30^\circ$, $\wXn=(0.3,0.1,0)$: $u=0.3098$, $v=-0.0634$; $\wXp=(6.196,-2.000,-4.196)$ (ignoring heading: $(6,-4.732,-1.268)$).
+\end{worked}
+\begin{worked}[omni paths, $\dot\theta=0$, $\theta=0$: $\wXz=\wXn$ \chk]
+\small\begin{tabular}{@{}lcccc@{}}\toprule
+$1\times1$ square, $0.2$ m/s & $(u,v)$ & $\dot\varphi_1$ & $\dot\varphi_2$ & $\dot\varphi_3$\\\midrule
+east & $(0.2,0)$ & $4$ & $-2$ & $-2$\\
+north & $(0,0.2)$ & $0$ & $-3.464$ & $3.464$\\
+west & $(-0.2,0)$ & $-4$ & $2$ & $2$\\
+south & $(0,-0.2)$ & $0$ & $3.464$ & $-3.464$\\\bottomrule\end{tabular}\\
+$5$ s per side, 20 s total. Circle $R=0.5$, heading fixed, $s=0.2$: $\omega=0.4$, period $15.71$ s, $(u,v)=s(-\sin\omega t,\cos\omega t)$: $\dot\varphi_1=-\frac sr\sin\omega t$, $\dot\varphi_2=\frac sr\sin(\omega t-60^\circ)$, $\dot\varphi_3=\frac sr\sin(\omega t+60^\circ)$, $s/r=4$. Circle with heading following ($u=0.2$, $\dot\theta=0.4$, $v=0$): $\dot\varphi=(3.2,-2.8,-2.8)$; ICR $(0,0.5)$.
+\end{worked}
+
+\hd{Tricycle, car, Ackermann, bicycle \pg{56--61, 69}}
+\slidefig[0.6\linewidth]{w10-lec}{61}{77 108 538 135}{Ackermann: all axle lines meet at one ICR}
+\textbf{All rows from rolling + no-slide rows, $\gamma=0$.}
+\par\textbf{Tricycle \pg{58}} (front wheel $(b,0)$ driven and steered, rear axle through $C$): rear $v=0$. Front contact velocity $(u,b\dot\theta)=r\dot\varphi_1(\cos\beta_1,\sin\beta_1)$ $\Rightarrow$ $\dot\varphi_1=\frac1r\sqrt{u^2+b^2\dot\theta^2}$, $\beta_1=\operatorname{atan2}(b\dot\theta,u)$, $\tan\beta_1=b/R$. Rear wheels $(u\mp a\dot\theta)/r$. $b=0.6$, $r=0.1$, $u=0.4$, $\dot\theta=0.5$: $\dot\varphi_1=\mathbf5$, $\beta_1=\mathbf{36.87^\circ}$, $R=0.8$ \chk
+\par\textbf{Car \pg{60}} \added (rear $W_1,W_3$ driven at $(-b,\pm a)$, front $W_2,W_4$ steered at $(b,\pm a)$): rear no-slide $v=b\dot\theta$; $r\dot\varphi_1=u-a\dot\theta$, $r\dot\varphi_3=u+a\dot\theta$; $\tan\beta_2=\frac{2b\dot\theta}{u-a\dot\theta}$, $\tan\beta_4=\frac{2b\dot\theta}{u+a\dot\theta}$. ICR $(-b,R)$. $a=0.75$, $b=1.25$, $r=0.3$, $u=2$, $R=6$: $\dot\theta=0.3333$, $v=0.4167$, rear $(5.833,7.5)$, $\beta_2=25.46^\circ$, $\beta_4=20.32^\circ$ \chk
+\par\textbf{Ackermann \pg{61}} (ICR on the rear-axle line): $\tan\beta_{in}=\frac L{R-t/2}$, $\tan\beta_{out}=\frac L{R+t/2}$, $\cot\beta_{out}-\cot\beta_{in}=\frac tL$ ($L=2b$, $t=2a$, $R$ from mid rear axle). $L=2.5$, $t=1.5$, $R=6$: $\mathbf{25.46^\circ}$, $\mathbf{20.32^\circ}$ \chk
+\par\textbf{Bicycle \pg{69}} \added (rear fixed, driven, at $C$; front $(L,0)$ steered $\beta$): rear $r\dot\varphi_r=u$, $v=0$. Front no-slide $0=-u\sin\beta+L\dot\theta\cos\beta$. $\dot\theta=\frac{u\tan\beta}L$, $R=\frac L{\tan\beta}$, $\dot x=u\cos\theta$, $\dot y=u\sin\theta$, $r_f\dot\varphi_f=\frac u{\cos\beta}$. $u=2$, $\beta=20^\circ$, $L=1.2$: $\dot\theta=\mathbf{0.6066}$, $R=\mathbf{3.297}$. $R=3$: $\beta=21.80^\circ$, lap $9.425$ s \chk
+Jammed steering $\beta=0$: front row $0=v+L\dot\theta$ and $v=0$ $\Rightarrow\dot\theta=0$: rank $\mathbf C_1=2$, $\delta_m=1$, $\delta_s=0$ \added.
+
+\hd{Manoeuvrability and holonomy \pg{62--68}}
+\begin{fbx}[$\delta_M=\delta_m+\delta_s$ \pg{63}]
+$\delta_m$ = mobility (slide: ``number of driven wheels''; precisely \added $3-\operatorname{rank}\mathbf C_1$); $\delta_s$ = steerability (``number of steerable wheels''; \added rank of steered no-slide rows); $\delta_M\le3$.
+\end{fbx}
+\begin{tabularx}{\linewidth}{@{}Xccc@{}}\toprule
+Robot \pg{64} & $\delta_m$ & $\delta_s$ & $\delta_M$\\\midrule
+2 fixed std + castor (diff.\ drive) & 2 & 0 & 2\\
+2 fixed + 1 steerable std (tricycle, car) & 1 & 1 & 2\\
+2 steerable std + 1 Swedish & 1 & 2 & 3\\
+3 Swedish (omni) & 3 & 0 & 3\\\bottomrule
+\end{tabularx}
+Why \added: diff.\ drive rows $[0,1,0]$ twice, rank 1, $\delta_m=2$. Tricycle: rear $[0,1,0]$, front $[-\sin\beta,\cos\beta,b\cos\beta]$, rank 2, $\delta_m=1$. Omni: $\mathbf C_1$ empty, $\delta_m=3$. \chk
+\begin{fbx}[Holonomic vs non-holonomic \pg{66--68}]
+Holonomic constraint: position only, $f(\beta,\gamma,\varphi,\theta,x,y)=0$. Non-holonomic: contains velocities, \emph{not integrable}. Standard wheel no-sliding row $\Rightarrow$ non-holonomic; diff.\ drive: $-\dot x\sin\theta+\dot y\cos\theta=0$. Omni/mecanum (no standard wheel): holonomic, $\delta_M=\delta_m=3$.
+\end{fbx}
+\textbf{Explain.} Non-holonomic forbids sideways \emph{velocity}, not poses: parking reaches every $(x,y,\theta)$ by manoeuvring. Holonomic would confine the robot to a surface in pose space. Test \added: $\omega=-\sin\theta\,dx+\cos\theta\,dy$, $\boldsymbol\omega\cdot\nabla\times\boldsymbol\omega=-1\ne0$. \chk
+
+\hd{Decision table, slide notes, questions}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.34\linewidth}X@{}}\toprule
+If the question gives \ldots & use \ldots\\\midrule
+wheel positions, drive directions & generalised row $r\dot\varphi_i=\cos\beta(u-\dot\theta y)+\sin\beta(v+\dot\theta x)$\\
+two fixed wheels at $\pm a$; ICR? & $\dot\varphi_{1,2}=(u\mp a\dot\theta)/r$, $v=0$; $y_{ICR}=u/\dot\theta$\\
+circle $R$ at $v_0$ & $\dot\theta=v_0/R$, rows; lap $2\pi R/v_0$\\
+steering angle, wheelbase & bicycle $\dot\theta=u\tan\beta/L$; Ackermann\\
+3 Swedish wheels, $d$ & rows $[\cos\beta,\sin\beta,-d]$; invert by sum/difference\\
+world velocity given & $\wXz=\mathbf J^\top\wXn$ first\\
+``holonomic?'' & standard wheel (no-slide row) exists?\\\bottomrule
+\end{tabularx}
+\begin{slideerr}
+No numerical error found. (1) \pg{36} leaves the world$\to$chassis matrix unnamed, \pg{68} calls it $\mathbf R^{-1}$, \pg{14} calls the inverse $\mathbf J$. (2) Omni $\beta_i$ (\pg{54}) not written: figure shows clockwise tangents; anticlockwise flips the sign of $d$. (3) \pg{58}: $\beta_1+180^\circ$ with $\dot\varphi_1<0$ is equally valid. (4) \pg{63} $\delta_m,\delta_s$ informal; \pg{55}, \pg{60} figures only.
+\end{slideerr}
+\begin{trap}[lost marks]
+Frame not stated; calculator in wrong angle mode; $a$ is the \emph{half} track; left wheel at $+a$ slows on a left turn; ICR side ($y_{ICR}>0$ left); no-slide row written but unused ($v=0$); ``holonomic because it reaches every pose''; $\dot\varphi$ without the drive-direction convention.
 \end{trap}
+\textbf{W13 sample Q10} (omni triangle): solved on p.\,\pageref{p:SAMPLE}.
+
+\begin{examq}[(practical Q2) \mk{marks not published}]
+Omni robot above, $d=0.10$, $r=0.05$, $\wXp=(4,-1,-1)$ rad/s, start at origin, $\theta=0$: find $(u,v,\dot\theta)$, the path and the pose after $2$ s.
+\solution
+$u=\frac r3(2\dot\varphi_1-\dot\varphi_2-\dot\varphi_3)=\frac{0.05}3(10)=0.1667$; $v=\frac r{\sqrt3}(\dot\varphi_3-\dot\varphi_2)=0$; $\dot\theta=-\frac r{3d}\sum\dot\varphi_i=-0.3333$. ICR $(-v/\dot\theta,u/\dot\theta)=(0,-0.5)$: clockwise circle, radius $0.5$ m. $\theta=-0.6667$; $x=0.5\sin0.6667=\boxed{0.3092}$ m, $y=-0.5(1-\cos0.6667)=\boxed{-0.1071}$ m. Check: $0.5$ m from ICR \checkmark. \chk
+\end{examq}
+\begin{examq}[(practical Q3 and Q4) \mk{marks not published}]
+(a) ICR of a diff.\ drive, $a=0.3$, $\wXp=(2,5)$. (b) Bicycle kinematics; holonomic? $\dot\theta$ for $u=2$, $\beta=20^\circ$, $L=1.2$.
+\solution
+(a) $u-\dot\theta y=0$, $v+\dot\theta x=0$, $v=0$: $y_{ICR}=a\frac{\dot\varphi_1+\dot\varphi_2}{\dot\varphi_2-\dot\varphi_1}=0.3\cdot\frac73=\boxed{0.7}$ m left. Check: equal $\to\infty$, opposite $\to0$.
+(b) Rear: $v=0$, $r\dot\varphi_r=u$. Front: $0=-u\sin\beta+L\dot\theta\cos\beta\Rightarrow\dot\theta=\frac{u\tan\beta}L=\boxed{0.6066}$ rad/s ($R=3.297$). $\dot x=u\cos\theta$, $\dot y=u\sin\theta$. Non-holonomic: $-\dot x\sin\theta+\dot y\cos\theta=0$ restricts velocity, not integrable. \chk
+\end{examq}
+\begin{examq}[(Practice Q10.1) \mk{marks assumed}]
+Omni wheels at $d=0.12$, $\phi_i=0^\circ,120^\circ,240^\circ$, driving \emph{anticlockwise} tangentially ($\beta_i=\phi_i+90^\circ$), $\gamma_i=0$, $r=0.04$. Derive $\dot\varphi_i$; speeds for $(u,v,\dot\theta)=(0.3,0.1,0.5)$.
+\solution
+$(x_i,y_i)=d(\cos\phi_i,\sin\phi_i)$, $\cos\beta_i=-\sin\phi_i$, $\sin\beta_i=\cos\phi_i$: $r\dot\varphi_i=-u\sin\phi_i+v\cos\phi_i+d\dot\theta$; rows $\frac1r[-\sin\phi_i,\cos\phi_i,d]$, $\det=\frac{3\sqrt3}2d\ne0$. $\dot\varphi=\boxed{(4.000,\,-6.245,\,6.745)}$ rad/s. Check: spin gives $+d\dot\theta/r$ on all; the clockwise (slide) layout has $-d$. \chk
+\end{examq}
 \end{multicols}

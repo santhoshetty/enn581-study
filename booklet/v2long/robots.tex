@@ -1,0 +1,524 @@
+% ---------- ROBOTS gallery helpers (prefixed rb) ----------
+% Every symbolic matrix in this file is typed after a line  %MAT name  and is compared with the sympy-derived
+% matrix by vcheck/v2_robots.py (part C). Numbers: same script.
+\tikzset{rblink/.style={line width=2.4pt,line cap=round,draw=g2},rblinkb/.style={line width=0.5pt,line cap=round,draw=black},
+  rbjt/.style={circle,draw,line width=0.5pt,fill=white,inner sep=1.3pt}}
+% plan-view frame: \rbfr{(coordinate)}{angle in deg}{label}; z out of the page (circle with dot)
+\newcommand{\rbfr}[3]{\begin{scope}[shift={#1},rotate=#2]
+  \draw[-{Latex[length=1.3mm,width=1mm]},line width=0.5pt] (0,0)--(0.6,0);\node[font=\scriptsize,inner sep=0.5pt] at (0.8,-0.22){$x_{#3}$};
+  \draw[-{Latex[length=1.3mm,width=1mm]},line width=0.5pt] (0,0)--(0,0.6);\node[font=\scriptsize,inner sep=0.5pt] at (-0.24,0.8){$y_{#3}$};
+  \draw[line width=0.4pt,fill=white] (0,0) circle (0.07);\fill (0,0) circle (0.025);\end{scope}}
+\newcommand{\rbDH}[1]{\renewcommand{\arraystretch}{1.1}\setlength{\tabcolsep}{3pt}\begin{tabular}{@{}c|cccc@{}}$i$&$a_{i-1}$&$\alpha_{i-1}$&$d_i$&$\theta_i$\\\hline #1\end{tabular}}
+\newcommand{\rbpg}[1]{#1\,p.\,\pageref{p:#1}}
+% robot card: joints, variables, parameters, workspace, IK, singular poses
+\newcommand{\rbcard}[6]{{\sloppy\sffamily\footnotesize\renewcommand{\arraystretch}{1.08}\begin{tabular}{@{}>{\bfseries\color{slate}\raggedright}p{0.22\linewidth}@{\ }>{\raggedright\arraybackslash}p{0.70\linewidth}@{}}
+Joints & #1\\ Variables & #2\\ Parameters & #3\\ Workspace & #4\\ IK & #5\\ Singular & #6\end{tabular}}}
+\newenvironment{rbhead}[1]{\begin{minipage}{\linewidth}\hd{#1}}{\end{minipage}\par}
+\newcommand{\rbcol}{\mathbf 0^\top}
+\DeclareRobustCommand{\rbsl}[1]{\mbox{\sffamily\scriptsize\color{slate}[#1]}} % slide reference with the week named
+
+\bpart{ROBOTS}{Standard robots: configurations, DH tables, ETS, FK, IK, Jacobian at a glance}{4}
+\hd{Comparison of the standard robots}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.12\linewidth}>{\raggedright\arraybackslash}p{0.055\linewidth}>{\raggedright\arraybackslash}p{0.12\linewidth}c>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.12\linewidth}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}p{0.115\linewidth}@{}}
+\toprule
+Robot & joints & configuration & $n$ & reachable workspace (no joint limits) & IK solutions (position) & singular poses ($\det\mathbf J=0$) & treated in\\\midrule
+1.\ planar RR & RR & planar, 2-link articulated & 2 & annulus $|L_1-L_2|\le r\le L_1+L_2$; full disc if $L_1=L_2$ & 2 (elbow $\pm q_2$) & $q_2=0,\pi$: $\det\mathbf J_{xy}=L_1L_2\sin q_2$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}, \rbpg{W7}\\
+2.\ planar RP & RP & polar (planar) & 2 & annulus $d_{\min}\le r\le d_{\max}$ & 1 (2 if $d_2<0$ is allowed) & $d_2=0$: $\det\mathbf J_{xy}=-d_2$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}, \rbpg{W7}\\
+3.\ planar PR & PR & rail + rotary (planar) & 2 & ``stadium'': $D\times2L$ rectangle + half-disc of radius $L$ at each end & 2 ($q_2$ and $\pi-q_2$) & $q_2=\pm90^\circ$: $\det\mathbf J_{xy}=L_2\cos q_2$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}, \rbpg{W7}\\
+4.\ planar RRR & RRR & planar, 3-link & 3 & disc $r\le\sum L_i$ (hole if $2L_{\max}>\sum L_i$); dexterous: $L_3{+}|L_1{-}L_2|\le r\le L_1{+}L_2{-}L_3$ & 2 for $(x,y,\varphi)$; $\infty$ for $(x,y)$ & $q_2=0,\pi$ for $(x,y,\omega_z)$: $\det=L_1L_2\sin q_2$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}\\
+5.\ Cartesian & PPP & gantry / Cartesian & 3 & box, edges = strokes & 1 & none: $\det\mathbf J_\upsilon=-1$ & \rbpg{W1}\\
+6.\ cylindrical & RPP & cylindrical & 3 & hollow cylinder sector: radius $d_{3\min}$ to $d_{3\max}$, height = stroke of $d_2$ & 1 (2 if $d_3<0$ is allowed) & $d_3=0$: $\det\mathbf J_\upsilon=d_3$ & \rbpg{W1}\\
+7.\ spherical & RRP & spherical (Stanford-like) & 3 & spherical shell $d_{3\min}\le\rho\le d_{3\max}$ about $(0,0,H)$ & 2 (4 if $d_3<0$ is allowed) & $d_3=0$ or $\sin q_2=0$: $\det\mathbf J_\upsilon=-d_3^2\sin q_2$ & \rbpg{W3}, \rbpg{W6}\\
+8.\ SCARA & RRPR (position part RRP) & SCARA & 4 (3 for position) & flat ring $|a_1-a_2|\le r\le a_1+a_2$ times the stroke of $d_3$ & 2 (elbow); $d_3$, $q_4$ unique & $q_2=0,\pi$: $\det\mathbf J_\upsilon=-a_1a_2\sin q_2$ & \rbpg{W1}, \rbpg{W2}, \rbpg{W3}\\
+9.\ elbow arm & RRR & articulated / anthropomorphic (W13 Q1--Q3) & 3 & spherical shell $|L_3-L_4|\le\rho\le L_3+L_4$ about $(0,0,L_1{+}L_2)$ & 4 (shoulder $\times$ elbow) & $\sin\theta_3=0$ or $r=0$ & \rbpg{W2}, \rbpg{W3}, \rbpg{W6}, \rbpg{W7}\\
+10.\ Puma 560 & 6R, spherical wrist & Puma 560 (zero-offset model and the course table) & 6 & wrist centre in a spherical shell about the shoulder & up to 8 & elbow $\sin q_3=0$, shoulder (wrist centre on the waist axis), wrist $\sin q_5=0$ & \rbpg{W1}, \rbpg{W2}, \rbpg{W3}, \rbpg{W6}\\
+11.\ Franka Panda & 7R & anthropomorphic, redundant & 7 & thick sphere about $(0,0,0.333)$, sampled $0.02$--$0.86$ m & $\infty$ (1-D self-motion) & rank $\mathbf J<6$, e.g.\ wrist centre on the joint-1 axis & \rbpg{W2}, \rbpg{W3} (numerical)\\
+12.\ Furuta pendulum & RR (spatial: $z$, then $x$) & rotary pendulum & 2 & tip on a sphere of radius $\sqrt{L_1^2+L_2^2}$ about $(0,0,L_0)$, band $|z-L_0|\le L_2$ & $\le2$ (only if the point is on the sphere) & $\sin\theta_2=0$ & \rbpg{W2}\\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+\begin{multicols}{2}
+
+\hd{How to use this gallery \added}
+\premise[robot gallery]{a named robot (RR, RP, PR, RRR, PPP, RPP, RRP, SCARA, elbow arm, Puma, Panda, Furuta) with its joint values $\mathbf q$, or a wanted tool position / pose}{its pose ${}^0\T_E(\mathbf q)$, all IK branches, the full Jacobian ${}^0\mathbf J(\mathbf q)$, its singular poses and its workspace, written out in whole matrices}
+Each entry has the same order: \emph{card} (joints, variables, workspace, IK count, singular poses) $\to$ ETS beside proximal DH $\to$ the whole ${}^0\T_E$ $\to$ IK with every branch $\to$ the whole ${}^0\mathbf J$ with $\det$ and singular poses $\to$ a number check. Every matrix comes from one transform chain and is checked by script (\chk); where a week part derives the same robot the matrices are copied from it. This part is a reference gallery, so everything here is \added\ unless a slide page is quoted.
+\begin{fbx}[Conventions used in every entry]
+\[{}^{i-1}\T_i=\Rm_x(\alpha_{i-1})\,t_x(a_{i-1})\,\Rm_z(\theta_i)\,t_z(d_i),\qquad {}^0\T_E={}^0\T_1\,{}^1\T_2\cdots{}^{n-1}\T_n\]
+\[{}^{i-1}\T_i=\begin{bmatrix}c\theta_i&-s\theta_i&0&a_{i-1}\\ s\theta_ic\alpha_{i-1}&c\theta_ic\alpha_{i-1}&-s\alpha_{i-1}&-s\alpha_{i-1}d_i\\ s\theta_is\alpha_{i-1}&c\theta_is\alpha_{i-1}&c\alpha_{i-1}&c\alpha_{i-1}d_i\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$q_i$ & joint variable of joint $i$: $\theta_i$ (rad) if revolute, $d_i$ (m) if prismatic & rad, m\\
+$L_i,\ a_i,\ H,\ L_0$ & link lengths, offsets, heights (fixed) & m\\
+$c_i,\ s_i,\ c_{12},\ s_{123}$ & $\cos q_i,\ \sin q_i,\ \cos(q_1{+}q_2),\ \sin(q_1{+}q_2{+}q_3)$ & --\\
+${}^0\T_E$ & pose of the tool frame $\{E\}$ in the base frame $\{0\}$ ($4\times4$; last column $=(x,y,z,1)^\top$) & m\\
+${}^0\mathbf J$ & manipulator Jacobian in $\{0\}$ ($6\times n$): rows $\upsilon_x,\upsilon_y,\upsilon_z,\omega_x,\omega_y,\omega_z$; ${}^0\boldsymbol\nu={}^0\mathbf J\,\dot{\mathbf q}$ & m, rad\\
+$\mathbf J_\upsilon,\ \mathbf J_\omega$ & top three rows (linear), bottom three rows (angular) of $\mathbf J$ & --\\
+\end{symbols}
+\use{(times a constant tool transform if the question has one.) Right-handed frames, $z$ up, $z_i$ out of the page in plan views; radians in formulas, degrees only in numbers. Rows are $(a_{i-1},\alpha_{i-1},d_i,\theta_i)$ \rbsl{W2 slide 28}; ETS = walk the arm, base to tool \rbsl{W2 slides 15--16}. Distal DH, POE, URDF: p.\,\pageref{p:W2}.}
+\end{fbx}
+\begin{recipe}[Which robot is it? (read the question)]
+\begin{enumerate}
+\item Count the joints and write the letters in order from the base: R (turns), P (slides). The string is the name: RR, RP, PR, RRR, RRP, RPP, PPP, RRPR, 6R.
+\item Planar (all axes parallel, $\perp$ the plane) or spatial? Planar RR/RP/PR/RRR live in the $xy$-plane; the rest are 3D.
+\item Find the row of the comparison table (the table at the start of this part), then the entry. The card gives the workspace, the number of IK solutions and the singular poses at once.
+\item If the question gives its own table, \emph{use the question's table}; this gallery only shows the standard ones.
+\item Close with the entry's number check: $\mathbf q=\mathbf 0$ must match your drawing.
+\end{enumerate}
+\end{recipe}
+
+\begin{rbhead}{1. Planar RR: two revolute joints}
+\noindent\begin{minipage}[c]{0.45\linewidth}\slidefig[\linewidth]{w06-lec}{35}{19 108 672 216}{RR arm with frames $\{0\},\{1\},\{2\},\{3\}$ ($\{3\}$ = tool)}\end{minipage}\hfill
+\begin{minipage}[c]{0.53\linewidth}\rbcard{RR; planar; $n=2$}{$\mathbf q=(q_1,q_2)$; $q_1$ from $x_0$, $q_2$ relative to link 1; counter-clockwise $+$}{$L_1,L_2$}{annulus $|L_1{-}L_2|\le r\le L_1{+}L_2$}{2 (elbow $\pm q_2$)}{$q_2=0$ (stretched), $\pi$ (folded)}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS}{B. Proximal DH (3 rows, last is the tool)}
+${}^0\T_E=\Rm_z(q_1)\,t_x(L_1)\,\Rm_z(q_2)\,t_x(L_2)$
+\tcblower
+\rbDH{1&0&0&0&$q_1$\\2&$L_1$&0&0&$q_2$\\3 (tool)&$L_2$&0&0&0}
+\end{twoway}
+\begin{fbx}[FK: ${}^0\T_E$ of the RR arm \rbsl{W2 slides 15--16}]
+%MAT T_rr
+\[{}^0\T_E=\begin{bmatrix}c_{12}&-s_{12}&0&L_1c_1+L_2c_{12}\\s_{12}&c_{12}&0&L_1s_1+L_2s_{12}\\0&0&1&0\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$L_1,L_2$ & link lengths & m\\
+$q_1,q_2$ & joint angles & rad\\
+\end{symbols}
+\use{tip $(x,y)=(L_1c_1+L_2c_{12},\,L_1s_1+L_2s_{12})$, tool angle $q_1+q_2$ (the running sum). Check: $\mathbf q=\mathbf 0$ gives $(L_1{+}L_2,0)$; $L=(0.4,0.3)$ m, $\mathbf q=(40^\circ,50^\circ)$ gives $(0.3064,\,0.5571)$ m. \chk}
+\end{fbx}
+\begin{fbx}[IK, both branches \rbsl{W3 slides 25--31}]
+\[\cos q_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2},\qquad q_2=\atantwo\big(\pm\sqrt{1-\cos^2q_2},\ \cos q_2\big)\]
+\[q_1=\atantwo(y,x)-\atantwo(L_2\sin q_2,\ L_1+L_2\cos q_2)\]
+\use{Two solutions inside the annulus, one on its edge ($\sin q_2=0$), none outside ($|\cos q_2|>1$). Example: $L=(0.4,0.3)$, target $(0.3064,0.5571)$: $(q_1,q_2)=(40^\circ,50^\circ)$ or $(82.38^\circ,-50^\circ)$; both reproduce the target. \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^0\mathbf J$ \rbsl{W6 slides 33--39, 45--46}]
+%MAT J_rr
+\[{}^0\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}&-L_2s_{12}\\L_1c_1+L_2c_{12}&L_2c_{12}\\0&0\\0&0\\0&0\\1&1\end{bmatrix},\qquad\det\mathbf J_{xy}=L_1L_2\sin q_2\]
+\use{singular at $q_2=0,\pi$: the two columns are parallel, rank 1, and the tool cannot move \emph{along} the arm; joint rates $\to\infty$ for any such request. Independent of $q_1$. Dynamics of this arm: \rbpg{W7}. \chk}
+\end{fbx}
+
+\begin{rbhead}{2. Planar RP: polar arm}
+\noindent\begin{minipage}[c]{0.40\linewidth}\slidefig[\linewidth]{w03-lec}{23}{48 151 672 162}{RP arm: revolute $q_1$, then a prismatic extension along the link (slide: $S$)}\end{minipage}\hfill
+\begin{minipage}[c]{0.58\linewidth}\rbcard{RP; planar; $n=2$}{$q_1$ (rad), $d_2$ (m; the slide calls it $S$)}{none (the stroke of $d_2$)}{annulus $d_{2\min}\le r\le d_{2\max}$}{1; $(-d_2,\ q_1{+}\pi)$ if $d_2<0$ is allowed}{$d_2=0$ (tool on the joint-1 axis)}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS}{B. Proximal DH (prismatic axis must be $z_2$)}
+${}^0\T_E=\Rm_z(q_1)\,t_x(d_2)$
+\tcblower
+\rbDH{1&0&0&0&$q_1-90^\circ$\\2&0&$-90^\circ$&$d_2$&0}\\ plus the constant tool transform ${}^2\T_E$ below.
+\end{twoway}
+\begin{fbx}[FK: ${}^0\T_E$ of the RP arm \rbsl{W2 p.\,\pageref{p:W2}}]
+%MAT T_rp
+\[{}^0\T_E=\begin{bmatrix}c_1&-s_1&0&d_2c_1\\s_1&c_1&0&d_2s_1\\0&0&1&0\\0&0&0&1\end{bmatrix}\]
+%MAT T_rp_dh
+\[{}^0\T_2=\begin{bmatrix}s_1&0&c_1&d_2c_1\\-c_1&0&s_1&d_2s_1\\0&-1&0&0\\0&0&0&1\end{bmatrix},\qquad{}^2\T_E=\begin{bmatrix}0&-1&0&0\\0&0&-1&0\\1&0&0&0\\0&0&0&1\end{bmatrix},\qquad{}^0\T_2\,{}^2\T_E={}^0\T_E\]
+\begin{symbols}
+$q_1$ & revolute angle from $x_0$ & rad\\
+$d_2$ & extension along the link, from the joint-1 axis to the tip & m\\
+\end{symbols}
+\use{tip $=d_2(c_1,s_1)$: polar coordinates. Check: $q_1=35^\circ$, $d_2=0.6$ m gives $(0.4915,\,0.3441)$ m. \chk}
+\end{fbx}
+\begin{fbx}[IK \rbsl{W3 slides 23--24}]
+\[d_2=\sqrt{x^2+y^2},\qquad q_1=\atantwo(y,x)\qquad\big(\text{second solution if }d_2<0\text{ allowed: }(-d_2,\ q_1+\pi)\big)\]
+\use{atan2, not $\tan^{-1}(y/x)$. $(0.3,0.4)$: $d_2=0.5$ m, $q_1=53.13^\circ$; $(-0.3,0.4)$: $q_1=126.87^\circ$. Out of reach if $d_2$ is outside its stroke. \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^0\mathbf J$ \rbsl{W6 p.\,\pageref{p:W6}}]
+%MAT J_rp
+\[{}^0\mathbf J=\begin{bmatrix}-d_2s_1&c_1\\d_2c_1&s_1\\0&0\\0&0\\0&0\\1&0\end{bmatrix},\qquad\det\mathbf J_{xy}=-d_2\]
+\use{column 1 is tangential ($d_2\times$ unit tangent), column 2 radial. Singular only at $d_2=0$: column 1 vanishes and the tangential direction is lost. $q_1=40^\circ$, $d_2=0.6$: $\mathbf J_{xy}=\begin{bmatrix}-0.3857&0.7660\\0.4596&0.6428\end{bmatrix}$. \chk}
+\end{fbx}
+
+\begin{rbhead}{3. Planar PR: rail, then rotary joint}
+\noindent\begin{minipage}[c]{0.47\linewidth}\centering
+\begin{tikzpicture}[scale=0.62]
+\draw[line width=0.4pt] (-0.4,-0.25)--(4.6,-0.25);\draw[line width=0.4pt] (-0.4,0.25)--(4.6,0.25);
+\draw[fill=g2,line width=0.5pt] (1.2,-0.4) rectangle (2.4,0.4);
+\coordinate (C) at (1.8,0);\coordinate (E) at ($(C)+(50:2.6)$);
+\draw[rblink] (C)--(E);\draw[rblinkb] (C)--(E);\node[rbjt] at (C){};
+\draw[{Latex[length=1mm]}-{Latex[length=1mm]},line width=0.4pt] (0,-0.6)--(1.8,-0.6)node[midway,below,font=\scriptsize]{$d_1$};
+\draw[dashed,line width=0.4pt] (C)--++(0:1.5);\draw[-{Latex[length=1.2mm]},line width=0.4pt] ($(C)+(1.0,0)$) arc (0:50:1.0);\node[font=\scriptsize] at ($(C)+(25:1.35)$){$q_2$};
+\node[font=\scriptsize,rotate=50] at ($(C)!0.5!(E)+(140:0.28)$){$L_2$};
+\rbfr{(0,0)}{0}{S}\rbfr{(E)}{50}{E}
+\end{tikzpicture}\par\drawncap{$z_S,z_E$ out of the page; slider along $x_S$}\end{minipage}\hfill
+\begin{minipage}[c]{0.51\linewidth}\rbcard{PR; planar; $n=2$}{$d_1$ (m) along $x_S$, $q_2$ (rad) from $x_S$}{$L_2$}{stadium: $D\times2L_2$ rectangle, half-disc of radius $L_2$ at each end}{2: $q_2$ and $\pi-q_2$}{$q_2=\pm90^\circ$}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS}{B. Proximal DH (slide along $x_S$ needs $z_0=x_S$)}
+${}^S\T_E=t_x(d_1)\,\Rm_z(q_2)\,t_x(L_2)$
+\tcblower
+\rbDH{1&0&0&$d_1$&0\\2&0&$90^\circ$&0&$q_2+90^\circ$\\3 (tool)&$L_2$&0&0&0}\\ with ${}^S\T_0$ below.
+\end{twoway}
+\begin{fbx}[FK: ${}^S\T_E$ of the PR arm \rbsl{W2 p.\,\pageref{p:W2}}]
+%MAT T_pr
+\[{}^S\T_E=\begin{bmatrix}c_2&-s_2&0&d_1+L_2c_2\\s_2&c_2&0&L_2s_2\\0&0&1&0\\0&0&0&1\end{bmatrix}\]
+%MAT S0_pr
+\[{}^S\T_0=\begin{bmatrix}0&0&1&0\\-1&0&0&0\\0&-1&0&0\\0&0&0&1\end{bmatrix}\qquad{}^S\T_0\,\big(\text{DH table product}\big)={}^S\T_E\]
+\begin{symbols}
+$d_1$ & slider position along the rail & m\\
+$q_2$ & link angle from $x_S$ & rad\\
+$L_2$ & link length & m\\
+\end{symbols}
+\use{tip $(d_1+L_2c_2,\,L_2s_2)$. Check: $d_1=0.3$ m, $q_2=60^\circ$, $L_2=0.4$ m gives $(0.5,\,0.3464)$ m. A vertical slide ($z_S$) needs no extra frame: rows $(0,0,d_1,0),(0,0,0,q_2),(L_2,0,0,0)$. \chk}
+\end{fbx}
+\begin{fbx}[IK, both branches \added]
+\[\sin q_2=\frac{y}{L_2},\quad q_2=\atantwo\big(y,\ \pm\sqrt{L_2^2-y^2}\big),\quad d_1=x-L_2\cos q_2\]
+\use{the slider cannot change $y$, so $q_2$ comes from $y$ alone. None if $|y|>L_2$; one if $|y|=L_2$. $L_2=0.5$, target $(0.8,0.3)$: $(d_1,q_2)=(0.4\text{ m},\,36.87^\circ)$ or $(1.2\text{ m},\,143.13^\circ)$. (W3 writes $\theta$ and $L$ for $q_2$ and $L_2$.) \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^S\mathbf J$ \rbsl{W6 p.\,\pageref{p:W6}}]
+%MAT J_pr
+\[{}^S\mathbf J=\begin{bmatrix}1&-L_2s_2\\0&L_2c_2\\0&0\\0&0\\0&0\\0&1\end{bmatrix},\qquad\det\mathbf J_{xy}=L_2\cos q_2\]
+\use{singular at $q_2=\pm90^\circ$: the link is perpendicular to the rail, both columns point along $\pm x$, and the $y$ direction is lost. $L_2=0.5$, $q_2=30^\circ$: $\det=0.4330$. \chk}
+\end{fbx}
+
+\begin{rbhead}{4. Planar RRR: three revolute joints}
+\noindent\begin{minipage}[c]{0.45\linewidth}\slidefig[\linewidth]{w02-lec}{9}{144 119 480 146}{planar RRR arm, joint angles each from the previous link}\end{minipage}\hfill
+\begin{minipage}[c]{0.53\linewidth}\rbcard{RRR; planar; $n=3$}{$\mathbf q=(q_1,q_2,q_3)$ (rad), each from the previous link}{$L_1,L_2,L_3$}{disc $r\le L_1{+}L_2{+}L_3$; dexterous annulus $L_3{+}|L_1{-}L_2|\le r\le L_1{+}L_2{-}L_3$}{2 for $(x,y,\varphi)$; $\infty$ for $(x,y)$}{$q_2=0,\pi$ (for $(x,y,\omega_z)$)}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS}{B. Proximal DH (4 rows, last is the tool)}
+${}^0\T_E=\Rm_z(q_1)\,t_x(L_1)\,\Rm_z(q_2)$\\${}\cdot t_x(L_2)\,\Rm_z(q_3)\,t_x(L_3)$
+\tcblower
+\rbDH{1&0&0&0&$q_1$\\2&$L_1$&0&0&$q_2$\\3&$L_2$&0&0&$q_3$\\4 (tool)&$L_3$&0&0&0}
+\end{twoway}
+\begin{fbx}[FK: ${}^0\T_E$ of the RRR arm \rbsl{W2 slides 6--9}]
+%MAT T_rrr
+\[{}^0\T_E=\begin{bmatrix}c_{123}&-s_{123}&0&L_1c_1+L_2c_{12}+L_3c_{123}\\s_{123}&c_{123}&0&L_1s_1+L_2s_{12}+L_3s_{123}\\0&0&1&0\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$L_1,L_2,L_3$ & link lengths & m\\
+$q_1,q_2,q_3$ & joint angles & rad\\
+$q_E=q_1{+}q_2{+}q_3$ & tool angle, read from the matrix as $\atantwo(T_{21},T_{11})$ & rad\\
+\end{symbols}
+\use{check: $\mathbf q=\mathbf 0$ gives $(L_1{+}L_2{+}L_3,0)$; $L=(0.5,0.4,0.2)$ m, $\mathbf q=(30^\circ,45^\circ,-60^\circ)$ gives $(0.7297,\,0.6881)$ m and $q_E=15^\circ$ (slide example). \chk}
+\end{fbx}
+\begin{fbx}[IK for the pose $(x,y,\varphi)$, both branches \added]
+\[\mathbf p_W=(x-L_3\cos\varphi,\ y-L_3\sin\varphi),\quad (q_1,q_2)\ \text{= RR solution for }\mathbf p_W\ (\text{box 1}),\quad q_3=\varphi-q_1-q_2\]
+\use{two solutions; position only $(x,y)$: infinitely many (one spare DoF). $L=(1.0,0.7,0.3)$, $(x,y)=(1.2,0.9)$, $\varphi=60^\circ$: $\mathbf p_W=(1.0500,0.6402)$; $\mathbf q=(-3.32^\circ,\,89.09^\circ,\,-25.77^\circ)$ or $(66.06^\circ,\,-89.09^\circ,\,83.02^\circ)$. \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^0\mathbf J$ \rbsl{W6 p.\,\pageref{p:W6}}]
+%MAT J_rrr
+\[{}^0\mathbf J=\begin{bmatrix}-L_1s_1-L_2s_{12}-L_3s_{123}&-L_2s_{12}-L_3s_{123}&-L_3s_{123}\\L_1c_1+L_2c_{12}+L_3c_{123}&L_2c_{12}+L_3c_{123}&L_3c_{123}\\0&0&0\\0&0&0\\0&0&0\\1&1&1\end{bmatrix}\]
+\use{column $j$ sums every link from $j$ outwards. Position only: $\mathbf J_{xy}$ is $2\times3$ (fat), rank 1 only when all links are collinear. Pose $(x,y,\omega_z)$: the $3\times3$ matrix has $\det=L_1L_2\sin q_2$, independent of $q_3$: singular when the wrist point is stretched or folded. $L=(0.4,0.3,0.2)$, $\mathbf q=(20^\circ,40^\circ,-30^\circ)$: $\mathbf J_{xy}=\begin{bmatrix}-0.4966&-0.3598&-0.1000\\0.6991&0.3232&0.1732\end{bmatrix}$, $\det=0.0771$. \chk}
+\end{fbx}
+
+\begin{rbhead}{5. Cartesian PPP: three prismatic joints}
+\noindent\begin{minipage}[c]{0.40\linewidth}\slidefig[\linewidth]{w01-lec}{56}{365 162 38 162}{PPP (Cartesian) robot (slide)}\end{minipage}\hfill
+\begin{minipage}[c]{0.58\linewidth}\rbcard{PPP; $n=3$}{$d_1$ along $z$, $d_2$ along $y$, $d_3$ along $x$ (m)}{none}{box: edges are the three strokes}{1: $(d_1,d_2,d_3)=(z,y,x)$}{none ($\det\mathbf J_\upsilon=-1$)}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS}{B. Proximal DH (each axis $z_i$ is a slide)}
+${}^0\T_E=t_z(d_1)\,t_y(d_2)\,t_x(d_3)$
+\tcblower
+\rbDH{1&0&0&$d_1$&0\\2&0&$-90^\circ$&$d_2$&$90^\circ$\\3&0&$90^\circ$&$d_3$&0}\\ frame $\{3\}$ has $z_3$ along the last slide: ${}^0\T_3={}^0\T_E\,\Rm_y(90^\circ)$.
+\end{twoway}
+\begin{fbx}[FK: ${}^0\T_E$ of the PPP robot \rbsl{W1 slide 56}]
+%MAT T_ppp
+\[{}^0\T_E=\begin{bmatrix}1&0&0&d_3\\0&1&0&d_2\\0&0&1&d_1\\0&0&0&1\end{bmatrix},\qquad
+%MAT T_ppp_dh
+{}^0\T_3=\begin{bmatrix}0&0&1&d_3\\0&1&0&d_2\\-1&0&0&d_1\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$d_1,d_2,d_3$ & strokes along $z_0$, $y_0$, $x_0$ & m\\
+\end{symbols}
+\use{the orientation never changes: no joint turns the tool. The order of the three slides does not change the position. Check: all $d_i=0$ gives the origin; $M=6(4-3-1)+3=3$ (W1 G--K). \chk}
+\end{fbx}
+\begin{fbx}[IK and Jacobian \rbsl{W1 slide 56}]
+\[(d_1,d_2,d_3)=(z,\,y,\,x)\quad\text{(always exactly one solution, if the point is inside the box)}\]
+%MAT J_ppp
+\[{}^0\mathbf J=\begin{bmatrix}0&0&1\\0&1&0\\1&0&0\\0&0&0\\0&0&0\\0&0&0\end{bmatrix},\qquad\det\mathbf J_\upsilon=-1\]
+\use{a prismatic column is the unit axis of the slide and has no angular part; the three axes are orthogonal, so $\mathbf J_\upsilon$ is a permutation: never singular. \chk}
+\end{fbx}
+
+\begin{rbhead}{6. Cylindrical RPP: turn, lift, reach}
+\noindent\begin{minipage}[c]{0.40\linewidth}\slidefig[\linewidth]{w01-lec}{55}{394 108 77 113}{RPP (cylindrical) robot (slide)}\end{minipage}\hfill
+\begin{minipage}[c]{0.58\linewidth}\rbcard{RPP; $n=3$}{$q_1$ (rad) about $z_0$, $d_2$ (m) up, $d_3$ (m) radial}{none}{hollow cylinder sector: inner and outer radius $d_{3\min},d_{3\max}$, height = stroke of $d_2$}{1; $(q_1{+}\pi,\ d_2,\ -d_3)$ if $d_3<0$ allowed}{$d_3=0$ (tool on the axis)}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS}{B. Proximal DH}
+${}^0\T_E=\Rm_z(q_1)\,t_z(d_2)\,t_x(d_3)$
+\tcblower
+\rbDH{1&0&0&0&$q_1$\\2&0&0&$d_2$&$90^\circ$\\3&0&$90^\circ$&$d_3$&0}\\ with ${}^3\T_E$ below.
+\end{twoway}
+\begin{fbx}[FK: ${}^0\T_E$ of the RPP robot \rbsl{W1 slide 55}]
+%MAT T_cy
+\[{}^0\T_E=\begin{bmatrix}c_1&-s_1&0&d_3c_1\\s_1&c_1&0&d_3s_1\\0&0&1&d_2\\0&0&0&1\end{bmatrix}\]
+%MAT T_cy_dh
+\[{}^0\T_3=\begin{bmatrix}-s_1&0&c_1&d_3c_1\\c_1&0&s_1&d_3s_1\\0&1&0&d_2\\0&0&0&1\end{bmatrix},\qquad
+%MAT K_cy
+{}^3\T_E=\begin{bmatrix}0&1&0&0\\0&0&1&0\\1&0&0&0\\0&0&0&1\end{bmatrix},\qquad{}^0\T_3\,{}^3\T_E={}^0\T_E\]
+\begin{symbols}
+$q_1$ & rotation of the whole arm about the vertical axis & rad\\
+$d_2$ & vertical slide (height of the tool) & m\\
+$d_3$ & radial slide (horizontal reach) & m\\
+\end{symbols}
+\use{cylindrical coordinates $(r,\varphi,z)=(d_3,q_1,d_2)$. Check: $q_1=40^\circ$, $d_2=0.35$ m, $d_3=0.5$ m gives $(0.3830,\,0.3214,\,0.35)$ m. \chk}
+\end{fbx}
+\begin{fbx}[IK and Jacobian \rbsl{W1 slide 55}]
+\[q_1=\atantwo(y,x),\qquad d_2=z,\qquad d_3=\sqrt{x^2+y^2}\]
+%MAT J_cy
+\[{}^0\mathbf J=\begin{bmatrix}-d_3s_1&0&c_1\\d_3c_1&0&s_1\\0&1&0\\0&0&0\\0&0&0\\1&0&0\end{bmatrix},\qquad\det\mathbf J_\upsilon=d_3\]
+\use{point $(0.3,0.4,0.6)$: $q_1=53.13^\circ$, $d_2=0.6$ m, $d_3=0.5$ m. Singular only at $d_3=0$: column 1 vanishes (the tangential direction is lost) and $q_1$ is arbitrary. \chk}
+\end{fbx}
+
+\begin{rbhead}{7. Spherical RRP: turn, tilt, reach}
+\noindent\begin{minipage}[c]{0.43\linewidth}\centering
+\begin{tikzpicture}[scale=0.62]
+\draw[line width=0.6pt] (-0.7,0)--(1.9,0);\foreach \x in {-0.6,-0.3,0,0.3,0.6,0.9,1.2,1.5}\draw[line width=0.4pt] (\x,0)--(\x-0.12,-0.14);
+\draw[rblink] (0,0)--(0,1.3);\draw[rblinkb] (0,0)--(0,1.3);
+\coordinate (J) at (0,1.3);\coordinate (P) at ($(J)+(62:2.7)$);
+\draw[dashed,line width=0.4pt] (J)--(0,4.3);
+\draw[rblink] (J)--(P);\draw[rblinkb] (J)--(P);
+\draw[-{Latex[length=1.2mm]},line width=0.4pt] (0,3.3) arc (90:62:2.0);\node[font=\scriptsize] at (0.45,3.55){$q_2$};
+\fill (P) circle (0.07);\node[font=\scriptsize,anchor=west] at ($(P)+(0.1,0.05)$){tip $\mathbf p$};
+\draw[{Latex[length=1mm]}-{Latex[length=1mm]},line width=0.4pt] (-0.4,0.02)--(-0.4,1.28)node[midway,left,font=\scriptsize]{$H$};
+\node[font=\scriptsize,rotate=62] at ($(J)!0.5!(P)+(152:0.3)$){$d_3$};
+\draw[line width=0.4pt,fill=white] (J) circle (0.1);\draw[line width=0.4pt] (-0.07,1.23)--(0.07,1.37);\draw[line width=0.4pt] (-0.07,1.37)--(0.07,1.23);
+\node[font=\scriptsize,anchor=east] at (-0.15,1.62){$y_1$ ($\otimes$)};
+\draw[-{Latex[length=1.3mm,width=1mm]},line width=0.5pt] (0.8,0)--(0.8,0.7)node[right,font=\scriptsize]{$z_0$};
+\draw[-{Latex[length=1.3mm,width=1mm]},line width=0.5pt] (0.8,0)--(1.5,0)node[right,font=\scriptsize,yshift=3pt]{$x_1$};
+\end{tikzpicture}\par\drawncap{side view in the arm's plane (turned $q_1$ about $z_0$); $y_1$ into the page}\end{minipage}\hfill
+\begin{minipage}[c]{0.55\linewidth}\rbcard{RRP; $n=3$}{$q_1$ about $z_0$, $q_2$ tilt of the boom from vertical (about $y_1$), $d_3$ along the boom}{$H$ (height of joint 2)}{spherical shell $d_{3\min}\le\rho\le d_{3\max}$ about $(0,0,H)$}{2: $(q_1,q_2,d_3)$ and $(q_1{+}\pi,-q_2,d_3)$; 4 if $d_3<0$ allowed}{$d_3=0$, or $\sin q_2=0$}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS}{B. Proximal DH}
+${}^0\T_E=\Rm_z(q_1)\,t_z(H)\,\Rm_y(q_2)\,t_z(d_3)$
+\tcblower
+\rbDH{1&0&0&$H$&$q_1$\\2&0&$-90^\circ$&0&$q_2$\\3&0&$90^\circ$&$d_3$&0}
+\end{twoway}
+\begin{fbx}[FK: ${}^0\T_E$ of the spherical RRP arm \rbsl{W3 p.\,\pageref{p:W3}, W6 p.\,\pageref{p:W6}}]
+%MAT T_sp
+\[{}^0\T_E=\begin{bmatrix}c_1c_2&-s_1&c_1s_2&d_3c_1s_2\\s_1c_2&c_1&s_1s_2&d_3s_1s_2\\-s_2&0&c_2&H+d_3c_2\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$H$ & height of the joint-2 axis above $\{0\}$ & m\\
+$q_1,q_2$ & turn about $z_0$; tilt of the boom from vertical about $y_1$ (positive tips the boom towards $x_1$) & rad\\
+$d_3$ & extension of the prismatic joint along the boom & m\\
+\end{symbols}
+\use{spherical coordinates about $(0,0,H)$: radius $d_3$, polar angle $q_2$, azimuth $q_1$. Check: $\mathbf q=\mathbf 0$ gives $(0,0,H+d_3)$; $H=0.5$, $(q_1,q_2,d_3)=(53.13^\circ,\,51.34^\circ,\,0.6403)$ gives $(0.3,0.4,0.9)$ m. \chk}
+\end{fbx}
+\begin{fbx}[IK, both branches \rbsl{W3 p.\,\pageref{p:W3}}]
+\[q_1=\atantwo(y,x),\quad d_3=\sqrt{r^2+z'^2},\quad q_2=\atantwo(r,z'),\qquad r=\sqrt{x^2+y^2},\ z'=z-H\]
+\use{second solution $(q_1+\pi,\,-q_2,\,d_3)$; with $d_3<0$ allowed, also $(q_1,\,q_2+\pi,\,-d_3)$ and $(q_1+\pi,\,\pi-q_2,\,-d_3)$. $H=0.5$, $(0.3,0.4,0.9)$: $(53.13^\circ,51.34^\circ,0.6403\text{ m})$ and $(233.13^\circ,-51.34^\circ,0.6403\text{ m})$. \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^0\mathbf J$ \rbsl{W6 p.\,\pageref{p:W6}}]
+%MAT J_sp
+\[{}^0\mathbf J=\begin{bmatrix}-d_3s_1s_2&d_3c_1c_2&c_1s_2\\d_3c_1s_2&d_3s_1c_2&s_1s_2\\0&-d_3s_2&c_2\\0&-s_1&0\\0&c_1&0\\1&0&0\end{bmatrix},\qquad\det\mathbf J_\upsilon=-d_3^2\sin q_2\]
+\use{singular if $d_3=0$ (tool on the joint-2 axis) or $\sin q_2=0$ (boom vertical, tool on the $z_0$ axis, column 1 is zero). Boom 0.6403 m at $q_2=51.34^\circ$, $q_1=53.13^\circ$: $\det\mathbf J_\upsilon=-0.3202$. \chk}
+\end{fbx}
+
+\begin{rbhead}{8. SCARA: RRPR (position part RRP)}
+\noindent\begin{minipage}[c]{0.40\linewidth}\slidefig[\linewidth]{w01-lec}{54}{384 108 38 194}{RRP (SCARA) robot (slide)}\end{minipage}\hfill
+\begin{minipage}[c]{0.58\linewidth}\rbcard{RRPR (RRP + tool yaw); $n=4$}{$q_1,q_2$ (rad) about vertical axes, $d_3$ (m) down, $q_4$ (rad) yaw of the tool}{$H$, $a_1$, $a_2$}{flat ring $|a_1{-}a_2|\le r\le a_1{+}a_2$ times the stroke of $d_3$}{2 (elbow); $d_3,q_4$ follow}{$q_2=0,\pi$}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS (tool $z_E$ up, $q_4$ about $+z$)}{B. Proximal DH (4 rows)}
+${}^0\T_E=t_z(H)\,\Rm_z(q_1)\,t_x(a_1)\,\Rm_z(q_2)$\\${}\cdot t_x(a_2)\,t_z(-d_3)\,\Rm_z(q_4)$
+\tcblower
+\rbDH{1&0&0&$H$&$q_1$\\2&$a_1$&0&0&$q_2$\\3&$a_2$&$180^\circ$&$d_3$&0\\4&0&$180^\circ$&0&$q_4$}
+\end{twoway}
+\begin{fbx}[FK: ${}^0\T_E$ of the SCARA robot \rbsl{W2 p.\,\pageref{p:W2}; W1 slide 54}]
+%MAT T_sc
+\[{}^0\T_E=\begin{bmatrix}c_{124}&-s_{124}&0&a_1c_1+a_2c_{12}\\s_{124}&c_{124}&0&a_1s_1+a_2s_{12}\\0&0&1&H-d_3\\0&0&0&1\end{bmatrix}\]
+%MAT T_sc3
+\[\text{RRP only (3 rows, tool $z$ down, W2):}\quad{}^0\T_E=\begin{bmatrix}c_{12}&s_{12}&0&a_1c_1+a_2c_{12}\\s_{12}&-c_{12}&0&a_1s_1+a_2s_{12}\\0&0&-1&H-d_3\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$H$ & column height of the first joint & m\\
+$a_1,a_2$ & the two horizontal link lengths & m\\
+$d_3$ & downward stroke of the slide (positive lowers the tool) & m\\
+$q_4$ & tool yaw about the vertical, positive about $+z$ & rad\\
+\end{symbols}
+\use{all revolute axes are vertical, so the angles \emph{add}: yaw $\varphi=q_1+q_2+q_4$. The $180^\circ$ twist in row 3 turns $z_3$ down so a positive $d_3$ lowers the tool; row 4 turns it back up. Check: $\mathbf q=\mathbf 0$ gives $(a_1{+}a_2,0,H-d_3)$; $H=0.4$, $a=(0.35,0.25)$, $q=(40^\circ,-70^\circ,\,d_3{=}0.12,\,25^\circ)$ gives $(0.4846,\,0.1000,\,0.28)$ and yaw $-5^\circ$ (W2 practice). \chk}
+\end{fbx}
+\begin{fbx}[IK, both elbows \rbsl{W3 p.\,\pageref{p:W3}}]
+\[d_3=H-z,\quad (q_1,q_2)=\text{RR solution for }(x,y)\ (\text{box 1, }L_i\to a_i),\quad q_4=\varphi-q_1-q_2\]
+\use{two solutions (elbow $\pm q_2$); on the edge $r=a_1+a_2$ one. $H=0.40$, $a=(0.35,0.25)$, target $(0.30,0.25,0.28)$ m, $\varphi=60^\circ$: $(q_1,q_2,d_3,q_4)=(0.83^\circ,\,100.70^\circ,\,0.12\text{ m},\,-41.53^\circ)$ or $(78.79^\circ,\,-100.70^\circ,\,0.12\text{ m},\,81.92^\circ)$. \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^0\mathbf J$ \rbsl{W6 p.\,\pageref{p:W6}}]
+%MAT J_sc
+\[{}^0\mathbf J=\begin{bmatrix}-a_1s_1-a_2s_{12}&-a_2s_{12}&0&0\\a_1c_1+a_2c_{12}&a_2c_{12}&0&0\\0&0&-1&0\\0&0&0&0\\0&0&0&0\\1&1&0&1\end{bmatrix},\qquad\det\mathbf J_\upsilon=-a_1a_2\sin q_2\]
+\use{the slide column is $-\hat z$ because $d_3$ is measured downwards; the yaw column is $\omega_z$ only. The $4\times4$ block $(\upsilon_x,\upsilon_y,\upsilon_z,\omega_z)$ has the same determinant, so the SCARA is singular only at $q_2=0,\pi$ (arm stretched or folded). \chk}
+\end{fbx}
+
+\begin{rbhead}{9. Elbow arm: articulated RRR (W13 Q1--Q3)}
+\noindent\begin{minipage}[c]{0.50\linewidth}\slidefig[\linewidth]{w13-lec}{4}{29 86 326 205}{W13 Q1 arm with the lecturer's frames $\{S\},\{1\},\{2\},\{3\},\{T\}$}\end{minipage}\hfill
+\begin{minipage}[c]{0.48\linewidth}\rbcard{RRR; spatial; $n=3$}{$\theta_1$ about $z_S$; $\theta_2,\theta_3$ about horizontal axes, positive \emph{lifts} the arm}{$L_1,L_2$ (shoulder height $L_1{+}L_2$), $L_3$, $L_4$}{shell $|L_3{-}L_4|\le\rho\le L_3{+}L_4$ about $(0,0,L_1{+}L_2)$}{4: shoulder $\times$ elbow}{$\sin\theta_3=0$ (boundary); $r=0$ (tool above the base axis)}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS (the lecturer's, W13 p.\,4)}{B. Proximal DH}
+${}^S\T_T=\Rm_z(\theta_1)\,t_z(L_1{+}L_2)$\\${}\cdot\Rm_y(-\theta_2)\,t_x(L_3)\,\Rm_y(-\theta_3)$\\${}\cdot t_x(L_4)\,\Rm_x(90^\circ)$
+\tcblower
+\rbDH{1&0&0&$L_1{+}L_2$&$\theta_1$\\2&0&$90^\circ$&0&$\theta_2$\\3&$L_3$&0&0&$\theta_3$\\4 (tool)&$L_4$&0&0&0}\\ the table gives the ETS exactly (no extra constant).
+\end{twoway}
+\begin{fbx}[FK: ${}^S\T_T$ of the elbow arm \rbsl{W13 slides 4--5}]
+%MAT T_ar
+\[{}^S\T_T=\begin{bmatrix}c_1c_{23}&-c_1s_{23}&s_1&c_1(L_3c_2+L_4c_{23})\\s_1c_{23}&-s_1s_{23}&-c_1&s_1(L_3c_2+L_4c_{23})\\s_{23}&c_{23}&0&L_1+L_2+L_3s_2+L_4s_{23}\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$\theta_1$ & rotation about the vertical $z_S$ & rad\\
+$\theta_2,\theta_3$ & shoulder and elbow, positive lifts the arm (rotation about $-y$) & rad\\
+$c_{23}$ & $\cos(\theta_2+\theta_3)$ & --\\
+\end{symbols}
+\use{same matrix as the W2 part (p.\,\pageref{p:W2}). $r=L_3c_2+L_4c_{23}$ is the horizontal reach; $L_1{+}L_2{+}L_3s_2{+}L_4s_{23}$ the height. Check: $\boldsymbol\theta=\mathbf 0$ gives $(L_3{+}L_4,0,L_1{+}L_2)$ and $x_T=x_S$, $y_T=z_S$, $z_T=-y_S$; $L=(0.6,0.5,0.4,0.3)$, $\boldsymbol\theta=(30^\circ,20^\circ,40^\circ)$ gives $(0.4554,\,0.2629,\,1.4966)$ m. \chk}
+\end{fbx}
+\begin{fbx}[IK, all four branches \rbsl{W13 slide 7; W3 p.\,\pageref{w3:q3box}}]
+\[\theta_1=\atantwo(y,x)\ (r=+\sqrt{x^2+y^2})\ \text{ or }\ \theta_1+\pi\ (r=-\sqrt{x^2+y^2}),\qquad z'=z-L_1-L_2\]
+\[\cos\theta_3=\frac{r^2+z'^2-L_3^2-L_4^2}{2L_3L_4},\qquad \theta_3=\atantwo\big(\pm\sqrt{1-\cos^2\theta_3},\cos\theta_3\big)\]
+\[\theta_2=\atantwo(z',r)-\atantwo(L_4\sin\theta_3,\ L_3+L_4\cos\theta_3)\]
+\use{4 solutions: ($\theta_1$ or $\theta_1{+}\pi$) $\times$ ($\pm\theta_3$); none outside the shell ($|\cos\theta_3|>1$). $L=(0.6,0.5,0.4,0.3)$, $\mathbf p=(0.4554,0.2629,1.4966)$: $(30,20,40)$, $(30,54.047,-40)$, $(-150,125.953,40)$, $(-150,160,-40)$ degrees; each reproduces $\mathbf p$. \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^S\mathbf J$ \rbsl{W6 p.\,\pageref{p:W6}}]
+%MAT J_ar
+\[{}^S\mathbf J=\begin{bmatrix}-s_1(L_3c_2+L_4c_{23})&-c_1(L_3s_2+L_4s_{23})&-c_1L_4s_{23}\\c_1(L_3c_2+L_4c_{23})&-s_1(L_3s_2+L_4s_{23})&-s_1L_4s_{23}\\0&L_3c_2+L_4c_{23}&L_4c_{23}\\0&s_1&s_1\\0&-c_1&-c_1\\1&0&0\end{bmatrix}\]
+\[\det\mathbf J_\upsilon=-L_3L_4\sin\theta_3\,(L_3c_2+L_4c_{23})\]
+\use{angular columns are the joint axes in $\{S\}$: $\hat z_S$, then $(s_1,-c_1,0)$ twice. Singular when $\sin\theta_3=0$ (arm stretched or folded: workspace boundary) or $r=L_3c_2+L_4c_{23}=0$ (tool on the vertical axis through the shoulder: interior). $L_3=0.4$, $L_4=0.3$, $\theta_2=60^\circ$: $r=0$ at $\theta_3=71.81^\circ$. Equations of motion: \rbpg{W7}. \chk}
+\end{fbx}
+
+\begin{rbhead}{10. Puma 560: six revolute joints, spherical wrist}
+\noindent\begin{minipage}[c]{0.50\linewidth}\slidefig[\linewidth]{w03-lec}{32}{48 130 557 194}{6-DoF arm whose last three axes meet in a point (spherical wrist)}\end{minipage}\hfill
+\begin{minipage}[c]{0.48\linewidth}\rbcard{6R; $n=6$; axes 4, 5, 6 meet at the wrist centre $W$}{$q_1,\dots,q_6$ (rad)}{zero-offset model: $L_b,L_u,L_f$; course table: $a_2,a_3,d_3,d_4$}{$W$ in a spherical shell about the shoulder: inner/outer radius $|L_u{-}L_f|$, $L_u{+}L_f$ (zero-offset); $0.150$ to $0.877$ m (course table)}{up to 8: $2$ ($q_1$) $\times2$ ($q_3$) $\times2$ (wrist flip)}{elbow $\sin q_3=0$; shoulder ($W$ on the waist axis); wrist $\sin q_5=0$}\end{minipage}
+\end{rbhead}
+\sh{10a. Zero-offset model (W2 notebook Q5 / W6 notebook Q3)}
+\begin{twoway}{A. ETS (home pose: arm straight up)}{B. Proximal DH (table of the W2 part)}
+${}^0\T_E=t_z(L_b)\,\Rm_z(q_1)\,\Rm_y(q_2)\,t_z(L_u)$\\${}\cdot\Rm_y(q_3)\,t_z(L_f)\,\Rm_z(q_4)\,\Rm_y(q_5)\,\Rm_z(q_6)$\\ $\{E\}$ sits at the wrist centre.
+\tcblower
+\rbDH{1&0&0&$L_b$&$q_1$\\2&0&$-90^\circ$&0&$q_2{-}90^\circ$\\3&$L_u$&0&0&$q_3{+}90^\circ$\\4&0&$90^\circ$&$L_f$&$q_4$\\5&0&$-90^\circ$&0&$q_5$\\6&0&$90^\circ$&0&$q_6$}
+\end{twoway}
+\begin{fbx}[FK: ${}^0\T_E$ of the zero-offset Puma in block form \rbsl{W2 p.\,\pageref{p:W2}}]
+\[{}^0\T_E=\begin{bmatrix}{}^0\Rm_3\,{}^3\Rm_6&\mathbf p_W\\\rbcol&1\end{bmatrix}\]
+%MAT R03_pu
+\[{}^0\Rm_3=\Rm_z(q_1)\Rm_y(q_2{+}q_3)=\begin{bmatrix}c_1c_{23}&-s_1&c_1s_{23}\\s_1c_{23}&c_1&s_1s_{23}\\-s_{23}&0&c_{23}\end{bmatrix}\]
+%MAT R36_pu
+\[{}^3\Rm_6=\Rm_z(q_4)\Rm_y(q_5)\Rm_z(q_6)=\begin{bmatrix}c_4c_5c_6-s_4s_6&-c_4c_5s_6-s_4c_6&c_4s_5\\s_4c_5c_6+c_4s_6&-s_4c_5s_6+c_4c_6&s_4s_5\\-s_5c_6&s_5s_6&c_5\end{bmatrix}\]
+\end{fbx}
+\begin{fbx}[Wrist centre $\mathbf p_W$ = tool origin of the zero-offset Puma]
+%MAT pw_pu
+\[\mathbf p_W=\begin{bmatrix}c_1(L_us_2+L_fs_{23})\\s_1(L_us_2+L_fs_{23})\\L_b+L_uc_2+L_fc_{23}\end{bmatrix}\]
+\begin{symbols}
+$L_b$ & height of the shoulder above $\{0\}$ & m\\
+$L_u,L_f$ & upper arm, forearm (shoulder to elbow, elbow to wrist centre) & m\\
+$q_1$ & waist; $q_2,q_3$ shoulder, elbow (about $y$, positive tips the arm towards $+x$); $q_4,q_5,q_6$ wrist ($z,y,z$) & rad\\
+$\mathbf p_W$ & wrist centre = tool origin, independent of $q_4,q_5,q_6$ & m\\
+\end{symbols}
+\use{the rotation of the tool is the product ${}^0\Rm_3\,{}^3\Rm_6$ (multiply numerically; entries expand to long sums, so write the factors). Check: $\mathbf q=\mathbf 0$ gives $\mathbf I_3$ and $\mathbf p_W=(0,0,L_b{+}L_u{+}L_f)$; $L=(1.0,0.5,0.3)$, $\mathbf q=(30^\circ,20^\circ,-40^\circ,0,0,0)$ gives $\mathbf p_W=(0.0592,\,0.0342,\,1.7518)$ m. \chk}
+\end{fbx}
+\begin{fbx}[IK: decoupled, 8 branches \rbsl{W3 slides 32--38}]
+\[\rho=\pm\sqrt{x_W^2+y_W^2},\quad q_1=\atantwo(y_W,x_W)\ (\rho>0)\ \text{or}\ q_1+\pi\ (\rho<0),\quad z'=z_W-L_b\]
+\[\cos q_3=\frac{\rho^2+z'^2-L_u^2-L_f^2}{2L_uL_f},\qquad q_3=\atantwo(\pm\sqrt{1-\cos^2q_3},\cos q_3)\]
+\[q_2=\atantwo(\rho,z')-\atantwo(L_f\sin q_3,\ L_u+L_f\cos q_3)\]
+\[{}^3\Rm_6=({}^0\Rm_3)^\top\,{}^0\Rm_E,\qquad q_5=\atantwo\big(\pm\sqrt{r_{13}^2+r_{23}^2},\,r_{33}\big)\]
+\[q_4=\atantwo(\pm r_{23},\pm r_{13}),\qquad q_6=\atantwo(\pm r_{32},\mp r_{31})\]
+\use{angles are measured from the \emph{vertical} here ($q_2=0$: upper arm straight up). Upper signs together, lower signs together (wrist flip: $q_5\to-q_5$, $q_4\to q_4+\pi$, $q_6\to q_6+\pi$). If $q_5=0$ the wrist is singular: only $q_4+q_6$ is fixed. Example $L=(1.0,0.5,0.3)$, $\mathbf q=(30,20,-40,25,70,-35)^\circ$; all 8 solutions (degrees), each reproduces the whole pose:\\
+{\footnotesize\setlength{\tabcolsep}{3pt}\begin{tabular}{@{}rrrrrr@{}}
+$q_1$&$q_2$&$q_3$&$q_4$&$q_5$&$q_6$\\\hline
+30&20&$-40$&25&70&$-35$\\30&20&$-40$&$-155$&$-70$&145\\30&$-9.602$&40&54.876&29.048&$-77.116$\\30&$-9.602$&40&$-125.124$&$-29.048$&102.884\\
+210&$-20$&40&$-155$&70&$-35$\\210&$-20$&40&25&$-70$&145\\210&9.602&$-40$&$-125.124$&29.048&$-77.116$\\210&9.602&$-40$&54.876&$-29.048$&102.884
+\end{tabular}} \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^0\mathbf J$ of the zero-offset Puma ($6\times6$, three whole blocks) \rbsl{W6 notebook Q3}]
+\[{}^0\mathbf J=\begin{bmatrix}\mathbf J_{v}&\mathbf 0_{3\times3}\\\mathbf J_{\omega,1\text{--}3}&{}^0\Rm_3\mathbf W\end{bmatrix}\]
+%MAT Jv3_pu
+\[\mathbf J_v=\begin{bmatrix}-s_1(L_us_2+L_fs_{23})&c_1(L_uc_2+L_fc_{23})&c_1L_fc_{23}\\c_1(L_us_2+L_fs_{23})&s_1(L_uc_2+L_fc_{23})&s_1L_fc_{23}\\0&-(L_us_2+L_fs_{23})&-L_fs_{23}\end{bmatrix}\]
+%MAT Jw123_pu
+\[\mathbf J_{\omega,1\text{--}3}=\begin{bmatrix}0&-s_1&-s_1\\0&c_1&c_1\\1&0&0\end{bmatrix}\]
+%MAT W_pu
+\[\mathbf W=\begin{bmatrix}0&-s_4&c_4s_5\\0&c_4&s_4s_5\\1&0&c_5\end{bmatrix}\quad(\text{columns }\hat z,\ \Rm_z(q_4)\hat y,\ \Rm_z(q_4)\Rm_y(q_5)\hat z\text{ in }\{3\})\]
+\[\det\mathbf J=-L_uL_f\sin q_3\,(L_us_2+L_fs_{23})\,\sin q_5\]
+\use{the tool origin is the wrist centre, so columns 4--6 have no linear part and $\mathbf J$ is block lower-triangular: $\det\mathbf J=\det\mathbf J_v\cdot\det({}^0\Rm_3\mathbf W)$ with $\det\mathbf J_v=L_uL_f\sin q_3(L_us_2+L_fs_{23})$ and $\det\mathbf W=-\sin q_5$. Three singular families: \emph{elbow} $\sin q_3=0$ (boundary), \emph{shoulder} $L_us_2+L_fs_{23}=0$ ($W$ on the waist axis; $L_u=0.5$, $L_f=0.3$, $q_2=22.92^\circ$: $q_3=-63.39^\circ$), \emph{wrist} $\sin q_5=0$ (axes 4 and 6 aligned; rank 5). \chk}
+\end{fbx}
+\sh{10b. Puma 560 with the course table (W3 practical \texttt{puma560\_fk\_proximal\_dh.py})}
+\begin{twoway}{A. ETS: each row expanded}{B. Proximal DH (metres, radians; $\theta_i=q_i$)}
+${}^0\T_E=\prod_{i=1}^{6}\Rm_x(\alpha_{i-1})\,t_x(a_{i-1})\,\Rm_z(q_i)\,t_z(d_i)$, with the numbers of the table; no tool offset, $\{E\}=\{6\}$.
+\tcblower
+\renewcommand{\arraystretch}{1.05}\begin{tabular}{@{}c|cccc@{}}$i$&$a_{i-1}$&$\alpha_{i-1}$&$d_i$&$\theta_i$\\\hline 1&0&0&0&$q_1$\\2&0&$-90^\circ$&0&$q_2$\\3&0.4318&0&0.15005&$q_3$\\4&$-0.0203$&$-90^\circ$&0.4318&$q_4$\\5&0&$90^\circ$&0&$q_5$\\6&0&$-90^\circ$&0&$q_6$\end{tabular}
+\end{twoway}
+\begin{fbx}[FK and IK with the course table \added]
+%MAT T_p560_0
+\[{}^0\T_E(\mathbf q=\mathbf 0)=\begin{bmatrix}1&0&0&0.4115\\0&-1&0&0.1501\\0&0&-1&-0.4318\\0&0&0&1\end{bmatrix}\]
+%MAT T_p560_ex
+\[{}^0\T_E(0,45^\circ,-45^\circ,0,45^\circ,0)=\begin{bmatrix}0.7071&0&-0.7071&0.2850\\0&-1&0&0.1501\\-0.7071&0&-0.7071&-0.7371\\0&0&0&1\end{bmatrix}\]
+%MAT pw_p560
+\[\mathbf p_W=\begin{bmatrix}c_1(a_2c_2+a_3c_{23}-d_4s_{23})-d_3s_1\\s_1(a_2c_2+a_3c_{23}-d_4s_{23})+d_3c_1\\-a_2s_2-a_3s_{23}-d_4c_{23}\end{bmatrix},\qquad\mathbf p_W=\text{origin of }\{4\}=\{5\}=\{6\}\]
+\begin{symbols}
+$a_2,a_3$ & table entries $a_2=0.4318$, $a_3=-0.0203$ & m\\
+$d_3,d_4$ & table entries $d_3=0.15005$, $d_4=0.4318$ & m\\
+$\mathbf p_W$ & wrist centre, depends on $q_1,q_2,q_3$ only & m\\
+\end{symbols}
+\use{$\mathbf p_W$ does not depend on $q_4,q_5,q_6$ (the three wrist axes meet at one point). Check: $\mathbf q=\mathbf 0$ puts the tool at $(0.4115,0.1501,-0.4318)$ m pointing down. \chk}
+\end{fbx}
+\begin{recipe}[IK of the course-table Puma 560 (derived \added)]
+\begin{enumerate}
+\item $K=a_2^2+a_3^2+d_3^2+d_4^2$; $\ |\mathbf p_W|^2=K+2a_2(a_3\cos q_3-d_4\sin q_3)$, so $A\cos q_3+B\sin q_3=C$ with $A=2a_2a_3$, $B=-2a_2d_4$, $C=|\mathbf p_W|^2-K$. Then $q_3=\atantwo\big(C,\pm\sqrt{A^2+B^2-C^2}\big)-\atantwo(A,B)$ (the W3 trigonometric tool): two values.
+\item $\rho=\pm\sqrt{x_W^2+y_W^2-d_3^2}$ (the offset $d_3$ separates the ``left'' and ``right'' shoulder), $\ q_1=\atantwo(y_W,x_W)-\atantwo(d_3,\rho)$.
+\item $m=a_2+a_3\cos q_3-d_4\sin q_3$, $\ n=a_3\sin q_3+d_4\cos q_3$, $\ q_2=\atantwo(-z_W,\rho)-\atantwo(n,m)$.
+\item Wrist: ${}^3\Rm_6=\Rm_y(q_4)\Rm_z(q_5)\Rm_y(q_6)\,\Rm_x(-90^\circ)$ for this table. Compute ${}^3\Rm_6=({}^0\Rm_3)^\top\,{}^0\Rm_E$ and $\mathbf M={}^3\Rm_6\,\Rm_x(90^\circ)$; then $\sin q_5=\pm\sqrt{M_{12}^2+M_{32}^2}$, $\ q_5=\atantwo(\sin q_5,M_{22})$, $\ q_4=\atantwo\big(M_{32}/\sin q_5,\,-M_{12}/\sin q_5\big)$, $\ q_6=\atantwo\big(M_{23}/\sin q_5,\,M_{21}/\sin q_5\big)$.
+\item $2\times2\times2=8$ solutions (two $q_3$, two shoulders, two wrist signs). Example $\mathbf q=(0.4,0.6,-0.5,0.5,0.9,-0.7)$ rad: all 8 reproduce the whole pose. The wrist centre lies in the shell $0.150\le|\mathbf p_W|\le0.877$ m about the origin of $\{0\}$. \chk
+\end{enumerate}
+\end{recipe}
+\begin{slideerr}[W3 practical files: two different Puma tables]
+\texttt{puma560\_fk\_proximal\_dh.py} (table above) and \texttt{puma560\_fk\_distal\_ets.py} (standard rows $(\theta,d,a,\alpha)=(q_1,0,0,90^\circ),(q_2,0,0.4318,0),(q_3,0.15005,0.0203,-90^\circ),\dots$) do \emph{not} give the same pose: at $\mathbf q=\mathbf 0$ the first gives $(0.4115,0.1501,-0.4318)$ m with the tool pointing down, the second $(0.4521,-0.1500,0.4318)$ m with the tool axes parallel to the base. The sign of $a_3$ and of $\alpha_1$ differ, so the second is not the first rewritten in distal form. Never assume a table: use the one in the question. \chk
+\end{slideerr}
+
+\begin{rbhead}{11. Franka Panda: seven revolute joints (redundant)}
+\noindent\begin{minipage}[c]{0.46\linewidth}\slidefig[\linewidth]{w02-lec}{10}{288 127 326 232}{Panda from Franka Emika (photo, W2 p.\,10)}\end{minipage}\hfill
+\begin{minipage}[c]{0.52\linewidth}\rbcard{7R; $n=7$ (one more than the six needed for a pose)}{$q_1,\dots,q_7$ (rad)}{table below (m); flange offset $0.107$ m}{thick spherical region about the shoulder point $(0,0,0.333)$; sampled flange distance $0.02$ to $0.86$ m}{$\infty$: a 1-D family (self-motion) for every reachable pose}{rank $\mathbf J<6$ on special sets (below)}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS: the same rows, expanded}{B. Franka's published proximal (Craig) DH}
+${}^0\T_E=\prod_{i=1}^{7}\Rm_x(\alpha_{i-1})\,t_x(a_{i-1})\,\Rm_z(q_i)\,t_z(d_i)\ \cdot\ t_z(0.107)$ (flange).\\ The notebook's printed Panda ETS is a different arm (see W2 part, slide check).
+\tcblower
+\rbDH{1&0&0&0.333&$q_1$\\2&0&$-90^\circ$&0&$q_2$\\3&0&$90^\circ$&0.316&$q_3$\\4&0.0825&$90^\circ$&0&$q_4$\\5&$-0.0825$&$-90^\circ$&0.384&$q_5$\\6&0&$90^\circ$&0&$q_6$\\7&0.088&$90^\circ$&0&$q_7$}\\ $a_{i-1},d_i$ in m; flange: $t_z(0.107)$.
+\end{twoway}
+\begin{fbx}[FK, Jacobian and what is special \rbsl{W2 p.\,\pageref{p:W2}; W3 slides 40--52}]
+\[{}^0\T_E=\Big[\prod_{i=1}^{7}{}^{i-1}\T_i(q_i)\Big]\,t_z(0.107),\qquad{}^{i-1}\T_i=\Rm_x(\alpha_{i-1})\,t_x(a_{i-1})\,\Rm_z(q_i)\,t_z(d_i)\]
+%MAT T_panda0
+\[{}^0\T_E(\mathbf q=\mathbf 0)=\begin{bmatrix}1&0&0&0.088\\0&-1&0&0\\0&0&-1&0.926\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$\mathbf z_j,\ \mathbf o_j$ & axis (third column of ${}^0\T_j$) and origin of proximal frame $\{j\}$, in $\{0\}$ & --, m\\
+$\mathbf p_E$ & flange position (last column of ${}^0\T_E$) & m\\
+\end{symbols}
+\use{all joints revolute, so the Jacobian columns are ${}^0\mathbf J_{:,j}=\big[\mathbf z_j\times(\mathbf p_E-\mathbf o_j);\ \mathbf z_j\big]$, $j=1\dots7$, a $6\times7$ matrix (fat: more joints than pose components). The flange points down at $\mathbf q=\mathbf 0$. Matches the toolbox Panda flange. \chk}
+\end{fbx}
+\begin{fbx}[Jacobian at $\mathbf q=\mathbf 0$ (whole $6\times7$ matrix) and singular poses \added]
+%MAT J_panda0
+\[{}^0\mathbf J(\mathbf 0)=\begin{bmatrix}0&0.5930&0&-0.2770&0&0.1070&0\\0.0880&0&0.0880&0&0.0880&0&0\\0&-0.0880&0&0.0055&0&0.0880&0\\0&0&0&0&0&0&0\\0&1&0&-1&0&-1&0\\1&0&1&0&1&0&-1\end{bmatrix}\]
+\use{rank $5$ here: the arm is straight up, all joint axes lie in the $yz$-plane, so the $\omega_x$ row is zero. In general $\operatorname{rank}\mathbf J=6$ (generic poses, 30 random tests) and there is a one-dimensional null space $\mathbf n$ with $\mathbf J\mathbf n=\mathbf 0$ (\textbf{self-motion}: the elbow swivels while the flange stands still), so an exact IK has $\infty$ solutions: pick one by $\dot{\mathbf q}=\mathbf J^+\boldsymbol\nu+(\mathbf I-\mathbf J^+\mathbf J)\dot{\mathbf q}_0$ (W3 pseudo-inverse, W6). Singular ($\operatorname{rank}\mathbf J=5$): $q_2=q_4=0$ (any other joints), and every pose with the wrist centre (origin of $\{5\}$) on the joint-1 axis (shoulder singularity); a stretched elbow alone is \emph{not} singular because the flange offset gives the wrist room to compensate. No closed-form IK is in the unit: numerical (W3 pp.\,40--52). \chk}
+\end{fbx}
+
+\begin{rbhead}{12. Furuta (rotary) pendulum: RR in 3D}
+\noindent\begin{minipage}[c]{0.52\linewidth}\slidefig[\linewidth]{w02-lec}{17}{115 140 557 130}{Furuta pendulum: post $L_0$, arm $L_1$ turned $\theta_1$ about $z$, pendulum $L_2$ turned $\theta_2$ about the arm}\end{minipage}\hfill
+\begin{minipage}[c]{0.46\linewidth}\rbcard{RR (first axis vertical, second along the arm); $n=2$}{$\theta_1$ about $z_B$; $\theta_2$ about the arm's own $x$}{$L_0,L_1,L_2$}{tip on the sphere $x^2{+}y^2{+}(z{-}L_0)^2=L_1^2{+}L_2^2$, band $|z{-}L_0|\le L_2$}{$\le2$; none unless the point is on the sphere}{$\sin\theta_2=0$ (pendulum vertical)}\end{minipage}
+\end{rbhead}
+\begin{twoway}{A. ETS \rbsl{W2 slide 19}}{B. Proximal DH \rbsl{W2 slide 34}}
+${}^B\T_E=t_z(L_0)\,\Rm_z(\theta_1)\,t_x(L_1)$\\${}\cdot\Rm_x(\theta_2)\,t_z(-L_2)\,\Rm_y(\pi)$
+\tcblower
+\rbDH{1&0&0&$L_0$&$q_1{+}90^\circ$\\2&0&$90^\circ$&$L_1$&$q_2$\\3&0&$90^\circ$&$L_2$&0}\\ plus ${}^3\T_E=\Rm_z(-90^\circ)$.
+\end{twoway}
+\begin{fbx}[FK: ${}^B\T_E$ of the Furuta pendulum \rbsl{W2 slides 17--19}]
+%MAT T_fu
+\[{}^B\T_E=\begin{bmatrix}-c_1&-s_1c_2&-s_1s_2&L_1c_1-L_2s_1s_2\\-s_1&c_1c_2&c_1s_2&L_1s_1+L_2c_1s_2\\0&s_2&-c_2&L_0-L_2c_2\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$L_0$ & post height & m\\
+$L_1$ & horizontal arm length & m\\
+$L_2$ & pendulum length (along $-z_E$) & m\\
+$\theta_1,\theta_2$ & arm angle about the post, pendulum angle about the arm & rad\\
+\end{symbols}
+\use{the table's ${}^0\T_3$ differs from this matrix only by the constant ${}^3\T_E$ (\rbsl{W2 slide 32}: ``$\{3\}$ is not $\{E\}$''). Check: $\boldsymbol\theta=\mathbf 0$ gives tip $(L_1,0,L_0-L_2)$ and $z_E=-z_B$; $L=(0.5,0.4,0.3)$, $\boldsymbol\theta=(60^\circ,45^\circ)$ gives $(0.0163,\,0.4525,\,0.2879)$ m. \chk}
+\end{fbx}
+\begin{fbx}[IK, both branches \added]
+\[\cos\theta_2=\frac{L_0-z}{L_2},\qquad\theta_2=\atantwo\big(\pm\sqrt{1-\cos^2\theta_2},\cos\theta_2\big)\]
+\[\theta_1=\atantwo(y,x)-\atantwo(L_2\sin\theta_2,\ L_1)\]
+\use{the tip $(x,y)$ is the vector $(L_1,\,L_2\sin\theta_2)$ turned by $\theta_1$. A point is reachable only if it lies on the sphere $x^2+y^2+(z-L_0)^2=L_1^2+L_2^2$ (two unknowns cannot reach a 3-D region). Example: tip $(0.0163,0.4525,0.2879)$: $(\theta_1,\theta_2)=(60^\circ,45^\circ)$ or $(115.88^\circ,-45^\circ)$. \chk}
+\end{fbx}
+\begin{fbx}[Jacobian ${}^B\mathbf J$ \added]
+%MAT J_fu
+\[{}^B\mathbf J=\begin{bmatrix}-L_1s_1-L_2c_1s_2&-L_2s_1c_2\\L_1c_1-L_2s_1s_2&L_2c_1c_2\\0&L_2s_2\\0&c_1\\0&s_1\\1&0\end{bmatrix},\qquad\big|\mathbf J_{\upsilon,1}\times\mathbf J_{\upsilon,2}\big|^2=L_2^2(L_1^2+L_2^2)\sin^2\theta_2\]
+\use{angular part: $\boldsymbol\omega=\dot\theta_1\hat z_B+\dot\theta_2\hat x_1$ with $\hat x_1=(c_1,s_1,0)$. The two linear columns are parallel iff $\sin\theta_2=0$ (pendulum hanging straight down or standing straight up): then both are horizontal and tangential, so the radial and vertical directions are lost. \chk}
+\end{fbx}
+\end{multicols}
+
+\noindent\begin{minipage}{\linewidth}
+\hd{Mobile robots at a glance}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.16\linewidth}>{\raggedright\arraybackslash}p{0.09\linewidth}ccc>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.17\linewidth}@{}}
+\toprule
+Robot & wheels & holonomic? & $\delta_m$ & $\delta_s$ & $\delta_M$ & ICR (in $\{C\}$) & treated in\\\midrule
+differential drive & 2 fixed standard (driven, at $\pm a$) + castor & no & 2 & 0 & 2 & on the axle line: $y_{ICR}=u/\dot\theta=a\,\dfrac{\dot\varphi_1+\dot\varphi_2}{\dot\varphi_2-\dot\varphi_1}$; $v=0$ & \rbpg{W10} (slides 43--47, 61)\\
+unicycle model (added) & kinematic model of a diff.\ drive: inputs $u,\ \omega=\dot\theta$ & no & 2 & 0 & 2 & $R=u/\omega$ on the axle line; $(\dot x,\dot y,\dot\theta)=(u\cos\theta,u\sin\theta,\omega)$ & \rbpg{W10}\\
+bicycle & rear fixed (driven) + front steered wheel at $(L,0)$ & no & 1 & 1 & 2 & on the rear-axle line at $R=L/\tan\beta$; $\dot\theta=u\tan\beta/L$ & \rbpg{W10} (slide 69)\\
+car (Ackermann) & 2 rear fixed + 2 front steered & no & 1 & 1 & 2 & rear-axle line; $\tan\beta_{in}=\dfrac L{R-t/2}$, $\tan\beta_{out}=\dfrac L{R+t/2}$ & \rbpg{W10} (slides 59--61)\\
+tricycle & 2 rear fixed + 1 front wheel driven and steered at $(b,0)$ & no & 1 & 1 & 2 & rear-axle line, $R=b/\tan\beta_1$; $\dot\varphi_1=\frac1r\sqrt{u^2+b^2\dot\theta^2}$, $\beta_1=\atantwo(b\dot\theta,u)$ & \rbpg{W10} (slides 56--58)\\
+3-wheel omni (Swedish triangle) & 3 omni wheels at $120^\circ$, distance $d$ from $C$ & yes & 3 & 0 & 3 & anywhere: $(-v/\dot\theta,\ u/\dot\theta)$ for any $(u,v,\dot\theta)$ & \rbpg{W10} (slides 53--54, W13 Q10)\\
+4-wheel mecanum / Swedish & 4 wheels, roller angles $\gamma_i=\pm45^\circ$ at $(\pm\ell,\pm w)$ & yes & 3 & 0 & 3 & anywhere (rank 3, 4 wheels for 3 unknowns: least squares) & \rbpg{W10} (slide 55)\\
+skid steer & 4 standard wheels, left pair and right pair & no (slide model: $v=0$) & 2 (model) & 0 & 2 & as the diff.\ drive; but 4 no-slide rows have rank 2 (also $\dot\theta=0$): turning needs slip & \rbpg{W10} (slides 48--52)\\
+\bottomrule
+\end{tabularx}
+\normalsize
+\par\smallskip
+{\footnotesize\textbf{Rules (W10).} $\delta_M=\delta_m+\delta_s$; $\delta_m=3-\operatorname{rank}\mathbf C_1$ ($\mathbf C_1$ = no-slide rows of the standard wheels); a standard wheel gives a no-sliding row $\Rightarrow$ non-holonomic; no standard wheel (omni, mecanum) $\Rightarrow$ holonomic, $\delta_m=3$. Wheel rows and every matrix are on p.\,\pageref{p:W10}. Table values follow the $\delta_m,\delta_s$ table of slide 64 and the derived rows of the W10 part. \added}
+\end{minipage}

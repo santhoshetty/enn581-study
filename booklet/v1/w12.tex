@@ -1,0 +1,166 @@
+\week{W12}{Planning algorithms}{12}
+\begin{multicols}{3}
+\hd{Framework and completeness \pg{4--9,25--26,80--81}}
+Planning = given map, start, goal (and robot kinematics), find a continuous collision-free path, or report failure. First squeeze the robot to a point (C-space), then \emph{combinatorial} (describe $\mathcal C_{free}$, build a graph, search: visibility graph, Voronoi, cell decomposition, grid + BFS/DFS/Dijkstra/A*) or \emph{sampling-based} (probe C-space with a collision detector: PRM 1996, RRT 1998).
+\begin{tabularx}{\linewidth}{@{}lX@{}}\toprule
+Complete & finds a path whenever one exists, reports failure otherwise (visibility graph, Voronoi, exact cells)\\
+Resolution complete & does so only at the grid resolution; a gap narrower than a cell is invisible (BFS on a grid, approximate cells)\\
+Probabilistically complete & $P(\text{path found})\to1$ as samples $\to\infty$; may never terminate if no path exists (PRM, RRT)\\\bottomrule
+\end{tabularx}
+\begin{trap}
+``PRM / RRT are complete'' is false. ``BFS is complete'' needs ``on a finite graph / at the grid resolution''. DFS fails on infinite trees. Slide p.81 says ``probability of samples approaches 1'': it means the probability of \emph{finding a path}.
+\end{trap}
+
+\hd{Configuration space and inflation \pg{11--24}}
+\begin{fbx}[Free space \pg{15}; inflation by a disc]
+\[\mathcal C_{free}=\{\mathbf q\in\mathcal C\mid\mathbf q\cap\mathcal C_{obs}=\varnothing\},\qquad A_{grown}=A+Pr+\pi r^2\]
+\use{$A,P$ = area, perimeter of a convex polygon; $r$ = robot radius (Minkowski sum: each edge moves out by $r$, each corner becomes an arc of radius $r$). Corridor width $w$: free width for the point robot $=w-2r$; negative = cannot pass. Square robot (half-side $r$): square margin, 2$\times$2 m obstacle $\to$ 3$\times$3 m at $r=0.5$ (disc: 8.785 m$^2$). Slide writes $\mathcal C_{obs}\in\mathcal C$; it should be $\subset$.}
+\end{fbx}
+Rotary joints: $q\equiv q+2\pi$, so C-space is a torus. One workspace point can map to several configurations (2-link $L_1=L_2=1$: tip $(1,1)$ at $(0^\circ,90^\circ)$ and $(90^\circ,-90^\circ)$).
+\begin{worked}
+Triangle $(5,3),(6,3),(5,1)$, $r=0.5$: $A=1$, $P=1+\sqrt5+2=5.236$, $A_{grown}=1+2.618+0.785=4.403$ m$^2$. Corridor 1.0 m, $r=0.4$: $0.2$ m free; $r=0.55$: $1.0-1.1<0$, blocked. \chk
+\end{worked}
+
+\hd{Visibility graph, Voronoi, cells \pg{27--46}}
+\begin{tabularx}{\linewidth}{@{}lXX@{}}\toprule
+ & Visibility graph & Voronoi\\\midrule
+Optimises & path length & clearance\\
+Path & straight, via corners & equidistant curves\\
+Risk & hugs obstacles (inflate first) & longer; fails with short-range sensor\\\bottomrule
+\end{tabularx}
+Visibility: join S, G and every corner pair whose segment avoids obstacle interiors (touching/sliding on an edge is allowed), weight by length, then Dijkstra or A*. Voronoi: ``maximise sensor readings''.\\
+\textbf{Cells}: exact (trapezoids; complete), approximate (uniform grid, blocked if touched; resolution complete), adaptive (large in open space, small near obstacles).
+\begin{worked}[practical Q2 map]
+$S=(1.5,1.5)$, $G=(9,9)$ blocked on the diagonal by rectangle $(6,6)$--$(8,8)$. Via corner $(8,6)$: $\sqrt{6.5^2+4.5^2}=7.906$, $\sqrt{1^2+3^2}=3.162$, total $11.068$; to the disc edge (radius 1) $10.068$. \chk
+\end{worked}
+
+\hd{BFS and DFS \pg{47--55}}
+\textbf{BFS}: FIFO queue, mark seen when added; fewest edges, cost-optimal only if all edges equal; $O(|V|+|E|)$. \textbf{DFS}: LIFO stack, dives, no cost guarantee, depends on neighbour order. \textbf{State your tie-break (alphabetical) first.} Stop when the goal is popped.
+\begin{worked}[slide graph p.56, our alphabetical tie-break]
+Edges A--B 10, B--E 9, A--C 6, C--F 5, F--H 7, H--J 4, J--K 3, A--D 8, D--G 9, F--G 3, G--I 7, I--K 5. BFS visits A B C D E F G H I J K, path A-D-G-I-K (4 edges) cost $8+9+7+5=29$. DFS visits A B E C F G D I K, path A-C-F-G-I-K cost $6+5+3+7+5=26$. Best is 25: neither is optimal. \chk
+\end{worked}
+
+\hd{Dijkstra \pg{56--58}}
+\begin{recipe}[Dijkstra by hand]
+\begin{enumerate}
+\item Table: columns = nodes, rows = past cost $g$ and parent. $g(\text{start})=0$, rest unknown.
+\item Pick the unexpanded node with the smallest $g$; move to closed.
+\item Relax each neighbour $m$: if $g(n)+w<g(m)$ set $g(m)$, parent$(m)=n$ (strict). Never relax a closed node.
+\item \textbf{Stop when the goal is expanded}, not when first discovered (K found at 26 via I, final 25 via J). Trace parents; \textbf{check} $g(\text{goal})=$ sum of path edges.
+\end{enumerate}
+\end{recipe}
+Non-negative edges only. Uninformed (no goal knowledge); Dijkstra = A* with $h=0$.
+\begin{worked}[Dijkstra on the slide graph, A to K]
+Expansion order A (0), C (6), D (8), B (10), F (11), G (14), H (18), E (19), I (21), J (22), K (25): ten nodes before K, 11 in all. G falls 17 (via D) to 14 (via F); K falls 26 (via I) to 25 (via J).\\[1pt]
+\begin{tabularx}{\linewidth}{@{}l*{11}{c}@{}}\toprule
+ & A&B&C&D&E&F&G&H&I&J&K\\\midrule
+$g$ &0&10&6&8&19&11&14&18&21&22&25\\
+par &--&A&A&A&B&C&F&F&G&H&J\\\bottomrule
+\end{tabularx}\\
+Path A-C-F-H-J-K: $6+5+7+4+3=25$. \chk
+\end{worked}
+\begin{trap}
+Stopping at first discovery (gives 26); relaxing a closed node.
+\end{trap}
+
+\hd{A* and heuristics \pg{59--62}}
+\begin{fbx}[A*]
+\[f(n)=g(n)+h(n)\]
+$g$: best cost found so far, start to $n$. $h$: optimistic cost-to-go. A* = Dijkstra with priority $f$; stop when the goal is \emph{expanded}.
+\[\text{admissible: }h(n)\le d(n,\text{goal})\ \forall n\quad(\text{non-strict; }h(\text{goal})=0)\]
+\[\text{consistent: }h(n)\le d(n,m)+h(m)\ \forall\text{ neighbours}\]
+\use{consistent $\Rightarrow$ admissible, not conversely. Admissible keeps A* optimal; consistent also makes popped $f$ non-decreasing and lets a plain closed set work. Overestimating $h$ can return a worse path. $h=0$ is Dijkstra.}
+\end{fbx}
+\begin{recipe}[Fill an A* table (slide pp.\,59--60)]
+\begin{enumerate}
+\item Write $h$ beside every node. Admissible? compare each $h(n)$ with the true remaining cost (backward Dijkstra).
+\item Consistent? check $h(n)\le w+h(m)$ edge by edge, both directions.
+\item Pop the smallest $f=g+h$ (tie: smaller $h$, then alphabetical; say so). Relax with $g(n)+w$; put $h$ of the \emph{child} in $f$.
+\item Stop when the goal is popped. \textbf{Check:} $f(\text{goal})=g(\text{goal})=$ path cost; unexpanded nodes are the saving.
+\end{enumerate}
+\end{recipe}
+\textbf{Slide graph, heuristic p.59:} $h$: A 20, B 10, C 17, D 13, E 8, G 8, H 7, I 2, J 2; K = 0 (not printed); F has no red label, we use $h(F)=9$ (the only number printed beside F). True $d(n,K)$: H 7, J 3, I 5, G 12, F 14, C 19, D 21, A 25, B 35, E 44. All $h\le d$: \textbf{admissible} (tight at H). \textbf{Not consistent}: H$\to$J: $7>4+2$; C$\to$F: $17>5+9$.
+\begin{worked}[A* table, tie-break lowest $f$, then $h$, then alphabetical]
+\footnotesize\setlength{\tabcolsep}{2pt}
+\begin{tabularx}{\linewidth}{@{}clccX@{}}\toprule
+\# & expand & $g$ & $h$ & open after: node $g{+}h{=}f$ (parent)\\\midrule
+1&A&0&20& B 10+10=20 (A); D 8+13=21 (A); C 6+17=23 (A)\\
+2&B&10&10& D 21 (A); C 23 (A); E 19+8=27 (B)\\
+3&D&8&13& C 23 (A); G 17+8=25 (D); E 27 (B)\\
+4&C&6&17& F 11+9=20 (C); G 25 (D); E 27 (B)\\
+5&F&11&9& G 14+8=22 (F); H 18+7=25 (F); E 27 (B)\\
+6&G&14&8& I 21+2=23 (G); H 25 (F); E 27 (B)\\
+7&I&21&2& H 25 (F); K 26+0=26 (I); E 27 (B)\\
+8&H&18&7& J 22+2=24 (H); K 26 (I); E 27 (B)\\
+9&J&22&2& K 25+0=25 (J); E 27 (B)\\
+10&K&25&0& E 27 (B)\\\bottomrule
+\end{tabularx}\par\vspace{2pt}
+\begin{tabularx}{\linewidth}{@{}l*{11}{c}@{}}
+ & A&B&C&D&E&F&G&H&I&J&K\\\midrule
+$g$&0&10&6&8&19&11&14&18&21&22&25\\
+$h$&20&10&17&13&8&9&8&7&2&2&0\\
+$f$&20&20&23&21&27&20&22&25&23&24&25\\
+par&--&A&A&A&B&C&F&F&G&H&J\\\bottomrule
+\end{tabularx}\par\vspace{2pt}\normalsize
+Order A B D C F G I H J K, path A-C-F-H-J-K, cost 25, 10 expansions (Dijkstra 11); E discovered ($f=27$) never expanded. Popped $f$: 20, 20, 21, 23, 20, 22, 23, 25, 24, 25, so it falls twice: the signature of an inconsistent $h$. Perfect $h=d$: expands only A C F H J K. Overestimating $h(F)=30$: order A B D C G I E K, path A-D-G-I-K, cost 29. \chk
+\end{worked}
+\begin{slideerr}[pp.\,56--60]
+(1) A blue 9 sits above F on the A* slide where the red $h$ labels are, and in the same place on the Dijkstra slides where there is no $h$: probably a leftover edge label, so the slide gives no $h(F)$. Any integer $h(F)$ from 0 to 13 gives the same order and cost 25. (2) Both tables are blank on the slides; the fills are ours. (3) The slide asks for $h$ admissible \emph{and} consistent, but its own $h$ fails consistency at H$\to$J. (4) K has no printed $h$; 0 is the only valid value.
+\end{slideerr}
+\begin{trap}
+$h$ of the wrong node; $f$ with the new $g$ of a closed node; ``A* always optimal'' (needs admissible $h$); ``Manhattan is always admissible'' (not with diagonals); any heuristic makes A* faster (not so: $h=0$ is Dijkstra). Slide demo (one grid): A* 277 operations vs Dijkstra 1378 vs BFS 1413; do not quote as a general ratio.
+\end{trap}
+
+\hd{Grids and the curse of dimensionality \pg{63--65}}
+\raggedright $N$ cells per dimension, $d$ dimensions: $N^d$ nodes; neighbours $2d$ (axis) or $3^d-1$ (with diagonals).\par
+\begin{tabularx}{\linewidth}{@{}lccX@{}}\toprule
+Grid & Nodes & Neighb. & Note\\\midrule
+2D $100^2$ & $10^4$ & 4 or 8 & \\
+3D $100^3$ & $10^6$ & 6 to 26 & \\
+6D $100^6$ & $10^{12}$ & 12 or 728 & slide leaves it open; $\approx$1 TB at 1 B/node\\\bottomrule
+\end{tabularx}
+4-connected $100\times100$: $|E|=2\cdot100\cdot99=19\,800$, $|V|+|E|=29\,800$ \chk. Resolution trade-off: too coarse loses narrow gaps, too fine is slow. Say: node count grows exponentially with dimension, so grids fail and sampling is used.
+\textbf{Grid heuristics.} 4-connected, unit cost: Manhattan $|\Delta r|+|\Delta c|$ is admissible and consistent. 8-connected (diagonal $\sqrt2$): Manhattan \textbf{overestimates} (says 2 for a step costing 1.414); use Euclidean $\sqrt{\Delta r^2+\Delta c^2}$. Widget ``Manhattan trap'': A* with Manhattan returns 10.243 against the optimum 9.657.
+
+\hd{Sampling-based planning: PRM and RRT \pg{66--79}}
+Framework: empty graph; sample a point (sampler); pick near vertices (distance function); connect with a local planner; add the edge if collision-free (collision detector); repeat; query start to goal.
+\textbf{PRM}: learning phase (sample, connect to near roadmap vertices), then query (add S, G; A* or Dijkstra). Simple, works in high dimension; holonomic only, can fail in narrow passages, not for dynamic environments (roadmap built first).\\
+\textbf{RRT}: tree from the start; sample $q_{rand}$, nearest node, step towards it, add $q_{new}$ if free; stop when a node lands in the goal region. Handles non-holonomic robots by sampling controls (steer, speed) and keeping the result closest to the target \pg{77--79}.
+\begin{fbx}[RRT extension]
+\[q_{new}=q_{near}+\delta\,\frac{q_{rand}-q_{near}}{\|q_{rand}-q_{near}\|}\]
+\use{discard $q_{rand}$ inside an obstacle; reject the edge if the segment crosses one. Segment $\overline{ab}$ crosses edge $\overline{cd}$ if $c,d$ are on opposite sides of line $ab$ and $a,b$ on opposite sides of line $cd$. Point in polygon: ray to $+x$, odd crossings = inside.}
+\end{fbx}
+\begin{worked}[practical Q2 map: $C={[0,10]^2}$, goal disc radius 1 at $(9,9)$]
+Uniform sample in the goal: $\pi/100=0.0314$, about 32 samples on average. RRT step: $S=(1.5,1.5)$, $q_{rand}=(6,2)$, $\delta=1$: $\|{\cdot}\|=\sqrt{4.5^2+0.5^2}=4.528$, $q_{new}=(2.494,1.610)$. Hand PRM S-(4,2.5)-(7,4.5)-(9,7)-(9,8.5): legs $2.693+3.606+3.202+1.5=11.00$, 9.3\% longer than the visibility optimum 10.068 (PRM/RRT paths are rarely shortest). $(3,5.2)$ in triangle $(2,7),(4,5),(3,4)$: one crossing, inside. Nearest to $(6,4)$ among S,(4,2.5),(7,4.5),(9,7): $(7,4.5)$, 1.118. $(5.4,2)$ lies inside triangle $(5,3),(6,3),(5,1)$. \chk
+\end{worked}
+\begin{trap}
+``RRT always finds the shortest path'' (no); ``PRM stops when it reaches the goal'' (that is RRT); RRT/PRM may never terminate if no path exists.
+\end{trap}
+
+\hd{Practical Q1: maze (our grid reading)}
+36 open cells, 38 edges, unit weights. BFS 8 moves (26 cells popped); DFS 16 moves (19 popped, order up/right/down/left); A* with Manhattan (admissible and consistent here) 8 moves, 16 popped. G is 4 cells away in Manhattan terms but a wall forces an 8-move detour. \chk
+
+\hd{Choosing a planner \pg{80--83}}
+\begin{tabularx}{\linewidth}{@{}lXX@{}}\toprule
+Method & Guarantee & Weakness\\\midrule
+BFS & fewest edges; resolution complete & cost-optimal only if equal edges\\
+DFS & finds some path & long, no optimality\\
+Dijkstra & cheapest, costs $\ge0$ & expands everywhere\\
+A* & cheapest if $h$ admissible & bad $h$ wastes effort\\
+Visibility & shortest, complete & hugs corners\\
+Voronoi & max clearance, complete & not shortest\\
+PRM & prob.\ complete & holonomic, narrow gaps, static\\
+RRT & prob.\ complete & path not optimal\\\bottomrule
+\end{tabularx}
+Optimality of Dijkstra/A* are standard results (the slides give them via the heuristic conditions).
+\begin{recipe}[``Which planner?'' scenario]
+\begin{enumerate}
+\item Static, known map? If not, a roadmap built once (PRM) is a poor fit.
+\item High DoF (arm, snake): sampling; 2D grid: graph search.
+\item Non-holonomic (car): RRT with sampled controls.
+\item Clearance matters: Voronoi. Length, polygons: visibility graph.
+\item Costs plus a good distance-to-goal guess: A*; costs, no guess: Dijkstra.
+\item Name the method \emph{and} the property that justifies it.
+\end{enumerate}
+\end{recipe}
+\end{multicols}

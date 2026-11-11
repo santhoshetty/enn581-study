@@ -1,0 +1,636 @@
+\week{W4}{Parallel manipulators: mobility, loop closure, four-bar, delta}{4}
+% W4 Parallel manipulators (booklet v2). Numbers verified by vcheck/v2_w04.py (and site/src/checks/w04.py).
+% keep-with-next headings (local copies of \hd and \sh with \nobreak so a heading is never left alone at a column foot)
+\makeatletter
+\newcommand{\wfourHd}[1]{\par\vspace{4pt}\phantomsection\addcontentsline{toc}{subsection}{#1}{\sffamily\bfseries\large\color{seccolor}#1}\par\nobreak\vspace{1pt}\nobreak{\color{seccolor}\hrule height 0.4pt}\nobreak\vspace{2pt}\nobreak}
+\newcommand{\wfourSh}[1]{\par\vspace{3pt}{\sffamily\bfseries\normalsize\color{seccolor}#1}\par\nobreak\vspace{1pt}\nobreak}
+\makeatother
+\begin{multicols}{2}
+
+%% ============================================================
+\wfourHd{Serial vs parallel manipulators \pg{9--19, 74}}
+\textbf{Definition} \pg{12}: ``the end effector is connected to the base by multiple parallel kinematic chains of links''. It can be planar or spatial. Each actuator may have a wide range, but the end-effector motion is constrained by the other chains. The number of joints is usually larger than the DoF, so \textbf{several joints are passive} (not driven).
+
+\textbf{Examples on the slides:} Gough tyre-testing machine (early 1950s) \pg{13}, Stewart flight simulator (1965) \pg{14}, ABB FlexPicker delta robot (Clavel, EPFL) \pg{15}, surgical and spine hexapods \pg{16}, a multi-finger grasp (point contact without slip acts as a spherical joint) \pg{17}.
+
+\begin{fbx}[Comparison table \pg{74} (also pp.\,9, 19, 75)]
+\begin{tabularx}{\linewidth}{@{}p{0.27\linewidth}XX@{}}\toprule
+ & \textbf{Serial} & \textbf{Parallel}\\\midrule
+Kinematic chains & open & closed\\
+Joints & all active & active + passive\\
+Forward kinematics (FK) & simple & \textbf{complex}\\
+Inverse kinematics (IK) & complex & \textbf{simple}\\
+Joint errors & accumulate & do not accumulate\\
+Work volume & large & small (restricted)\\
+Payload-to-weight & low & very high\\
+Inertia of moving parts & high & low\\\bottomrule
+\end{tabularx}
+\use{any ``choose serial or parallel and justify'' question: quote the rows that matter for the task, then add the cost (small workspace, complex kinematics \pg{19}).}
+\end{fbx}
+Payload example \pg{18}: a Stewart-based simulator of mass 1.8\,t carries a payload of 10.0\,t (a KUKA-arm-based simulator: mass 4.7\,t, payload 1.3\,t), numbers as printed on the slide.
+
+\begin{worked}[which architecture? \added]
+\begin{tabularx}{\linewidth}{@{}XlX@{}}\toprule
+Task & Choose & Reason\\\midrule
+150 light chocolates per min & delta & low moving mass, fast\\
+Painting arm reaching 3\,m into a car & serial & large work volume needed\\
+2-tonne cockpit on a motion platform & Stewart & legs share the load\\
+Positioning to a few $\mu$m & parallel & stiff, errors not accumulated\\\bottomrule
+\end{tabularx}
+\end{worked}
+\begin{trap}
+Saying ``parallel FK is easier'' (wrong way round). Parallel: IK easy, FK hard. Serial: FK easy, IK hard.
+\end{trap}
+
+%% ============================================================
+\wfourHd{Joint types and their degrees of freedom \pg{25; joint table W1 p.\,34}}
+\slidefig[0.85\linewidth]{w01-lec}{34}{192 86 58 43}{the six joint types the unit uses (DoF in the labels)}
+
+\begin{fbx}[Joint DoF $F_i$ used in Gr\"ubler--Kutzbach]
+\begin{tabularx}{\linewidth}{@{}Xcccl@{}}\toprule
+Joint & Symbol & $F_i$ & removes (3D) & appears in\\\midrule
+Revolute & R & 1 & 5 & every mechanism here\\
+Prismatic & P & 1 & 5 & 3-PRR, Stewart\\
+Helical & H & 1 & 5 & --\\
+Cylindrical & C & 2 & 4 & --\\
+Universal & U & 2 & 4 & simplest delta, Stewart\\
+Spherical & S & 3 & 3 & common delta, Stewart\\\bottomrule
+\end{tabularx}
+\use{each joint removes $D-F_i$ of the relative DoF of the two bodies it joins ($D=6$ in 3D, $D=3$ in the plane). In a planar mechanism only R and P occur, and each has $F=1$ (removes 2).}
+\end{fbx}
+\textbf{Reading a drawing} \added: a U joint is two perpendicular R axes meeting at a point; an S joint is three R axes meeting at a point (so it can spin about the rod it holds). A prismatic pair joins \emph{two} bodies (cylinder and piston). Three bodies pinned at one point count as \emph{two} joints.
+
+%% ============================================================
+\wfourHd{Workspace of parallel robots \pg{20--23}}
+\begin{fbx}[Four workspaces \pg{21}]
+\begin{tabularx}{\linewidth}{@{}lX@{}}\toprule
+\textbf{Reachable} & points the end effector can reach, orientation arbitrary\\
+\textbf{Dexterous} & points it can reach in \emph{all} its possible orientations\\
+\textbf{Constant-orientation} & points reachable with one given orientation\\
+\textbf{Orientation} & all possible orientations at one given location\\\bottomrule
+\end{tabularx}
+\use{say which workspace the question means. Dexterous $\subseteq$ constant-orientation $\subseteq$ reachable.}
+\end{fbx}
+\begin{twoway}{A. Discretisation \pg{22}}{B. From geometry \pg{23}}
+Make a grid by moving each actuator a small step; the boundary of the set of reached nodes is the workspace. Slow; accuracy is limited by the step size.
+\tcblower
+Use the minimum and maximum of each actuator's limits to define the volume each chain allows; \textbf{intersect} them. Take all physical constraints into account.
+\end{twoway}
+\slidefig[0.45\linewidth]{w04-lec}{23}{528 86 173 238}{a planar two-leg robot: each leg's limits give an arc (blue/red); the shaded overlap is the workspace}
+
+\begin{worked}[sketch the workspace of a two-leg planar robot \added]
+Leg base pivots $\mathbf b_1=(0,0)$, $\mathbf b_2=(0.6,0)$ m (platform = a point). Each prismatic leg has length $0.3\le\ell\le0.7$ m, so the point must lie in an annulus about each pivot:
+\[0.3\le\lVert\mathbf p-\mathbf b_1\rVert\le0.7\quad\text{and}\quad0.3\le\lVert\mathbf p-\mathbf b_2\rVert\le0.7.\]
+\begin{center}
+\begin{tikzpicture}[x=4.6cm,y=4.6cm,line width=0.6pt]
+\begin{scope}
+ \clip (-0.75,0) rectangle (1.35,0.8);
+ \begin{scope}
+  \begin{scope}[even odd rule]\clip (0,0) circle (0.7) (0,0) circle (0.3);
+  \begin{scope}[even odd rule]\clip (0.6,0) circle (0.7) (0.6,0) circle (0.3);
+  \fill[g2] (-0.8,0) rectangle (1.4,0.8);
+  \end{scope}\end{scope}
+ \end{scope}
+ \draw[dashed] (0,0) circle (0.7); \draw (0,0) circle (0.3);
+ \draw[dashed] (0.6,0) circle (0.7); \draw (0.6,0) circle (0.3);
+\end{scope}
+\draw[line width=1pt] (-0.75,0)--(1.35,0);
+\fill (0,0) circle (0.012) node[below=2pt,font=\scriptsize]{$\mathbf b_1$};
+\fill (0.6,0) circle (0.012) node[below=2pt,font=\scriptsize]{$\mathbf b_2$};
+\fill (0.3,0.6325) circle (0.012) node[above,font=\scriptsize]{$(0.30,\,0.632)$};
+\fill (0.6333,0.2981) circle (0.012) node[right,font=\scriptsize]{$(0.633,\,0.298)$};
+\fill (-0.0333,0.2981) circle (0.012) node[left,font=\scriptsize]{$(-0.033,\,0.298)$};
+\fill (0.3,0) circle (0.012) node[below=2pt,font=\scriptsize]{$(0.30,\,0)$};
+\node[font=\scriptsize] at (0.3,0.3) {workspace};
+\end{tikzpicture}
+\end{center}
+\drawncap{solid arcs: $\ell_{min}=0.3$; dashed arcs: $\ell_{max}=0.7$; mirror image below the axis if leg collisions are ignored}
+Corner points (circle intersections): top $(0.30,\,0.632)$ where both legs are at $\ell_{max}$; the side corners $(0.633,\,0.298)$ and $(-0.033,\,0.298)$ where one leg is at $\ell_{max}$ and the other at $\ell_{min}$; and $(0.30,\,0)$, the single point where both legs are at $\ell_{min}$. Area for $y\ge0$: about $0.175\ \mathrm{m^2}$. \chk
+\end{worked}
+
+%% ============================================================
+\wfourHd{Mobility: Gr\"ubler--Kutzbach \pg{24--34}}
+\premise[mobility]{a drawn mechanism: its rigid bodies (including the ground) and its joints with their types}{the number of degrees of freedom $M$ (mobility)}
+\begin{fbx}[Gr\"ubler--Kutzbach (G--K) \pg{25}]
+\[M=D\,(N-J-1)+\sum_{i=1}^{J}F_i\]
+\begin{symbols}
+$M$ & mobility = DoF of the mechanism & --\\
+$D$ & 6 for a 3D mechanism, 3 for a planar (2D) one & --\\
+$N$ & number of links (rigid bodies), \textbf{ground included} (``one of which is grounded'') & --\\
+$J$ & number of joints & --\\
+$F_i$ & DoF of joint $i$ (R 1, P 1, U 2, S 3) & --\\
+\end{symbols}
+\use{first estimate for every mechanism. If $M$ disagrees with what you can see moving, use the extended equation (next section).}
+\end{fbx}
+\begin{deriv}[of G--K \added]
+Each of the $N-1$ moving bodies is free: $D(N-1)$ DoF. A joint of freedom $F_i$ lets the two bodies it joins move relatively with only $F_i$ of their $D$ relative DoF, so it removes $D-F_i$ DoF:
+\[M=D(N-1)-\sum_{i=1}^{J}(D-F_i)=D(N-1)-DJ+\sum_i F_i=D(N-J-1)+\sum_i F_i.\]
+Check: a pendulum ($N=2$, one R): $3(2-1-1)+1=1$.
+\end{deriv}
+\begin{recipe}[count the DoF of a drawn mechanism]
+\begin{enumerate}
+\item Planar or spatial? Planar: $D=3$ (all axes parallel). The slides stress ``the mechanism is still 3D despite this depiction'' for the delta \pg{30}: $D=6$.
+\item Number \textbf{every rigid body, ground $=1$}, on the figure. A prismatic joint is two bodies (cylinder, piston).
+\item Table of joints: name the two bodies each joins and write $F_i$. A pin joining three bodies is two joints.
+\item Substitute: $M=D(N-J-1)+\sum F_i$.
+\item Sanity check: does $M$ match the motion you can see? $M\le0$ or an implausible $M$ means look for local mobility $R_M$ or repeated constraints $R_C$.
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[What the sign of $M$ means \added]
+\begin{tabularx}{\linewidth}{@{}lX@{}}\toprule
+$M>0$ & mechanism: it moves (that many DoF)\\
+$M=0$ & structure: rigid\\
+$M<0$ & more constraints than the count allows (over-constrained), \textbf{or} the plain count is wrong: check $R_C$, $R_M$\\\bottomrule
+\end{tabularx}
+\use{``is this a structure, a mechanism or over-constrained?''. G--K assumes every constraint is independent. Equal parallel links break that: three equal parallel links hanging a planar body ($N=5$, $J=6$) give $M=0$ but it really moves ($M=1$, see extended G--K).}
+\end{fbx}
+
+\wfourSh{Example: planar 3-PRR \pg{26--27}}
+\slidefig[0.7\linewidth]{w04-lec}{27}{67 119 461 151}{three R--P--R legs carry a triangular platform}
+\begin{worked}[3-PRR, planar, $D=3$ \pg{27}; W13 Q6 \pg{12}]
+\begin{tabularx}{\linewidth}{@{}lXr@{}}\toprule
+Bodies & ground; platform; 3 cylinders; 3 pistons & $N=8$\\
+Joints & 3 R (ground--cylinder); 3 P (cylinder--piston); 3 R (piston--platform) & $J=9$\\
+$F_i$ & all 1 & $\sum F_i=9$\\\bottomrule
+\end{tabularx}
+\[M=3(8-9-1)+9=3\]
+The platform has 3 DoF (two positions and one rotation) driven by the 3 prismatic actuators. \chk
+\end{worked}
+
+\wfourSh{Example: the simplest delta \pg{29--31}}
+\slidefig[0.6\linewidth]{w04-lec}{30}{38 130 557 130}{simplest delta, schematic: base B, active R, then U, link, U to the moving platform M}
+\begin{worked}[simplest delta, $D=6$ \pg{30}]
+\begin{tabularx}{\linewidth}{@{}lXr@{}}\toprule
+Bodies & base; 3 upper arms; 3 rods; platform & $N=8$\\
+Joints & 3 R (base--arm, active); 3 U (arm--rod); 3 U (rod--platform) & $J=9$\\
+$\sum F_i$ & $3\,(1+2+2)$ & $15$\\\bottomrule
+\end{tabularx}
+\[M=6(8-9-1)+(1+2+2)\times3=-12+15=3\]
+Three DoF, equal to the 3 motors. \chk\ The slide notes that it is never built \pg{31}: not stiff enough, play-free universal joints are hard to find, and play lowers the usable frequency.
+\end{worked}
+\begin{slideerr}[slide 29]
+A handwritten note on the slide reads $M=D(N-J+1)+\sum F_i$. The printed equation \pg{25} and every worked count (pp.\,27, 30, 33) use $D(N-J-1)$. With the $+1$ the simplest delta would give $6(8-9+1)+15=15$, not 3. Use $-1$. \chk
+\end{slideerr}
+
+\wfourSh{Example: the common delta \pg{32--34}}
+\slidefig[0.6\linewidth]{w04-lec}{33}{38 130 557 108}{common delta: R, then a parallelogram of two bars with four S joints per leg (lecturer's link numbers 1--11)}
+\begin{worked}[common delta (parallelogram legs), $D=6$ \pg{33}; W13 Q7 \pg{14}]
+\begin{tabularx}{\linewidth}{@{}lXr@{}}\toprule
+Bodies & base (1); 3 upper arms (2--4); 6 parallelogram bars (5--10); platform (11) & $N=11$\\
+Joints & 3 R (active); $3\times4=12$ S & $J=15$\\
+$\sum F_i$ & $3\,(1+4\times3)$ & $39$\\\bottomrule
+\end{tabularx}
+\[M=6(11-15-1)+(1+4\times3)\times3=-30+39=9\]
+But the platform only translates (3 DoF): the plain count over-counts \pg{34}. The 6 \emph{supplementary} DoF are internal: each of the 6 bars, with a ball joint at each end, can spin about its own axis without moving anything else. This is fixed by the extended equation. \chk
+\end{worked}
+
+\begin{fbx}[Counts for the mechanisms in this week]
+\begin{tabularx}{\linewidth}{@{}Xccccr@{}}\toprule
+Mechanism & $D$ & $N$ & $J$ & $\sum F$ & plain $M$\\\midrule
+3-PRR \pg{27} & 3 & 8 & 9 & 9 & 3\\
+Simplest delta \pg{30} & 6 & 8 & 9 & 15 & 3\\
+Common delta \pg{33} & 6 & 11 & 15 & 39 & 9\\
+4RRR \pg{38} & 6 & 10 & 12 & 12 & $-6$\\
+Four-bar \added & 3 & 4 & 4 & 4 & 1\\
+Slider-crank \added & 3 & 4 & 4 & 4 & 1\\
+Planar five-bar \added & 3 & 5 & 5 & 5 & 2\\
+Gough--Stewart 6-UPS \added & 6 & 14 & 18 & 36 & 6\\\bottomrule
+\end{tabularx}
+\use{Stewart: ground, platform, 6 legs of 2 bodies: $N=2+12=14$; joints 6 U + 6 P + 6 S: $J=18$; $\sum F=6(2+1+3)=36$; $M=6(14-18-1)+36=6$. \chk}
+\end{fbx}
+\begin{trap}
+Using $D=6$ for a planar mechanism: slider-crank (ground, crank, rod, slider; 3 R + 1 P) gives $6(4-4-1)+4=-2$ (``a structure''). Planar: $3(4-4-1)+4=1$. Forgetting the ground as a link, or counting a prismatic joint as one body, are the other usual slips. \chk
+\end{trap}
+
+%% ============================================================
+\wfourHd{Extended Gr\"ubler--Kutzbach \pg{35--43}}
+\begin{fbx}[Extended G--K \pg{35}]
+\[M=D\,(N-J-1)+\sum_{i=1}^{J}F_i+R_C-R_M,\qquad R_C=\sum_{i=1}^{J}F_i-\sum_{k=1}^{L}u_k\]
+\begin{symbols}
+$R_C$ & number of \textbf{over-constraints}: constraints repeated by several joints, so removed twice by the plain count (add back) & --\\
+$R_M$ & \textbf{local mobility}: DoF internal to the mechanism that do not move the output (subtract) & --\\
+$L$ & number of closed loops considered & --\\
+$u_k$ & unique DoF of the platform allowed by loop $k$ (a DoF shared by two loops is counted once in the union) & --\\
+\end{symbols}
+\use{whenever plain $M$ is implausible (delta 9; 4RRR $-6$). Write \emph{which} correction applies and \emph{why}.}
+\end{fbx}
+\begin{recipe}[extended count]
+\begin{enumerate}
+\item Plain G--K first (record the number).
+\item Local mobility: is there a body that can move without moving the output? A rod with a ball joint at both ends spins about its own axis: each such rod adds 1 to $R_M$.
+\item Over-constraints: take the loops one at a time; list the platform DoF each allows; $R_C=\sum F_i-\sum u_k$ (union, $T_z$ shared counts once).
+\item $M=\text{plain}+R_C-R_M$; check it against the motion you expect (delta: 3 translations).
+\end{enumerate}
+\end{recipe}
+\begin{worked}[common delta, extended \pg{36}; W13 Q7 \pg{16}]
+Plain $M=6(11-15-1)+39=9$. Six bars with S joints at both ends: $R_M=6$. No repeated constraints: $R_C=0$.
+\[M=6(11-15-1)+(1+4\times3)\times3+0-6=\mathbf{3}\]
+Explain (2--4 sentences): plain G--K treats every DoF as moving the output; the bar spins do not, so subtract them. The platform of the delta only translates in $x,y,z$: 3 DoF. \chk
+\end{worked}
+\begin{slideerr}[slide 35--36 and 42]
+The slides define $R_C=\sum_i F_i-\sum_k u_k$ and use it for the 4RRR example (7). For the delta they only state $R_C=0$; the literal formula would need $\sum_k u_k=39$, which is not how $u_k$ is counted (a few platform DoF per loop). So: do not apply the $u_k$ formula to the delta; argue ``no repeated constraint''. For 4RRR, follow the slide. The slides do not say how the loops are chosen (only two are shown for four legs). Ambiguity, not a proven error.
+\end{slideerr}
+
+\wfourSh{Example: parallel 4RRR \pg{37--43}}
+\slidefig[0.62\linewidth]{w04-lec}{41}{29 108 547 119}{4RRR: two square plates, four RR legs; the two loops (red, blue) each allow three platform DoF}
+\begin{worked}[4RRR, $D=6$ \pg{38--43}]
+Bodies: base, moving platform, 4 legs $\times$ 2 links: $N=10$. Joints: 4 legs $\times$ 3 R: $J=12$, $\sum F_i=12$.
+\[M=6(10-12-1)+12+R_C-R_M=-6+R_C-R_M\]
+Local mobility: none, $R_M=0$ \pg{42}. Loop 1 (a pair of legs) allows platform motion $\{T_y,T_z,R_x\}$ \pg{39}; loop 2 allows $\{T_x,T_z,R_y\}$ \pg{40}. Unique DoF: union $=\{T_x,T_y,T_z,R_x,R_y\}$, so $\sum_k u_k=5$ ($T_z$ once) \pg{41}.
+\[R_C=\sum F_i-\sum u_k=12-5=7,\qquad M=-6+7-0=\mathbf{1}\]
+``The mechanism indeed has only 1 DoF'' \pg{43} (the platform only slides along $z$). \chk
+\end{worked}
+\begin{worked}[3-RPS and 3-SPS platforms \added; from the mock exam]
+$D=6$, $N=2+3\times2=8$, $J=9$ for both.\\
+3-RPS (R at the ground, P, S at the platform): $\sum F=3(1+1+3)=15$, $M=6(8-9-1)+15=3$; the R axis stops the leg spinning, $R_M=0$: three DoF.\\
+3-SPS (S at both ends): $\sum F=3(3+1+3)=21$, plain $M=-12+21=9$; each leg spins about itself, $R_M=3$: $M=9+0-3=6$ (6 DoF but only 3 motors: under-actuated). \chk
+\end{worked}
+\begin{fbx}[Plain vs extended, all examples]
+\begin{tabularx}{\linewidth}{@{}Xccccr@{}}\toprule
+Mechanism & plain & $R_C$ & $R_M$ & $M$ & reason\\\midrule
+Simplest delta & 3 & 0 & 0 & 3 & U ends stop spin\\
+Common delta & 9 & 0 & 6 & 3 & bars spin\\
+4RRR & $-6$ & 7 & 0 & 1 & repeated constraints\\
+3-SPS \added & 9 & 0 & 3 & 6 & legs spin\\\bottomrule
+\end{tabularx}
+\end{fbx}
+
+%% ============================================================
+\wfourHd{Configuration space: active and passive joints \pg{45--46}}
+\begin{fbx}[Configuration \pg{45}]
+\[\mathbf q=(\boldsymbol\theta,\boldsymbol\varphi),\qquad\boldsymbol\theta=\{\theta_i\mid\theta_i\in[0,2\pi),\ i\in1..n\},\quad\boldsymbol\varphi=\{\varphi_i,\ i\in1..m\}\]
+\begin{symbols}
+$\boldsymbol\theta$ & the $n$ \textbf{active} (motor) joint variables & rad or m\\
+$\boldsymbol\varphi$ & the $m$ \textbf{passive} joint variables & rad or m\\
+\end{symbols}
+\use{FK needs the $m$ passive variables from the $n$ active ones; for that you need $m$ independent equations (loop closure).}
+\end{fbx}
+\begin{tabularx}{\linewidth}{@{}Xcc@{}}\toprule
+Mechanism & active $n$ & passive $m$\\\midrule
+Four-bar (break link 2 at K) \pg{54} & 1 ($\theta_1$) & 3 ($\varphi_1,\varphi_2,\varphi_3$)\\
+Four-bar (break both ends) \pg{57} & 1 & 1 ($\varphi_1$)\\
+3-PRR \added & 3 (P) & 6 (R)\\
+Gough--Stewart \pg{58} & 6 (P) & 30 (6 legs $\times$ (S 3 + U 2))\\\bottomrule
+\end{tabularx}
+
+%% ============================================================
+\wfourHd{Loop-closure constraint equations \pg{47--58}}
+\premise[loop closure]{the geometry and the active joint values $\boldsymbol\theta$}{$m$ independent equations $\eta_i(\mathbf q)=0$ that tie the passive joints $\boldsymbol\varphi$ to $\boldsymbol\theta$}
+\begin{recipe}[loop closure \pg{49}]
+\begin{enumerate}
+\item Break the manipulator into two or more serial chains (choose the break giving the \emph{fewest passive unknowns} $m$, hence the fewest equations).
+\item For each chain, write the position and orientation of the \textbf{break point}.
+\item Rejoin: equate the two descriptions (the joint constraint at the break).
+\item Count: $n$ active, $m$ passive, $m$ equations.
+\end{enumerate}
+\end{recipe}
+\slidefig[0.8\linewidth]{w04-lec}{71}{0 119 538 151}{planar four-bar: frames {S} and {D}, $L_0$ between the pivots, K on link 2 ($a$, $b$ = distances from K to the ends of link 2), output orientation $\phi$ (slide p.\,54 breaks the loop at K)}
+\textbf{Setup} \pg{50}: one loop; frames \{S\} (left base pivot), \{1\}, \{2\}, \{3\}, \{4\}, \{D\} (right base pivot, at $(L_0,0)$ in {S}). $\theta_1$ is active; $\varphi_1,\varphi_2,\varphi_3$ passive. All angles are absolute, counter-clockwise, in radians.
+
+\begin{fbx}[Four-bar, break link 2 at K \pg{54}]
+\[\begin{aligned}
+{}^{S}x_K&=L_1\cos\theta_1+a\cos(\theta_1+\varphi_2), & {}^{D}x_K&=L_3\cos\varphi_1+b\cos(\varphi_1+\varphi_3)\\
+{}^{S}y_K&=L_1\sin\theta_1+a\sin(\theta_1+\varphi_2), & {}^{D}y_K&=L_3\sin\varphi_1+b\sin(\varphi_1+\varphi_3)
+\end{aligned}\]
+Impose that the broken link is rigid (the same K, ${}^{S}x_K=L_0+{}^{D}x_K$):
+\[\begin{aligned}
+L_1\cos\theta_1+a\cos(\theta_1+\varphi_2)&=L_0+L_3\cos\varphi_1+b\cos(\varphi_1+\varphi_3)\\
+L_1\sin\theta_1+a\sin(\theta_1+\varphi_2)&=L_3\sin\varphi_1+b\sin(\varphi_1+\varphi_3)\\
+\theta_1+\varphi_2&=\varphi_1+\varphi_3+\pi
+\end{aligned}\]
+\begin{symbols}
+$L_0$ & distance {S} to {D} (ground link) & m\\
+$L_1,L_3$ & crank and rocker lengths & m\\
+$L_2=a+b$ & coupler length; $a,b$ from K to its two ends & m\\
+$\theta_1$ & active crank angle at {S}, from $x_S$ & rad\\
+$\varphi_1$ & passive angle at {D}, from $x_D$ to link 3 & rad\\
+$\varphi_2$ & passive angle at the crank--coupler joint & rad\\
+$\varphi_3$ & passive angle at the coupler--rocker joint & rad\\
+\end{symbols}
+\use{3 independent equations for $\varphi_1,\varphi_2,\varphi_3$; $n=1$, $m=3$, $J=4$ \pg{54}.}
+\end{fbx}
+\begin{deriv}[of the three equations \added]
+The coupler's direction seen from {S} is $\theta_1+\varphi_2$. Seen from {D}, the vector from the joint B to K points back along the coupler, so $\varphi_1+\varphi_3$ is the coupler direction plus $\pi$. Hence $\theta_1+\varphi_2=\varphi_1+\varphi_3+\pi$ (mod $2\pi$). The first two equations are K reached from the left (crank, then $a$ along the coupler) equals K reached from the right ($L_0$, rocker, then $b$ back along the coupler). Verified at $\theta_1=70^\circ$ for both assembly modes. \chk
+\end{deriv}
+\begin{fbx}[Freudenstein-type equation, break on both sides \pg{57}]
+U on the end of link 1, V on the end of link 3: ${}^Sx_U=L_1\cos\theta_1$, ${}^Sy_U=L_1\sin\theta_1$; ${}^Dx_V=L_3\cos\varphi_1$, ${}^Dy_V=L_3\sin\varphi_1$. Impose that link 2 has length $L_2$:
+\[\eta_1(\theta_1,\varphi_1)=(L_1\cos\theta_1-L_0-L_3\cos\varphi_1)^2+(L_1\sin\theta_1-L_3\sin\varphi_1)^2-L_2^2=0\]
+\use{only one equation, $n=1$, $m=1$, $J=4$. Given $\theta_1$ it is quadratic-in-trig in $\varphi_1$: two solutions, the two assembly modes. The slide calls it ``the Freudenstein equation''.}
+\end{fbx}
+\begin{twoway}{A. Break link 2 at K \pg{52--54}}{B. Break at both ends \pg{55--57}}
+Two RR serial chains meeting at K. Equations: 3 (position $x,y$ and orientation). Unknowns $\varphi_1,\varphi_2,\varphi_3$.\\ Good when you also want K and the coupler orientation (IK, W13 Q5).
+\tcblower
+Cut link 2 itself: chains {S}$\to$U and {D}$\to$V. Equation: 1 (length of link 2). Unknown $\varphi_1$ only.\\ Good for FK: one equation, two roots, then the other angles follow.
+\end{twoway}
+\slidefig[0.55\linewidth]{w04-lec}{58}{48 108 576 151}{Gough--Stewart: 6 active (prismatic) and 30 passive parameters; several loops (coloured) are possible}
+\textbf{Gough--Stewart} \pg{58}: 6 active and 30 passive parameters. Many loops are possible; each potentially has 6 independent equations; ``deciding which 30 of them to choose is not trivial''. That is why it is not solved by hand in general.
+
+%% ============================================================
+\wfourHd{Forward kinematics (hard) \pg{59--67}}
+\premise[parallel FK]{the geometry and the active joint values $\theta_i$ ($\theta_1$ for the four-bar)}{the passive joints $\varphi_i$, then the pose (position and orientation) of the end effector}
+\textbf{Steps} \pg{60}: (1) write $m$ loop-closure equations in the $m$ passive and $n$ active variables and solve this non-linear system for $\varphi_i$; (2) compute the output pose from $\theta_i,\varphi_i$. ``There is no general method like in serial manipulators.'' More complex mechanisms can have multiple solutions, some with imaginary passive joints; numerical methods are common \pg{67}.
+
+\begin{twoway}{A. Slide route (algebra) \pg{61--66}}{B. Geometry (circle intersection) \added}
+Eliminate angles with squaring and adding, giving $A\cos\delta+B\sin\delta+C=0$ twice; solve with Cramer's rule or the half-angle substitution; then $\varphi_2=\delta-\theta_1$, $\varphi_1$ from Freudenstein, $\varphi_3=\theta_1+\varphi_2-\varphi_1-\pi$.
+\tcblower
+$A$ is known from $\theta_1$; B lies on the circle $L_2$ about A \emph{and} on the circle $L_3$ about D. Two intersections = two assembly modes. Fastest by hand; use this in an exam unless told otherwise.
+\end{twoway}
+
+\begin{deriv}[slide route, with all steps \pg{61--65}]
+Let $x\equiv{}^Sx_K$, $y\equiv{}^Sy_K$, $\delta=\theta_1+\varphi_2$. Since $\varphi_1+\varphi_3=\delta-\pi$, $\cos(\varphi_1+\varphi_3)=-\cos\delta$ and the right-chain equations become
+\[x-L_0=L_3\cos\varphi_1-b\cos\delta,\qquad y=L_3\sin\varphi_1-b\sin\delta.\]
+Isolate $L_3\cos\varphi_1=(x-L_0)+b\cos\delta$ and $L_3\sin\varphi_1=y+b\sin\delta$; square and add (this removes $\varphi_1$):
+\[L_3^2=(x-L_0)^2+y^2+b^2+2b\big[(x-L_0)\cos\delta+y\sin\delta\big]\]
+\[\Rightarrow\ A_1\cos\delta+B_1\sin\delta+C_1=0,\quad A_1=x-L_0,\ B_1=y,\ C_1=\tfrac1{2b}\big[(x-L_0)^2+y^2+b^2-L_3^2\big].\]
+The left chain gives $x-a\cos\delta=L_1\cos\theta_1$, $y-a\sin\delta=L_1\sin\theta_1$; square and add (removes $\theta_1$):
+\[A_2\cos\delta+B_2\sin\delta+C_2=0,\quad A_2=x,\ B_2=y,\ C_2=\tfrac1{2a}\big[L_1^2-a^2-x^2-y^2\big].\]
+\end{deriv}
+\begin{deriv}[solving the two equations for $\delta$ \pg{65}]
+\textbf{(i) Cramer's rule.} Treat $\cos\delta,\sin\delta$ as unknowns of a linear system with determinant $\Delta=A_1B_2-A_2B_1$:
+\[\cos\delta=\frac{B_1C_2-B_2C_1}{\Delta},\quad\sin\delta=\frac{A_2C_1-A_1C_2}{\Delta},\quad\delta=\operatorname{atan2}(\sin\delta,\cos\delta).\]
+Using $\cos^2+\sin^2=1$ gives the slide's consistency condition $\Delta^2=(A_1C_2-A_2C_1)^2+(B_1C_2-B_2C_1)^2$.\\
+\textbf{(ii) Tangent half-angle} $t=\tan(\delta/2)$: $\cos\delta=\frac{1-t^2}{1+t^2}$, $\sin\delta=\frac{2t}{1+t^2}$. Each equation becomes
+\[(C_i-A_i)\,t^2+2B_i\,t+(A_i+C_i)=0,\quad i=1,2.\]
+Eliminate $t^2$: $(C_2-A_2)\cdot$eq.\,1 $-(C_1-A_1)\cdot$eq.\,2 is linear in $t$:
+\[2t\big[B_1(C_2-A_2)-B_2(C_1-A_1)\big]+(A_1+C_1)(C_2-A_2)-(A_2+C_2)(C_1-A_1)=0.\]
+The constant part expands to $2(A_1C_2-A_2C_1)$ and the bracket to $(B_1C_2-B_2C_1)+(A_1B_2-A_2B_1)$, so
+\[t=\frac{A_2C_1-A_1C_2}{(B_1C_2-B_2C_1)+(A_1B_2-A_2B_1)},\qquad\delta=2\tan^{-1}t.\]
+(sympy confirmed this elimination. \chk)
+\end{deriv}
+\begin{slideerr}[slide 65]
+Printed: $\delta=\tan^{-1}\dfrac{A_1C_2-A_2C_1}{(B_1C_2-B_2C_1)+(A_1B_2-A_2B_1)}$. The half-angle derivation gives the \emph{opposite sign in the numerator and a factor 2}: $\delta=2\tan^{-1}\dfrac{A_2C_1-A_1C_2}{(B_1C_2-B_2C_1)+(A_1B_2-A_2B_1)}$. Test (mode 1 below): slide form $0.300^\circ$, true $\delta=-0.600^\circ$. Use the Cramer/atan2 form (no half-angle ambiguity at $\delta=\pm\pi$). \chk\\
+Also: the slide's ``simplifies to'' quartic in $x,y$ \pg{65} holds for every point K of the coupler (it is the coupler-curve equation \added); it contains no $\theta_1$, so it does not by itself give $\delta$. And the slide treats $(x,y)$ as known; for FK from $\theta_1$ alone use route B.
+\end{slideerr}
+\begin{fbx}[Geometric FK of the four-bar, route B \added]
+\[\mathbf A=L_1\begin{bmatrix}\cos\theta_1\\\sin\theta_1\end{bmatrix},\ \mathbf D=\begin{bmatrix}L_0\\0\end{bmatrix},\ d=\lVert\mathbf D-\mathbf A\rVert,\ d^2=L_0^2+L_1^2-2L_0L_1\cos\theta_1\]
+\[x_a=\frac{L_2^2-L_3^2+d^2}{2d},\ \ h=\sqrt{L_2^2-x_a^2},\ \ \hat{\mathbf u}=\frac{\mathbf D-\mathbf A}{d},\ \ \hat{\mathbf n}=\begin{bmatrix}-u_y\\u_x\end{bmatrix}\]
+\[\mathbf B=\mathbf A+x_a\hat{\mathbf u}\pm h\,\hat{\mathbf n},\quad\phi=\operatorname{atan2}(B_y-A_y,B_x-A_x),\quad\varphi_2=\phi-\theta_1,\]
+\[\mathbf K=\mathbf A+a(\cos\phi,\sin\phi),\quad\varphi_1=\operatorname{atan2}(B_y,\,B_x-L_0),\quad\varphi_3=\phi+\pi-\varphi_1\ (\mathrm{mod}\ 2\pi)\]
+\begin{symbols}
+$\mathbf A,\mathbf B,\mathbf D$ & crank--coupler joint, coupler--rocker joint, rocker pivot, all in {S} & m\\
+$x_a,h$ & distance of B's foot from A along AD, and its height off AD (cosine rule) & m\\
+$\pm$ & $+$: B on the left of $\mathbf A\!\to\!\mathbf D$ (``above''); $-$: right (``below''): the two assembly modes & --\\
+$\phi$ & orientation of the coupler (link 2), from $x_S$ & rad\\
+\end{symbols}
+\use{FK of any four-bar from $\theta_1$. It needs $\lvert L_2-L_3\rvert\le d\le L_2+L_3$, else the linkage cannot assemble at that $\theta_1$.}
+\end{fbx}
+\begin{worked}[four-bar FK, both assembly modes; closure checked]
+$L_0=1.0$, $L_1=0.5$, $L_3=0.6$, $a=0.2$, $b=0.25$ m ($L_2=0.45$ m); crank $\theta_1=70^\circ$ (angles in degrees here; radians in the formulas).
+\begin{center}
+\begin{tikzpicture}[x=9.5cm,y=9.5cm,line width=0.8pt]
+\coordinate (S) at (0,0); \coordinate (D) at (1,0);
+\coordinate (A) at (0.171,0.4698); \coordinate (Bp) at (0.621,0.4651); \coordinate (Bm) at (0.4062,0.0862);
+\coordinate (Kp) at (0.371,0.4678); \coordinate (Km) at (0.2756,0.2993);
+\draw[g3,line width=0.5pt] (S)--(D) node[midway,below,font=\scriptsize,text=black]{$L_0=1.0$};
+\draw[line width=1.6pt] (S)--(A);
+\draw (A)--(Bp)--(D);
+\draw[dashed] (A)--(Bm)--(D);
+\foreach \p in {S,D,A,Bp,Bm} \filldraw[fill=white] (\p) circle (0.012);
+\fill (Kp) circle (0.009); \fill (Km) circle (0.009);
+\node[font=\scriptsize,below left] at (S) {S};
+\node[font=\scriptsize,below right] at (D) {D};
+\node[font=\scriptsize,above left] at (A) {A};
+\node[font=\scriptsize,above] at (Bp) {B$_{+}$};
+\node[font=\scriptsize,below left] at (Bm) {B$_{-}$};
+\node[font=\scriptsize,above right=0pt] at (Kp) {K$_+$};
+\node[font=\scriptsize,right] at (Km) {K$_-$};
+\draw (0.08,0) arc (0:70:0.08); \node[font=\scriptsize] at (0.125,0.04) {$\theta_1$};
+\draw (1.12,0) arc (0:129.175:0.12); \node[font=\scriptsize] at (1.10,0.11) {$\varphi_1^{+}$};
+\node[font=\scriptsize,align=left] at (0.19,0.36) {$L_1$};
+\node[font=\scriptsize] at (0.50,0.435) {$L_2$};
+\node[font=\scriptsize] at (0.83,0.23) {$L_3$};
+\end{tikzpicture}
+\end{center}
+\drawncap{solid: mode $+$ (B above AD); dashed: mode $-$ (B below). Frame {S} at the left pivot, $x$ to the right, $y$ up.}
+\textbf{Step 1} $\mathbf A=0.5(\cos70^\circ,\sin70^\circ)=(0.1710,\,0.4698)$; $d^2=1+0.25-2(0.5)\cos70^\circ=0.9080$, $d=0.9529$; $\hat{\mathbf u}=(0.8700,\,-0.4931)$, $\hat{\mathbf n}=(0.4931,\,0.8700)$.\\
+\textbf{Step 2} $x_a=\dfrac{0.2025-0.36+0.9080}{2(0.9529)}=\dfrac{0.7505}{1.9058}=0.3938$; $h=\sqrt{0.2025-0.1551}=0.2178$.\\
+\textbf{Step 3} (B, K and the angles)\par
+\begin{tabularx}{\linewidth}{@{}Xcc@{}}\toprule
+ & mode $+$ & mode $-$\\\midrule
+$\mathbf B$ (m) & $(0.6210,\,0.4651)$ & $(0.4062,\,0.0862)$\\
+$\phi$ & $-0.600^\circ$ & $-58.486^\circ$\\
+$\varphi_2=\phi-\theta_1$ & $289.400^\circ$ & $231.514^\circ$\\
+$\varphi_1$ & $129.175^\circ$ & $171.739^\circ$\\
+$\varphi_3=\phi+180^\circ-\varphi_1$ & $50.225^\circ$ & $309.775^\circ$\\
+$\mathbf K$ (m) & $(0.3710,\,0.4678)$ & $(0.2756,\,0.2993)$\\\bottomrule
+\end{tabularx}
+\textbf{Closure check (mode $+$):} left side $L_1\cos\theta_1+a\cos(\theta_1+\varphi_2)=0.1710+0.2\cos(359.4^\circ)=0.3710$; right side $L_0+L_3\cos\varphi_1+b\cos(\varphi_1+\varphi_3)=1-0.3790+0.25\cos179.4^\circ=0.3710$. Second equation: $0.4698+0.2\sin359.4^\circ=0.4678=0.6\sin129.175^\circ+0.25\sin179.4^\circ=0.4678$. Orientation: $\theta_1+\varphi_2=359.4^\circ$, $\varphi_1+\varphi_3+\pi=359.4^\circ$ ($179.4+180$). Also $\lvert\mathbf{AB}\rvert=0.45$, $\lvert\mathbf{DB}\rvert=0.60$ in both modes. \chk
+\end{worked}
+\begin{fbx}[Solving Freudenstein for $\varphi_1$ \pg{57, 66}]
+With $u=L_1\cos\theta_1-L_0$, $v=L_1\sin\theta_1$ ($u^2+v^2=d^2$): $\eta_1=0$ becomes $u\cos\varphi_1+v\sin\varphi_1=k$,
+\[k=\frac{u^2+v^2+L_3^2-L_2^2}{2L_3},\qquad\varphi_1=\operatorname{atan2}(v,u)\pm\arccos\frac{k}{d}\]
+\use{$\lvert k/d\rvert>1$ means no assembly. Then $\varphi_2=\delta-\theta_1$ and $\varphi_3=\theta_1+\varphi_2-\varphi_1-\pi$ \pg{66}.}
+Numbers ($\theta_1=70^\circ$): $u=-0.8290$, $v=0.4698$, $k=0.8879$, $d=0.9529$, $\arccos(0.9318)=21.282^\circ$, $\operatorname{atan2}(v,u)=150.457^\circ$: $\varphi_1=129.175^\circ$ (mode $+$) or $171.739^\circ$ (mode $-$). \chk
+\end{fbx}
+
+\wfourSh{Assembly range and crank test \added}
+\begin{recipe}[can the crank reach angle $\theta_1$? does it turn fully?]
+\begin{enumerate}
+\item The circles of radius $L_2$ about A and $L_3$ about D meet only if $\lvert L_2-L_3\rvert\le d\le L_2+L_3$, with $d^2=L_0^2+L_1^2-2L_0L_1\cos\theta_1$.
+\item Solve for $\theta_1$: $\dfrac{L_0^2+L_1^2-(L_2+L_3)^2}{2L_0L_1}\le\cos\theta_1\le\dfrac{L_0^2+L_1^2-(L_2-L_3)^2}{2L_0L_1}$.
+\item If the interval for $\cos\theta_1$ contains $[-1,1]$, the crank turns fully; otherwise it rocks between the limits (the two modes merge there: a dead-centre position).
+\item Shortcut (Grashof, \added): if shortest + longest $\le$ the other two, a link next to the shortest can turn fully.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[crank range for the example above]
+$L_2+L_3=1.05$, $\lvert L_2-L_3\rvert=0.15$. Lower bound $\cos\theta_1\ge\dfrac{1+0.25-1.1025}{1}=0.1475$, so $\lvert\theta_1\rvert\le81.52^\circ$; upper bound $1.2275>1$, no limit. Non-Grashof ($0.45+1.0=1.45>0.5+0.6=1.1$): the crank only rocks. At $81.52^\circ$, $d=1.05=L_2+L_3$: coupler and rocker are collinear and the two modes meet. Mock-exam four-bar ($L_0=0.8$, $L_1=0.3$, $L_2=0.7$, $L_3=0.5$): $0.3+0.8=1.1\le0.5+0.7=1.2$: Grashof, the crank turns fully. \chk
+\end{worked}
+
+%% ============================================================
+\wfourHd{Inverse kinematics (easy) \pg{68--73}}
+\premise[four-bar IK, W13 Q5]{position K$=(x,y)$ in {S} of a point on the output link, and its orientation $\phi$; known $L_0,L_1,L_2=a+b,L_3$}{$\theta_1,\varphi_1,\varphi_2,\varphi_3$}
+\textbf{Why easy} \pg{69}: with the pose of the output link given, each leg is a serial chain whose end pose is known: solve each leg separately, no loop closure. Each leg must not be redundant, else the answer is not unique.
+\slidefig[0.6\linewidth]{w04-lec}{71}{0 119 538 151}{the same four-bar; K, $a$, $b$, $L_2=a+b$ and the output orientation $\phi$}
+\begin{deriv}[four-bar IK \pg{70--72}]
+\textbf{Left chain} {S}$\to$K \pg{71}: $x=L_1\cos\theta_1+a\cos(\theta_1+\varphi_2)$, $y=L_1\sin\theta_1+a\sin(\theta_1+\varphi_2)$, $\phi=\theta_1+\varphi_2-2\pi$ (so $\theta_1+\varphi_2=\phi$ mod $2\pi$). Substitute $\theta_1+\varphi_2=\phi$:
+\[\begin{aligned}L_1\cos\theta_1&=x-a\cos\phi,\quad L_1\sin\theta_1=y-a\sin\phi\\ \Rightarrow\ \theta_1&=\operatorname{atan2}(y-a\sin\phi,\ x-a\cos\phi),\quad\varphi_2=\phi-\theta_1\ (+2\pi).\end{aligned}\]
+\textbf{Right chain} {D}$\to$K \pg{72}: $x=L_0+L_3\cos\varphi_1+b\cos(\varphi_1+\varphi_3)$, $y=L_3\sin\varphi_1+b\sin(\varphi_1+\varphi_3)$, $\phi=\varphi_1+\varphi_3-\pi$. Substitute $\varphi_1+\varphi_3=\phi+\pi$, so $\cos(\varphi_1+\varphi_3)=-\cos\phi$:
+\[\begin{aligned}L_3\cos\varphi_1&=x-L_0+b\cos\phi,\quad L_3\sin\varphi_1=y+b\sin\phi\\ \Rightarrow\ \varphi_1&=\operatorname{atan2}(y+b\sin\phi,\ x+b\cos\phi-L_0),\quad\varphi_3=\phi+\pi-\varphi_1.\end{aligned}\]
+(The slides leave ``solve for $\varphi_1$ and $\varphi_3$'' as an exercise.)
+\end{deriv}
+\begin{recipe}[four-bar IK from K and $\phi$ (W13 Q5)]
+\begin{enumerate}
+\item Coupler ends: $\mathbf A=\mathbf K-a(\cos\phi,\sin\phi)$, $\mathbf B=\mathbf K+b(\cos\phi,\sin\phi)$.
+\item $\theta_1=\operatorname{atan2}(y-a\sin\phi,\ x-a\cos\phi)$.
+\item $\varphi_2=\phi-\theta_1$ (add $2\pi$ if a positive angle is wanted).
+\item $\varphi_1=\operatorname{atan2}(y+b\sin\phi,\ x+b\cos\phi-L_0)$.
+\item $\varphi_3=\phi+\pi-\varphi_1$ (mod $2\pi$).
+\item Check: $\lvert\mathbf A\rvert=L_1$ and $\lvert\mathbf B-\mathbf D\rvert=L_3$ (K and $\phi$ over-specify a 1-DoF linkage); then redo the left-hand loop equation.
+\end{enumerate}
+\end{recipe}
+\begin{slideerr}[W13 p.\,11, Q5 continued]
+The slide prints $\varphi_1-\phi=\varphi_3-\pi$, i.e.\ $\varphi_3=\varphi_1-\phi+\pi$. With the position equations on the same slide this is only true when $\varphi_1=\phi$ (mod $\pi$). W4 p.\,72 prints $\phi=\varphi_1+\varphi_3-\pi$, giving $\varphi_3=\phi+\pi-\varphi_1$, which is right. Test below: the printed form puts K at $(0.669,\,0.711)$ instead of $(0.371,\,0.468)$. If you use the slide's form, say so; the safe answer is $\varphi_1+\varphi_3=\phi+\pi$. \chk
+\end{slideerr}
+\begin{worked}[W13 Q5 numbers]
+$L_0=1.0$, $L_1=0.5$, $L_3=0.6$, $a=0.2$, $b=0.25$ m. Given K$=(0.3710,\,0.4678)$ m, $\phi=-0.600^\circ$.\\
+$\theta_1=\operatorname{atan2}(0.4678+0.00209,\ 0.3710-0.2000)=\operatorname{atan2}(0.4699,0.1710)=70.0^\circ$.\\
+$\varphi_2=-0.6^\circ-70.0^\circ=-70.6^\circ\equiv289.4^\circ$.\\
+$\varphi_1=\operatorname{atan2}(0.4678-0.00262,\ 0.3710+0.2500-1.0)=\operatorname{atan2}(0.4652,-0.3790)=129.17^\circ$.\\
+$\varphi_3=-0.6^\circ+180^\circ-129.175^\circ=50.225^\circ$. Check: $\theta_1+\varphi_2=359.4^\circ=\varphi_1+\varphi_3+180^\circ$. This is the mode-$+$ pose of the previous example (the same K, $\phi$ as in the table). \chk
+\end{worked}
+\begin{trap}
+Radians vs degrees on the calculator; atan2 (not atan) because $x+b\cos\phi-L_0<0$ here, which puts $\varphi_1$ in the second quadrant; using the printed $\varphi_3$ relation; forgetting that FK has two solutions but IK has one per leg.
+\end{trap}
+
+\wfourSh{Gough--Stewart leg IK (homework, \pg{73})}
+\slidefig[0.5\linewidth]{w04-lec}{73}{634 130 96 140}{one leg between {B} and {P}: S at the base, active P, U at the platform}
+\premise[Gough--Stewart IK]{${}^B\T_P=[\Rm\,|\,\mathbf t]$ (platform pose in the base frame), base joint points $\mathbf b_i$ in {B}, platform joint points $\mathbf p_i$ in {P}}{for each leg $i$: the prismatic length $d_i$ and the passive S and U angles}
+\begin{fbx}[Leg vector, length, direction \pg{73}; formulas added]
+\[{}^B\mathbf l_i=\mathbf t+\Rm\,\mathbf p_i-\mathbf b_i,\qquad d_i=\lVert{}^B\mathbf l_i\rVert,\qquad{}^B\hat{\mathbf n}_i={}^B\mathbf l_i/d_i,\qquad{}^P\hat{\mathbf n}_i=\Rm^{\mathsf T}\,{}^B\hat{\mathbf n}_i\]
+\[\psi_i=\operatorname{atan2}(n_y,n_x),\qquad\varepsilon_i=\arcsin n_z\quad(\text{of }{}^B\hat{\mathbf n}_i:\ \text{S angles at the base})\]
+\begin{symbols}
+$\mathbf b_i$ & base attachment point of leg $i$, in {B} & m\\
+$\mathbf p_i$ & platform attachment point, in {P} & m\\
+$\mathbf t,\Rm$ & position and rotation of {P} in {B} & m, --\\
+$d_i$ & active prismatic length of leg $i$ & m\\
+$\psi_i,\varepsilon_i$ & azimuth and elevation of the leg, the S joint's two non-spin angles & rad\\
+\end{symbols}
+\use{one answer per leg. The S spin about the leg axis is free (does nothing). The U angles at the platform are the azimuth/elevation of ${}^P\hat{\mathbf n}_i$ about the platform axes: the slide fixes no U-axis convention, so state yours.}
+\end{fbx}
+\begin{worked}[Stewart leg lengths, hexagon geometry \added]
+Base points on a 1.0 m circle at $-10^\circ,10^\circ,110^\circ,130^\circ,230^\circ,250^\circ$; platform points on a 0.5 m circle at $-50^\circ,50^\circ,70^\circ,170^\circ,190^\circ,290^\circ$.\\
+\textbf{Home} (level, $\mathbf t=(0,0,1)$): leg 1, $\mathbf b_1=(0.9848,-0.1736,0)$, $\mathbf p_1=(0.3214,-0.3830,0)$: ${}^B\mathbf l_1=(-0.6634,-0.2094,1.0)$, $d_1=\sqrt{0.4401+0.0438+1}=1.2182$ m (all six equal); azimuth $-162.48^\circ$, elevation $55.17^\circ$.\\
+\textbf{Posed} $\mathbf t=(0.05,-0.02,1.0)$, $\Rm=R_z(5^\circ)R_y(3^\circ)$, leg 1: ${}^B\mathbf l_1=(-0.5817,-0.1999,0.9832)$, $d_1=1.1597$ m, ${}^B\hat{\mathbf n}_1=(-0.5016,-0.1724,0.8478)$: $\psi_1=-161.03^\circ$, $\varepsilon_1=57.97^\circ$; ${}^P\hat{\mathbf n}_1=(-0.5584,-0.1280,0.8197)$ (azimuth $-167.09^\circ$, elevation $55.05^\circ$).\\
+All six legs (m): $1.1597,\ 1.1974,\ 1.2170,\ 1.2812,\ 1.2152,\ 1.2504$. \chk
+\end{worked}
+
+%% ============================================================
+\wfourHd{Delta robot IK \added}
+\premise[delta IK]{platform centre $\mathbf p=(p_x,p_y,p_z)$ in the base frame {B} ($z$ up, $p_z<0$); base radius $R_b$, platform radius $R_p$, upper arm $L_a$, rod $L_r$}{the three motor angles $\theta_1,\theta_2,\theta_3$}
+\textbf{Idea}: the parallelogram keeps the platform level, so the rod joint of leg $i$ is at $\mathbf p+R_p\hat{\mathbf u}_i$ and each leg is a small problem like the four-bar: solve every leg alone (this is the loop closure: each rod must stay $L_r$ long).
+\begin{deriv}[leg $i$, azimuth $\gamma_i=0^\circ,120^\circ,240^\circ$]
+$\hat{\mathbf u}_i=(\cos\gamma_i,\sin\gamma_i,0)$. Motor angle $\theta_i$ is measured \emph{down} from horizontal, so the elbow is $\mathbf E_i=R_b\hat{\mathbf u}_i+L_a(\cos\theta_i\,\hat{\mathbf u}_i-\sin\theta_i\,\hat{\mathbf z})$. The rod joint is $\mathbf p+R_p\hat{\mathbf u}_i$. Let $\mathbf d_i=\mathbf p+(R_p-R_b)\hat{\mathbf u}_i$. Rod length: $\lVert L_a(\cos\theta_i\hat{\mathbf u}_i-\sin\theta_i\hat{\mathbf z})-\mathbf d_i\rVert=L_r$. Expand:
+\[L_a^2+\lVert\mathbf d_i\rVert^2-2L_a\big(d_u\cos\theta_i-d_z\sin\theta_i\big)=L_r^2,\quad d_u=\mathbf d_i\!\cdot\!\hat{\mathbf u}_i,\ d_z=\mathbf d_i\!\cdot\!\hat{\mathbf z}.\]
+With $A=d_u$, $B=-d_z$, $K=\dfrac{\lVert\mathbf d_i\rVert^2+L_a^2-L_r^2}{2L_a}$: $A\cos\theta_i+B\sin\theta_i=K$, and with $\rho=\sqrt{A^2+B^2}$
+\[\theta_i=\operatorname{atan2}(B,A)-\arccos(K/\rho)\quad(\text{physical root}),\qquad\lvert K\rvert\le\rho\ \text{or the point is out of reach.}\]
+\end{deriv}
+\begin{fbx}[Which root is physical]
+The other root, $\operatorname{atan2}(B,A)+\arccos(K/\rho)$, folds the arm back above the base (elbow inside the base circle, $z>0$). Choose the root with the elbow \textbf{outside the base circle and below the base}: $\lVert\mathbf E_{i,xy}\rVert>R_b$, $E_{i,z}<0$. \use{state this choice; otherwise two answers per leg.}
+\end{fbx}
+\begin{worked}[delta IK numbers]
+$R_b=0.20$, $R_p=0.05$, $L_a=0.20$, $L_r=0.45$ m; $\mathbf p=(0.03,-0.02,-0.38)$ m.\\
+Leg 1 ($\gamma=0$): $\mathbf d_1=(0.03-0.15,\,-0.02,\,-0.38)=(-0.12,-0.02,-0.38)$, $\lVert\mathbf d_1\rVert^2=0.1592$, $K=\dfrac{0.1592+0.04-0.2025}{0.4}=-0.00825$, $A=-0.12$, $B=0.38$, $\rho=0.3985$. $\operatorname{atan2}(0.38,-0.12)=107.526^\circ$, $\arccos(-0.0207)=91.186^\circ$: $\theta_1=16.339^\circ$ (other root $198.712^\circ$, unphysical).\\
+Legs 2, 3 the same way: $\theta_2=30.871^\circ$, $\theta_3=22.996^\circ$. Every rod comes out $0.45$ m. At home $\mathbf p=(0,0,-0.4)$: $\theta_i=27.277^\circ$. \chk
+\end{worked}
+\begin{center}
+\begin{tikzpicture}[x=8cm,y=8cm,line width=0.8pt]
+\draw[g3] (-0.1,0)--(0.5,0); \node[font=\scriptsize,anchor=west] at (0.5,0) {base plane};
+\filldraw[fill=white] (0.2,0) circle (0.012); \fill (0.2,0) circle (0.003);
+\node[font=\scriptsize,above] at (0.2,0.015) {motor R, $R_b=0.20$};
+\draw[line width=1.6pt] (0.2,0)--(0.3919,-0.0563);
+\filldraw[fill=white] (0.3919,-0.0563) circle (0.011);
+\draw (0.3919,-0.0563)--(0.08,-0.38);
+\filldraw[fill=white] (0.08,-0.38) circle (0.011);
+\draw[line width=1.6pt] (-0.02,-0.38)--(0.08,-0.38); \fill (0.03,-0.38) circle (0.006);
+\node[font=\scriptsize,below] at (0.03,-0.385) {platform centre $\mathbf p$};
+\draw[dashed,g3] (0.2,0)--(0.4,0); \draw (0.28,0) arc (0:-16.34:0.08); \node[font=\scriptsize] at (0.325,-0.02) {$\theta_1$};
+\node[font=\scriptsize,above right] at (0.30,-0.045) {$L_a$};
+\node[font=\scriptsize,right] at (0.25,-0.22) {$L_r=0.45$};
+\end{tikzpicture}
+\end{center}
+\drawncap{delta leg 1 in the vertical plane through its arm (the small tangential offset $-0.02$ m of the rod is not visible in this projection)}
+
+%% ============================================================
+\wfourHd{Planar five-bar IK (2 DoF) \added}
+Mobility $3(5-5-1)+5=2$: two actuators (the two base joints) position the tip $\mathbf P$ in the plane. \premise[five-bar IK]{tip $\mathbf P=(x,y)$ in {S}; base pivots $\mathbf O_1,\mathbf O_2$; proximal links $L_p$, distal links $L_d$}{base angles $\theta_1,\theta_2$ (absolute, from $+x$)}
+\begin{deriv}[each side is a planar 2R problem]
+For pivot $\mathbf O_j$ let $\mathbf v_j=\mathbf P-\mathbf O_j$, $r_j=\lVert\mathbf v_j\rVert$. The elbow $\mathbf E_j$ is at distance $L_p$ from $\mathbf O_j$ and $L_d$ from $\mathbf P$. Cosine rule in the triangle $\mathbf O_j\mathbf E_j\mathbf P$:
+\[L_d^2=r_j^2+L_p^2-2r_jL_p\cos\beta_j\ \Rightarrow\ \cos\beta_j=\frac{r_j^2+L_p^2-L_d^2}{2r_jL_p},\qquad\theta_j=\operatorname{atan2}(v_{j,y},v_{j,x})\pm\beta_j.\]
+Reachable on side $j$ only if $\lvert L_p-L_d\rvert\le r_j\le L_p+L_d$. Two roots per side: 4 configurations in total; the usual working one is ``elbows outward'': $+\beta_1$ for the left pivot, $-\beta_2$ for the right.
+\end{deriv}
+\begin{worked}[five-bar numbers]
+$\mathbf O_1=(-0.1,0)$, $\mathbf O_2=(0.1,0)$, $L_p=0.3$, $L_d=0.4$ m; $\mathbf P=(0.05,\,0.45)$.\\
+Left: $\mathbf v_1=(0.15,0.45)$, $r_1=0.4743$, $\cos\beta_1=\dfrac{0.2250+0.09-0.16}{0.2846}=0.5446$, $\beta_1=57.00^\circ$, $\operatorname{atan2}=71.565^\circ$: $\theta_1=128.567^\circ$, $\mathbf E_1=(-0.287,\,0.235)$.\\
+Right: $\mathbf v_2=(-0.05,0.45)$, $r_2=0.4528$, $\cos\beta_2=0.4969$, $\beta_2=60.20^\circ$, $\operatorname{atan2}=96.340^\circ$: $\theta_2=96.340^\circ-60.202^\circ=36.138^\circ$, $\mathbf E_2=(0.342,\,0.177)$.\\
+Check: $\lVert\mathbf P-\mathbf E_1\rVert=\lVert\mathbf P-\mathbf E_2\rVert=0.4$. The other three configurations: $(14.563^\circ,36.138^\circ)$, $(128.567^\circ,156.542^\circ)$, $(14.563^\circ,156.542^\circ)$. FK from $\theta_1,\theta_2$: intersect the two radius-$L_d$ circles about $\mathbf E_1,\mathbf E_2$: two points, $(0.05,0.45)$ and $(0.005,-0.039)$. \chk
+\end{worked}
+\begin{center}
+\begin{tikzpicture}[x=11cm,y=11cm,line width=0.8pt]
+\coordinate (O1) at (-0.1,0); \coordinate (O2) at (0.1,0); \coordinate (E1) at (-0.287,0.2346); \coordinate (E2) at (0.3423,0.1769); \coordinate (P) at (0.05,0.45);
+\draw[g3] (-0.35,0)--(0.4,0);
+\draw[line width=1.6pt] (O1)--(E1); \draw[line width=1.6pt] (O2)--(E2);
+\draw (E1)--(P)--(E2);
+\foreach \p in {O1,O2,E1,E2,P} \filldraw[fill=white] (\p) circle (0.009);
+\node[font=\scriptsize,below] at (O1) {$\mathbf O_1$}; \node[font=\scriptsize,below] at (O2) {$\mathbf O_2$};
+\node[font=\scriptsize,left] at (E1) {$\mathbf E_1$}; \node[font=\scriptsize,right] at (E2) {$\mathbf E_2$}; \node[font=\scriptsize,above] at (P) {$\mathbf P$};
+\draw (-0.1,0)++(0.06,0) arc (0:128.567:0.06); \node[font=\scriptsize] at (-0.09,0.085) {$\theta_1$};
+\draw (0.1,0)++(0.06,0) arc (0:36.138:0.06); \node[font=\scriptsize] at (0.185,0.02) {$\theta_2$};
+\end{tikzpicture}
+\end{center}
+\drawncap{five-bar, elbows outward, $\theta_1=128.57^\circ$, $\theta_2=36.14^\circ$}
+
+%% ============================================================
+\wfourHd{Slider-crank (4 bodies, planar) \added}
+Ground, crank $L_1$, rod $L_2$, slider on the ground line through the crank pivot; 3 R + 1 P. $M=3(4-4-1)+4=1$.
+\begin{fbx}[Slider position]
+\[x=L_1\cos\theta+\sqrt{L_2^2-L_1^2\sin^2\theta},\qquad\text{rod angle }\ \beta=-\arcsin\frac{L_1\sin\theta}{L_2}\]
+\begin{symbols}
+$\theta$ & crank angle from the slider line & rad\\
+$L_1,L_2$ & crank and rod lengths ($L_2>L_1$) & m\\
+$x$ & slider distance from the crank pivot & m\\
+\end{symbols}
+\use{vertical closure: crank-tip height $L_1\sin\theta=-L_2\sin\beta$ (the slider is on the axis); horizontal closure gives $x$. IK: given $x$, $\cos\theta$ from the cosine rule.}
+\end{fbx}
+Numbers $L_1=0.1$, $L_2=0.3$ m: $x(0^\circ)=0.4000$, $x(60^\circ)=0.3372$ ($\beta=-16.78^\circ$, rod length check $=0.3$), $x(90^\circ)=0.2828$, $x(180^\circ)=0.2000$. Stroke $=2L_1=0.2$ m. \chk
+
+%% ============================================================
+\wfourHd{Singularities of parallel robots: what the slides say}
+The slides (W4) do \textbf{not} cover singularities of parallel robots; velocity kinematics and the Jacobian start in W6 \pg{76}. Assembly modes are only implied (``multiple solutions may exist'' \pg{67}). \added\ What can be said from this week's maths: the four-bar's two modes merge when $d=L_2+L_3$ or $d=\lvert L_2-L_3\rvert$ (circles tangent, $\cos\beta=\pm1$): there the linkage sits at a dead-centre and a small crank motion needs unbounded rocker speed, or the rocker cannot be driven back. A delta or five-bar leg is singular when it is fully stretched or folded ($r_j=L_p+L_d$ or $\lvert L_p-L_d\rvert$). Cross-reference the W6 Jacobian pages for the formal condition $\det\mathbf J=0$.
+
+%% ============================================================
+\wfourHd{How this is examined: worked solutions}
+\begin{examq}[W13 Q5: four-bar IK \mk{marks not published}]
+A planar four-bar has $L_0=1.0$, $L_1=0.5$, $L_3=0.6$ m; the output link (coupler) has $a=0.2$, $b=0.25$ m. Point K on the output link is at $(0.3710,\,0.4678)$ m in {S}, and the link is oriented at $\phi=-0.600^\circ$. Determine $\theta_1,\varphi_1,\varphi_2,\varphi_3$.
+\solution
+Frames: {S} at the left pivot, {D} at $(L_0,0)$, angles counter-clockwise from $+x$. Write each chain's K equations: $x=L_1\cos\theta_1+a\cos(\theta_1+\varphi_2)$, $y=L_1\sin\theta_1+a\sin(\theta_1+\varphi_2)$, $\theta_1+\varphi_2=\phi$ (mod $2\pi$).\mk{setup}\\
+Substitute: $L_1\cos\theta_1=x-a\cos\phi$, $L_1\sin\theta_1=y-a\sin\phi$: $\theta_1=\operatorname{atan2}(0.4699,0.1710)=\boxed{70.0^\circ}$; $\varphi_2=\phi-\theta_1=\boxed{289.4^\circ}$ ($\equiv-70.6^\circ$).\mk{left chain}\\
+Right chain: $x=L_0+L_3\cos\varphi_1+b\cos(\varphi_1+\varphi_3)$ with $\varphi_1+\varphi_3=\phi+\pi$: $L_3\cos\varphi_1=x-L_0+b\cos\phi=-0.3790$, $L_3\sin\varphi_1=y+b\sin\phi=0.4652$: $\varphi_1=\operatorname{atan2}(0.4652,-0.3790)=\boxed{129.2^\circ}$; $\varphi_3=\phi+\pi-\varphi_1=\boxed{50.2^\circ}$.\mk{right chain}\\
+Check: $\lVert(-0.379,0.4652)\rVert=0.600=L_3$; $\theta_1+\varphi_2=359.4^\circ=\varphi_1+\varphi_3+180^\circ$. Say: IK is easy because each leg is solved alone with atan2; one answer per leg. Using the slide's printed $\varphi_3=\varphi_1-\phi+\pi$ gives $309.8^\circ$ and K misses by 0.4 m.\mk{check}
+\end{examq}
+
+\begin{examq}[W13 Q6: planar mobility \mk{marks not published}]
+A planar platform is carried by three R--P--R legs (slide figure). Find its mobility with G--K and say whether it is a structure, a mechanism or over-constrained.
+\solution
+Planar: $D=3$. Bodies: ground 1; platform 1; each leg is cylinder + piston: $3\times2=6$. $N=8$. Joints: 3 R at the ground, 3 P, 3 R at the platform: $J=9$, all $F_i=1$, $\sum F_i=9$.\mk{counts}
+\[M=D(N-J-1)+\sum F_i=3(8-9-1)+9=\boxed{3}\]
+$M>0$: a mechanism with 3 DoF (platform $x,y$ and rotation), driven by the 3 prismatic actuators, so it is fully actuated. Check: if each P were locked, $N=5$ (ground, platform, 3 rigid legs) and $J=6$ (all R): $3(5-6-1)+6=0$, a structure, as it should be.\mk{interpretation}
+\end{examq}
+
+\begin{examq}[W13 Q7: delta mobility, plain vs extended \mk{marks not published}]
+A delta robot has a base, three R joints, each followed by a parallelogram of two parallel bars with spherical joints at both ends of every bar, and a moving platform. (a) Find the mobility with plain G--K. (b) The platform has only 3 translational DoF. Reconcile with the extended equation.
+\solution
+(a) 3D, $D=6$. $N=1+3+6+1=11$. $J=3+3\times4=15$. $\sum F_i=3(1+4\times3)=39$.
+\[M=6(11-15-1)+39=\boxed{9}\]
+(b) Each of the 6 bars has an S joint at both ends, so it can spin about its own axis with nothing else moving: $R_M=6$. No constraint is repeated: $R_C=0$.
+\[M=6(11-15-1)+39+0-6=\boxed{3}\]
+Explain: plain G--K counts every DoF as moving the output; the 6 bar spins are internal, so they are subtracted. The result 3 equals the 3 motors and the 3 platform translations.
+\end{examq}
+
+\begin{examq}[four-bar: assembly modes and crank test (mock-exam style) \mk{marks assumed}]
+A four-bar has $L_0=0.8$ m, crank $L_1=0.3$ m (angle $\theta_1$ at {S}$=(0,0)$), coupler $L_2=0.7$ m, rocker $L_3=0.5$ m pivoted at $\mathbf D=(0.8,0)$. (a) At $\theta_1=60^\circ$ find both positions of the coupler--rocker joint B and the coupler angle $\phi$. (b) Can the crank turn fully? (c) Mobility?
+\solution
+(a) $\mathbf A=0.3(\cos60^\circ,\sin60^\circ)=(0.1500,\,0.2598)$. $d^2=0.64+0.09-2(0.8)(0.3)(0.5)=0.49$, $d=0.7000$ m. B is on the circles ($\mathbf A$, 0.7) and ($\mathbf D$, 0.5).\mk{setup}\\
+$x_a=\dfrac{0.49-0.25+0.49}{1.4}=0.5214$, $h=\sqrt{0.49-0.2719}=0.4670$, $\hat{\mathbf u}=(0.9286,-0.3712)$, $\hat{\mathbf n}=(0.3712,0.9286)$. B$_+=\mathbf A+x_a\hat{\mathbf u}+h\hat{\mathbf n}=\boxed{(0.8075,\,0.4999)}$, $\phi=\operatorname{atan2}(0.2401,0.6575)=20.06^\circ$; B$_-=\boxed{(0.4608,\,-0.3674)}$, $\phi=-63.64^\circ$.\mk{two modes}\\
+Check: $\lvert\mathbf{DB}_+\rvert=\sqrt{0.0075^2+0.4999^2}=0.5$ \checkmark; $\varphi_1=89.14^\circ$ ($+$), $-132.71^\circ$ ($-$).\\
+(b) Grashof: shortest + longest $=0.3+0.8=1.1\le0.5+0.7=1.2$ and the shortest link is the crank: it turns fully (crank-rocker). Equivalent: $d$ runs from $0.5$ to $1.1$, inside $[\,\lvert L_2-L_3\rvert,\,L_2+L_3\,]=[0.2,1.2]$.\mk{full turn}\\
+(c) $M=3(4-4-1)+4=\boxed{1}$.\mk{mobility}
+\end{examq}
+
+\begin{examq}[planar 3-RPR IK (practice question) \mk{marks assumed}]
+Leg $i$ runs from a fixed pivot $\mathbf b_i$ to a platform point $\mathbf p_i$. $\mathbf b_1=(0,0)$, $\mathbf b_2=(1.0,0)$, $\mathbf b_3=(0.5,0.9)$ m. In the platform frame $\mathbf a_i=0.2(\cos\gamma_i,\sin\gamma_i)$ m, $\gamma_i=0^\circ,120^\circ,240^\circ$. Find the three leg lengths for the pose $(x,y,\varphi)=(0.5,\,0.35,\,10^\circ)$, and state why FK is harder.
+\solution
+Each leg is a serial chain whose end is known: $\mathbf p_i=\mathbf t+\Rm(\varphi)\mathbf a_i$, $\ell_i=\lVert\mathbf p_i-\mathbf b_i\rVert$. Attachment directions rotate to $\gamma_i+10^\circ=10^\circ,130^\circ,250^\circ$.\mk{formula}\\
+$\mathbf p_1=(0.5,0.35)+0.2(\cos10^\circ,\sin10^\circ)=(0.6970,\,0.3847)$; $\mathbf p_2=(0.3714,\,0.5032)$; $\mathbf p_3=(0.4316,\,0.1621)$.\\
+$\mathbf p_i-\mathbf b_i$: $(0.6970,0.3847)$, $(-0.6286,0.5032)$, $(-0.0684,-0.7379)$. Lengths:
+\[\boxed{\ell_1=0.7961,\ \ell_2=0.8052,\ \ell_3=0.7411\ \text{m}}\]
+Common wrong answer: forgetting to rotate $\mathbf a_i$ ($\ell_1=0.7826$ m). FK needs three coupled non-linear loop equations with up to six solutions (standard result, \added), IK none.\mk{answer}
+\end{examq}
+
+\begin{examq}[spot the errors: the simplest delta \mk{marks assumed}]
+A student counts the simplest delta (R--U--U legs): ``$D=6$, $N=8$, $J=9$, $\sum F_i=3(1+2+2)=15$, $M=6(8-9+1)+15=15$. The rod can spin, so $R_M=6$ and $M=9$.'' Find both errors and the correct mobility.
+\solution
+Error 1: the equation is $D(N-J-\mathbf{1})$, not $N-J+1$ (slide 29's handwritten note is the source of the slip). $M=6(8-9-1)+15=-12+15=\boxed{3}$.\mk{sign}\\
+Error 2: a rod with a universal joint at each end cannot spin on its own (a U joint transmits rotation about the rod axis), so $R_M=0$ and the plain count 3 is already right, equal to the 3 motors and to the table on slide 30. The student invented a local spin to ``fix'' a number that was wrong because of Error 1.\mk{R$_M$}\\
+Contrast: the common delta (ball joints, parallelogram bars) has plain 9, $R_M=6$, true 3.
+\end{examq}
+\end{multicols}

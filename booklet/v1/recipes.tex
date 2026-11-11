@@ -1,0 +1,116 @@
+% ---------- Answer recipes, one per question type ----------
+\bpart{RECIPES}{Answer recipes: one per question type (details on each week's page)}{2}
+\begin{multicols}{3}
+\begin{recipe}[1 · Forward kinematics by ETS (W13 Q1)]\label{r:fk}
+\begin{enumerate}
+\item Draw \{S\}; mark each joint axis and its \emph{drawn} positive sense.
+\item Walk base → tool. Translations: $t_x,t_y,t_z$. Joint: $R_{axis}(\pm\theta_i)$; minus if the drawn arrow opposes the right-hand rule about your axis.
+\item End with the constant rotation that makes your last frame match \{T\}.
+\item Group per joint and write each $^{i-1}\T_i$ (= ``indicate intermediate frames'').
+\item Multiply; give at least the position column. Check: all $\theta=0$ reproduces the drawing.
+\end{enumerate}
+\end{recipe}
+\begin{recipe}[2 · Proximal DH table]\label{r:dh}
+\begin{enumerate}
+\item $z_i$ along joint axis $i$. Origin of \{i\} at the common normal to axis $i{+}1$ (or the intersection).
+\item $x_i$ along that normal towards axis $i{+}1$; $y_i=z_i\times x_i$.
+\item Row $i$: $a_{i-1}$ ($z_{i-1}\to z_i$ along $x_{i-1}$), $\alpha_{i-1}$ (about $x_{i-1}$), $d_i$ ($x_{i-1}\to x_i$ along $z_i$), $\theta_i$ (about $z_i$).
+\item ${}^{i-1}\T_i=R_x(\alpha_{i-1})t_x(a_{i-1})R_z(\theta_i)t_z(d_i)$; multiply rows.
+\item Add a constant tool transform if \{N\} $\ne$ \{tool\}. Write ``proximal (Craig)''.
+\end{enumerate}
+\end{recipe}
+\begin{recipe}[3 · Sketch the workspace (W13 Q2)]\label{r:ws}
+\begin{enumerate}
+\item Find the joints that only \emph{spin the plane} (base rotation) and the planar sub-arm.
+\item Planar 2-link sub-arm: distance from its first joint ranges $|L_a-L_b|\dots L_a+L_b$ (cosine rule) → annulus.
+\item Spin the annulus about the base axis. If the axis passes through the annulus's centre → spherical shell; otherwise → a torus-like solid. Joint limits cut wedges; a prismatic joint extrudes.
+\item Draw side and top views; label radii, centre height. Say ``no joint limits, collisions ignored''.
+\end{enumerate}
+\end{recipe}
+\begin{recipe}[4 · Derive the inverse kinematics (W13 Q3)]\label{r:ik}
+\begin{enumerate}
+\item Write FK first. Spherical wrist? Wrist centre $\mathbf p_W=\mathbf p_E-d_6\,\Rm\hat z$.
+\item Top view: $\theta_1=\atantwo(y,x)$, second branch $\theta_1+\pi$ (reach back, $r<0$).
+\item Side view: subtract base height; planar 2R in $(r,z')$:\\ $\cos\theta_3=\dfrac{r^2+z'^2-L_a^2-L_b^2}{2L_aL_b}$ (relative angle; interior angle is $\pi-\theta_3$).
+\item $\theta_3=\atantwo(\pm\sqrt{1-c_3^2},c_3)$; $\theta_2=\atantwo(z',r)-\atantwo(L_bs_3,\,L_a+L_bc_3)$.
+\item Wrist: ${}^3\Rm_6=({}^0\Rm_3)^\top{}^0\Rm_6$ → Euler angles (two: wrist flip).
+\item Count: shoulder × elbow (× flip). No solution if $|c_3|>1$. Check one branch by FK.
+\end{enumerate}
+\end{recipe}
+
+\columnbreak
+\begin{recipe}[5 · Mobility (W13 Q6, Q7)]\label{r:gk}
+\begin{enumerate}
+\item $D=3$ planar, 6 spatial (S, U joints or ``still 3D'' → 6).
+\item Number bodies; ground = 1; a prismatic pair = 2 bodies → $N$.
+\item List joints and $F_i$ (R, P = 1; U, C = 2; S = 3) → $J$, $\sum F_i$.
+\item $M=D(N-J-1)+\sum F_i$. Implausible? Extended: $+R_C-R_M$.
+\item $R_M$: idle spins (rod with S at both ends → 1 each). $R_C=\sum F_i-\sum u_k$ ($u_k$: distinct platform DoF per loop, union).
+\end{enumerate}
+\textit{Delta:} $6(11-15-1)+39=9$, then $9+0-6=3$. \textit{4RRR:} $-6+7-0=1$.
+\end{recipe}
+\begin{recipe}[6 · Parallel robot: loop closure, IK, FK (W13 Q5)]\label{r:fourbar}
+\begin{enumerate}
+\item Break the loop (at a point K, or both ends of a link) into serial chains.
+\item Write the break point's pose from each chain; equate (3 equations at K; 1 length equation if broken at both ends).
+\item \textbf{IK} (pose of K, $\phi$ given): $A=K-a(\cos\phi,\sin\phi)$, $\theta_1=\atantwo(A_y,A_x)$, $\varphi_2=\phi-\theta_1$; $B=K+b(\cos\phi,\sin\phi)$, $\varphi_1=\atantwo(B_y,B_x-L_0)$, $\varphi_3=\phi+\pi-\varphi_1$.
+\item \textbf{FK} ($\theta_1$ given): intersect circles ($L_2$ about A, $L_3$ about D): two assembly modes, or none.
+\end{enumerate}
+\end{recipe}
+\begin{recipe}[7 · Trajectories (W13 Q8, Q9)]\label{r:cubic}
+\begin{enumerate}
+\item Rest-to-rest cubic: $a_0=\theta_0$, $a_1=0$, $a_2=\dfrac{3\Delta}{t_f^2}$, $a_3=-\dfrac{2\Delta}{t_f^3}$; peak speed $1.5\Delta/t_f$ at $t_f/2$.
+\item Given end speeds: $a_2=\frac{3\Delta}{t_f^2}-\frac{2\dot\theta_0}{t_f}-\frac{\dot\theta_f}{t_f}$, $a_3=-\frac{2\Delta}{t_f^3}+\frac{\dot\theta_0+\dot\theta_f}{t_f^2}$.
+\item Two segments, continuous acceleration: list 8 conditions (pos at both ends ×2, rest at start and end, $\dot\theta$ and $\ddot\theta$ match at the via) and solve.
+\item Blends (LSPB): need $\ddot\theta\ge 4\Delta/t_f^2$; $t_b=\dfrac{t_f}2-\dfrac{\sqrt{\ddot\theta^2t_f^2-4\ddot\theta\Delta}}{2\ddot\theta}$; linear speed $\ddot\theta t_b$.
+\item Check: positions and speeds at both ends.
+\end{enumerate}
+\end{recipe}
+\begin{recipe}[8 · Jacobian, singularity, statics]\label{r:jac}
+\begin{enumerate}
+\item Position FK $\mathbf x(\mathbf q)$ → $\mathbf J=\partial\mathbf x/\partial\mathbf q$ (column $j$ = how the tool moves for joint $j$). Geometric: revolute column $\hat z_j\times(\mathbf p_E-\mathbf p_j)$; prismatic $\hat z_j$.
+\item Singular where $\det\mathbf J=0$ (square) or rank drops. 2R: $\det=L_1L_2\sin q_2$.
+\item $\dot{\mathbf q}=\mathbf J^{-1}\dot{\mathbf x}$; near-singular → huge joint rates.
+\item Statics: $\boldsymbol\tau=\mathbf J^\top\mathbf F$ (same frame for J and F).
+\end{enumerate}
+\end{recipe}
+
+\columnbreak
+\begin{recipe}[9 · Equations of motion by Lagrange (W13 Q4)]\label{r:lag}
+\begin{enumerate}
+\item Coordinates $\mathbf q$; gravity direction drawn.
+\item COM positions from FK; differentiate → velocities.
+\item $K=\sum\frac12 m_i v_{C_i}^2+\frac12\omega_i^\top I_i\omega_i$; $P=\sum m_igh_i$; $\mathcal L=K-P$.
+\item Per joint: $\partial\mathcal L/\partial\dot q_i$ → $\frac{d}{dt}$ (product rule!) → minus $\partial\mathcal L/\partial q_i$.
+\item Collect M ($\ddot q$ terms), C (velocity products), g. Check M symmetric, g has no $\dot q$, C = 0 at rest.
+\end{enumerate}
+\textit{2R point masses:} $M_{11}=m_1L_1^2+m_2(L_1^2+2L_1L_2c_2+L_2^2)$, $M_{12}=m_2(L_1L_2c_2+L_2^2)$, $M_{22}=m_2L_2^2$.
+\end{recipe}
+\begin{recipe}[10 · Control design (W8, W9)]\label{r:ctrl}
+\begin{enumerate}
+\item Plant $m\ddot x+b\dot x+kx=f$ (or $\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g=\mathbf Q$).
+\item Partition: $f=\alpha f'+\beta$, $\alpha=m$ ($\mathbf M$), $\beta$ = everything else.
+\item Servo: $f'=\ddot x_d+k_v\dot E+k_pE$, $E=x_d-x$ → $\ddot E+k_v\dot E+k_pE=0$.
+\item Critical: $k_v=2\sqrt{k_p}$ ($\omega_n=\sqrt{k_p}$, $\zeta=k_v/2\sqrt{k_p}$).
+\item Constant disturbance: $E_{ss}=f_{dist}/(k_pm)$; add $k_i\!\int\!E$ to remove it (stable if $k_vk_p>k_i$).
+\item Model error: hats on $\alpha,\beta$; the error equation gets a right-hand side.
+\end{enumerate}
+\end{recipe}
+\begin{recipe}[11 · Wheeled robot kinematics (W13 Q10)]\label{r:wheel}
+\begin{enumerate}
+\item For each wheel: $({}^Cx,{}^Cy)$, $\beta$ (drive direction from $x_C$), $\gamma$, $r$.
+\item Row: $r\dot\varphi_i=[\cos\beta\ \ \sin\beta]\,[u-\dot\theta\,{}^Cy,\ v+\dot\theta\,{}^Cx]^\top$ (+\,$\tan\gamma$ term for omni).
+\item Standard wheels: add no-slide $[-\sin\beta\ \ \cos\beta]\,(\cdot)=0$.
+\item Stack → invert. Inertial: $\boldsymbol\nu=\mathbf J(\theta)\boldsymbol\zeta$. ICR in \{C\}: $(-v/\dot\theta,\,u/\dot\theta)$.
+\end{enumerate}
+\end{recipe}
+\begin{recipe}[12 · Planning by hand (W12)]\label{r:plan}
+\begin{enumerate}
+\item Table: node, $g$, $h$, $f=g+h$, parent; open and closed sets.
+\item Expand the lowest $f$ (Dijkstra: lowest $g$); relax neighbours; record improvements.
+\item Stop when the goal is \emph{expanded}, not when discovered. Trace parents.
+\item A* optimal if $h$ admissible ($h\le$ true cost); consistent: $h(n)\le c(n,m)+h(m)$.
+\item PRM: sample, connect, search (multi-query). RRT: grow towards random samples (single query). Both probabilistically complete, not optimal.
+\end{enumerate}
+\end{recipe}
+\end{multicols}

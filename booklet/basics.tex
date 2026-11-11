@@ -1,0 +1,224 @@
+% BASICS (booklet v3, condensed to 2 pages). Everything here is standard maths/physics, \added unless a slide page is given. Numbers: vcheck/v2_basics.py (all PASS).
+\bpart{BASICS}{Basic builders: maths and physics}{3}
+\begin{multicols}{3}
+\small\setlength{\arraycolsep}{2pt}
+
+\hd{1. Vectors}\nopagebreak[4]
+\begin{fbx}[Dot, norm, angle, projection \added]
+\[\mathbf a\!\cdot\!\mathbf b=\mathbf a^\top\mathbf b=a_1b_1+a_2b_2+a_3b_3=|\mathbf a||\mathbf b|\cos\varphi,\quad|\mathbf a|=\sqrt{\mathbf a\!\cdot\!\mathbf a}\]
+\[\hat{\mathbf a}=\tfrac{\mathbf a}{|\mathbf a|},\quad\varphi=\arccos\tfrac{\mathbf a\cdot\mathbf b}{|\mathbf a||\mathbf b|}\in[0,\pi],\quad\operatorname{proj}_{\mathbf b}\mathbf a=\tfrac{\mathbf a\cdot\mathbf b}{\mathbf b\cdot\mathbf b}\mathbf b\]
+$\mathbf a\!\cdot\!\mathbf b=0\iff\perp$ (columns of $\Rm$ are unit and $\perp$).
+\end{fbx}
+\begin{fbx}[Cross product: determinant (mind the $\hat{\mathbf j}$ sign) \added]
+\[\mathbf a\times\mathbf b=\begin{vmatrix}\hat{\mathbf i}&\hat{\mathbf j}&\hat{\mathbf k}\\a_1&a_2&a_3\\b_1&b_2&b_3\end{vmatrix}
+=\begin{bmatrix}a_2b_3-a_3b_2\\ a_3b_1-a_1b_3\\ a_1b_2-a_2b_1\end{bmatrix}\ \ (\hat{\mathbf j}\text{ term has a }{-})\]
+\[\mathbf a\times\mathbf b=[\mathbf a]_\times\mathbf b,\quad[\mathbf a]_\times=\begin{bmatrix}0&-a_3&a_2\\a_3&0&-a_1\\-a_2&a_1&0\end{bmatrix},\quad\mathbf a=\begin{bmatrix}S_{32}\\S_{13}\\S_{21}\end{bmatrix}\ (\text{vex})\]
+$|\mathbf a\times\mathbf b|=|\mathbf a||\mathbf b|\sin\varphi$ = parallelogram area; direction by right-hand rule; $\mathbf a\times\mathbf b=-\mathbf b\times\mathbf a$; $\mathbf a\times\mathbf a=\mathbf0$. Skew $\mathbf S=[\mathbf a]_\times$: $\mathbf S^\top=-\mathbf S$, $\mathbf S\mathbf a=\mathbf 0$, $\det\mathbf S=0$, $\mathbf S^2=\mathbf a\mathbf a^\top-|\mathbf a|^2\mathbf I$, $\Rm[\mathbf a]_\times\Rm^\top=[\Rm\mathbf a]_\times$.\\
+$\mathbf a\!\cdot\!(\mathbf b\times\mathbf c)=\det[\mathbf a^\top;\mathbf b^\top;\mathbf c^\top]$ = signed volume (0 if coplanar) $=\mathbf b\!\cdot\!(\mathbf c\times\mathbf a)$; $\mathbf a\times(\mathbf b\times\mathbf c)=\mathbf b(\mathbf a\!\cdot\!\mathbf c)-\mathbf c(\mathbf a\!\cdot\!\mathbf b)$.\\
+Trap check: $(1,2,2)\times(2,0,1)=(2,3,-4)$. \chk
+\end{fbx}
+
+\hd{2. Matrices}\nopagebreak[4]
+\begin{fbx}[$2\times2$ and $3\times3$: det, inverse, eigenvalues \added]
+\[\mathbf A=\begin{bmatrix}a&b\\c&d\end{bmatrix},\ \det\mathbf A=ad-bc,\ \mathbf A^{-1}=\tfrac1{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}\]
+\[\lambda^2-(a+d)\lambda+(ad-bc)=0,\ \ \lambda_{1,2}=\tfrac{(a+d)\pm\sqrt{(a+d)^2-4(ad-bc)}}2,\ \ \mathbf v=\begin{bmatrix}b\\\lambda-a\end{bmatrix}\]
+$\lambda_1+\lambda_2=a+d$, $\lambda_1\lambda_2=ad-bc$; eigenvectors of a symmetric $\mathbf A$ are $\perp$.
+\[\det\begin{bmatrix}a&b&c\\d&e&f\\g&h&i\end{bmatrix}=a(ei-fh)-b(di-fg)+c(dh-eg)\]
+\[\mathbf A^{-1}=\tfrac1{\det\mathbf A}\operatorname{adj}\mathbf A,\quad\operatorname{adj}\mathbf A=\begin{bmatrix}ei-fh&ch-bi&bf-ce\\fg-di&ai-cg&cd-af\\dh-eg&bg-ah&ae-bd\end{bmatrix}\]
+$(\mathbf{AB})^\top=\mathbf B^\top\mathbf A^\top$, $(\mathbf{AB})^{-1}=\mathbf B^{-1}\mathbf A^{-1}$ (order reverses). $\det=0\iff$ singular, rank drops. Check: $\begin{bmatrix}2&1\\1&3\end{bmatrix}$: $\lambda=(5\pm\sqrt5)/2$. \chk
+\end{fbx}
+\begin{fbx}[Positive definite test; pseudo-inverse \added]
+$\mathbf M=\mathbf M^\top\succ0\iff\mathbf x^\top\mathbf M\mathbf x>0\ \forall\mathbf x\ne\mathbf 0\iff$ all $\lambda>0\iff$ all leading minors $>0$ ($M_{11}>0$, $M_{11}M_{22}-M_{12}^2>0$, \dots). E.g. $\begin{bmatrix}1&2\\2&1\end{bmatrix}$: $\det=-3$, $\lambda=3,-1$, indefinite. \chk
+\[\mathbf J\,(m\!\times\!n,\ \text{rank }m<n):\ \mathbf J^{+}=\mathbf J^\top(\mathbf J\mathbf J^\top)^{-1},\ \ \dot{\mathbf q}=\mathbf J^{+}\boldsymbol\nu\Rightarrow\mathbf J\dot{\mathbf q}=\boldsymbol\nu,\ |\dot{\mathbf q}|\text{ minimal}\]
+Tall $\mathbf J$ (rank $n$): $\mathbf J^{+}=(\mathbf J^\top\mathbf J)^{-1}\mathbf J^\top$ (least squares). Used W6 (redundant arm), W10 (extra wheels). Check: $\mathbf J=\begin{bmatrix}1&0&1\\0&1&1\end{bmatrix}$, $\boldsymbol\nu=(1,2)$: $\dot{\mathbf q}=(0,1,1)$, $|\dot{\mathbf q}|=\sqrt2$. \chk
+\end{fbx}
+
+\begin{fbx}[Basic rotations (right-hand rule) \pg{W2 10--12}]
+\hd{3. Rotations and homogeneous transforms}
+{\small\[\Rm_x=\begin{bmatrix}1&0&0\\0&c\theta&-s\theta\\0&s\theta&c\theta\end{bmatrix}\ \Rm_y=\begin{bmatrix}c\theta&0&s\theta\\0&1&0\\-s\theta&0&c\theta\end{bmatrix}\ \Rm_z=\begin{bmatrix}c\theta&-s\theta&0\\s\theta&c\theta&0\\0&0&1\end{bmatrix}\]}
+$\Rm^\top\Rm=\mathbf I$, $\Rm^{-1}=\Rm^\top$, $\det\Rm=+1$, ${}^A\mathbf P={}^A\Rm_B{}^B\mathbf P$; columns of ${}^A\Rm_B$ = $\hat x_B,\hat y_B,\hat z_B$ in $\{A\}$. $\theta>0$ anticlockwise looking down the axis to the origin. Same-axis angles add; different axes do not commute. Minus sign: upper right in $\Rm_x,\Rm_z$ but lower left in $\Rm_y$.
+\end{fbx}
+\begin{twoway}{Current (moving) axes}{Fixed (world) axes}
+Turn $\Rm_1$ then $\Rm_2$ about the \emph{new} axes: $\Rm=\Rm_1\Rm_2$ (written order = done order; ETS, DH).
+\tcblower
+Turn $\Rm_1$ then $\Rm_2$ about the \emph{original} axes: $\Rm=\Rm_2\Rm_1$ (last written = last done).
+\end{twoway}
+Check: $\Rm_z(90^\circ)\Rm_x(90^\circ)=\begin{bmatrix}0&0&1\\1&0&0\\0&1&0\end{bmatrix}\ne\Rm_x(90^\circ)\Rm_z(90^\circ)=\begin{bmatrix}0&-1&0\\0&0&-1\\1&0&0\end{bmatrix}$. \chk
+\begin{fbx}[Rodrigues; angles from $\Rm$ ($r_{ij}$ = row $i$, col $j$) \pg{W3 38}]
+\[\Rm(\hat{\mathbf n},\theta)=\mathbf I+s\theta\,[\hat{\mathbf n}]_\times+(1-c\theta)[\hat{\mathbf n}]_\times^2,\qquad\boldsymbol\omega=\dot\theta\hat{\mathbf n}\]
+\textbf{ZYZ} $\Rm_z(\alpha)\Rm_y(\beta)\Rm_z(\gamma)$: $r_{13}=c_\alpha s_\beta,\ r_{23}=s_\alpha s_\beta,\ r_{33}=c_\beta,\ r_{31}=-s_\beta c_\gamma,\ r_{32}=s_\beta s_\gamma$
+\[\beta=\atantwo\!\big(\sqrt{r_{13}^2+r_{23}^2},r_{33}\big),\ \alpha=\atantwo(r_{23},r_{13}),\ \gamma=\atantwo(r_{32},-r_{31})\]
+2nd solution: $-\beta,\ \alpha+\pi,\ \gamma+\pi$. If $s_\beta=0$ only $\alpha\pm\gamma$ is fixed. Check $(30^\circ,40^\circ,50^\circ)$ round-trips. \chk\\
+\textbf{RPY} $\Rm_z(\psi)\Rm_y(\theta)\Rm_x(\phi)$: $r_{11}=c_\psi c_\theta,\ r_{21}=s_\psi c_\theta,\ r_{31}=-s_\theta,\ r_{32}=c_\theta s_\phi,\ r_{33}=c_\theta c_\phi$
+\[\theta=\atantwo\!\big(-r_{31},\sqrt{r_{11}^2+r_{21}^2}\big),\ \psi=\atantwo(r_{21},r_{11}),\ \phi=\atantwo(r_{32},r_{33})\]
+2nd solution: $\pi-\theta,\ \psi+\pi,\ \phi+\pi$; singular at $\theta=\pm90^\circ$.
+\end{fbx}
+\begin{fbx}[Pose $\T$, inverse, composition, elementary transforms \pg{W2 12--16}]
+\[{}^A\T_B=\begin{bmatrix}{}^A\Rm_B&{}^A\mathbf P_B\\\mathbf 0^\top&1\end{bmatrix},\ \ \begin{bmatrix}{}^A\mathbf P\\1\end{bmatrix}={}^A\T_B\begin{bmatrix}{}^B\mathbf P\\1\end{bmatrix},\ \ {}^A\T_C={}^A\T_B{}^B\T_C\]
+\[({}^A\T_B)^{-1}={}^B\T_A=\begin{bmatrix}{}^A\Rm_B^\top&-{}^A\Rm_B^\top\,{}^A\mathbf P_B\\\mathbf 0^\top&1\end{bmatrix}\]
+\[t(a,b,c)=\begin{bmatrix}1&0&0&a\\0&1&0&b\\0&0&1&c\\0&0&0&1\end{bmatrix},\quad\Rm_{x,y,z}(\theta)\text{ as }4\times4=\begin{bmatrix}\Rm&\mathbf 0\\\mathbf 0^\top&1\end{bmatrix}\]
+ETS = product read left to right, each step about the \emph{current} axes. Proximal DH: ${}^{i-1}\T_i=\Rm_x(\alpha_{i-1})t_x(a_{i-1})\Rm_z(\theta_i)t_z(d_i)$. A direction uses $\Rm$ only (4th entry 0). Order trap: $t(2,1,0)\Rm_z(90^\circ)$ has position $(2,1,0)$; $\Rm_z(90^\circ)t(2,1,0)$ has $(-1,2,0)$. Check: $\Rm_z(90^\circ)$, $\mathbf P=(2,1,0)$ maps $(1,0,0)\mapsto(2,2,0)$; inverse translation $(-1,2,0)$. \chk
+\end{fbx}
+
+\begin{fbx}[Identities]
+\hd{4. Trigonometry and algebra}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+$\sin(a\pm b)=\sin a\cos b\pm\cos a\sin b$ & $\cos(a\pm b)=\cos a\cos b\mp\sin a\sin b$\\[1pt]
+$\tan(a\pm b)=\frac{\tan a\pm\tan b}{1\mp\tan a\tan b}$ & $\cos^2a+\sin^2a=1$\\[1pt]
+$\sin2a=2\sin a\cos a$ & $\cos2a=\cos^2a-\sin^2a=2\cos^2a-1=1-2\sin^2a$\\[1pt]
+$\tan2a=\frac{2\tan a}{1-\tan^2a}$ & $\cos^2a=\frac{1+\cos2a}2,\ \sin^2a=\frac{1-\cos2a}2$\\[1pt]
+$\cos a\cos b=\frac{\cos(a-b)+\cos(a+b)}2$ & $\sin a\sin b=\frac{\cos(a-b)-\cos(a+b)}2$\\[1pt]
+$\sin a\cos b=\frac{\sin(a+b)+\sin(a-b)}2$ & $\sin(-a)=-\sin a,\ \cos(-a)=\cos a$\\[1pt]
+$\sin(\pi-a)=\sin a,\ \cos(\pi-a)=-\cos a$ & $\sin(\frac\pi2-a)=\cos a,\ \cos(\frac\pi2-a)=\sin a$\\
+\end{tabularx}
+Arm forms: $c_1c_{12}+s_1s_{12}=c_2$, $s_1c_{12}-c_1s_{12}=-s_2$; $c_{12}=c_1c_2-s_1s_2$, $s_{12}=s_1c_2+c_1s_2$. Small angles (rad): $\sin\theta\approx\tan\theta\approx\theta$, $\cos\theta\approx1-\theta^2/2$. $\pi$ rad $=180^\circ$; $1^\circ=0.017453$ rad; $1$ rad $=57.296^\circ$. Set DEG/RAD before every trig key. \chk
+\end{fbx}
+\begin{fbx}[Cosine and sine rules (the arm triangle)]
+\centering
+\begin{tikzpicture}[scale=0.62,>=Latex]
+\coordinate (A) at (0,0); \coordinate (B) at (4.2,0); \coordinate (C) at (1.5,2.3);
+\draw[line width=0.7pt] (A)--(B)--(C)--cycle;
+\node[below left,inner sep=1pt] at (A) {$A$}; \node[below right,inner sep=1pt] at (B) {$B$}; \node[above,inner sep=1pt] at (C) {$C$};
+\node[below,inner sep=1pt] at ($(A)!0.5!(B)$) {$c$}; \node[above right,inner sep=1pt] at ($(B)!0.5!(C)$) {$a$}; \node[above left,inner sep=1pt] at ($(A)!0.5!(C)$) {$b$};
+\end{tikzpicture}\hspace{4pt}
+\begin{tikzpicture}[scale=0.62,>=Latex]
+\coordinate (O) at (0,0); \coordinate (E) at (3.2,1.3); \coordinate (P) at (2.6,3.1); \coordinate (X) at (2.2,0); \coordinate (Ex) at (4.2,1.7);
+\draw[line width=0.8pt] (O)--(E)--(P); \draw[dashed] (O)--(P); \draw[g3] (O)--(X); \draw[g3,dotted] (E)--(Ex);
+\node[font=\scriptsize] at (1.9,0.27) {$q_1$}; \node[font=\scriptsize] at ($(E)+(62:1.0)$) {$q_2$}; \node[font=\scriptsize] at ($(E)+(153:1.1)$) {$\pi{-}q_2$};
+\node[font=\scriptsize,above left=-1pt] at ($(O)!0.55!(E)$) {$L_1$}; \node[font=\scriptsize,right] at ($(E)!0.5!(P)$) {$L_2$}; \node[font=\scriptsize,above left] at ($(O)!0.5!(P)$) {$r$};
+\end{tikzpicture}\par
+{\sffamily\scriptsize\color{slate}[drawn] left: side $a$ opposite $A$; right: 2-link arm, interior elbow angle $\pi-q_2$}\par
+\raggedright
+\[c^2=a^2+b^2-2ab\cos C,\quad\cos C=\tfrac{a^2+b^2-c^2}{2ab}\]
+\[\tfrac a{\sin A}=\tfrac b{\sin B}=\tfrac c{\sin C},\quad A+B+C=\pi\]
+Arm: $r^2=L_1^2+L_2^2-2L_1L_2\cos(\pi-q_2)=L_1^2+L_2^2+2L_1L_2\cos q_2$ (sign flip is the classic trap). Check: $A=40^\circ,B=60^\circ,c=10$: $a=6.527$, $b=8.794$; sides $5,6,7$: $C=78.46^\circ$. \chk
+\end{fbx}
+\begin{fbx}[$\atantwo$; $a\cos\theta+b\sin\theta=c$; half-angle; quadratic]
+$\theta=\atantwo(y,x)\in(-\pi,\pi]$, \textbf{$y$ first}. $\arctan(y/x)$ cannot tell $(1,1)$ from $(-1,-1)$.
+\begin{tabularx}{\linewidth}{@{}ccccX@{}}\toprule
+quad. & I & II & III & IV\\\midrule
+$x,y$ & $+,\ge0$ & $-,\ge0$ & $-,-$ & $+,-$\\
+$\atantwo$ & $\arctan\frac yx$ & $\arctan\frac yx+\pi$ & $\arctan\frac yx-\pi$ & $\arctan\frac yx$\\\bottomrule
+\end{tabularx}
+$x=0$: $\pm\pi/2$. Check: $(-1,1)\to135^\circ$ (not $-45^\circ$); $(-1,-1)\to-135^\circ$. \chk
+\[r=\sqrt{a^2+b^2},\ \varphi=\atantwo(b,a):\ \ a\cos\theta+b\sin\theta=r\cos(\theta-\varphi)=c\]
+\[\Rightarrow\ \theta=\varphi\pm\arccos\tfrac cr\]
+$|c|>r$ none, $|c|=r$ one, $|c|<r$ two. Half-angle $t=\tan\frac\theta2$: $\cos\theta=\frac{1-t^2}{1+t^2}$, $\sin\theta=\frac{2t}{1+t^2}$, so
+\[(c+a)t^2-2bt+(c-a)=0,\quad\theta=2\arctan t\quad(\text{misses }\theta=\pi\text{ when }c+a=0)\]
+Check: $3\cos\theta+4\sin\theta=2.5$: $\theta=113.13^\circ$ or $-6.87^\circ$ (both methods). \chk
+\[ax^2+bx+c=0:\ x=\tfrac{-b\pm\sqrt\Delta}{2a},\ \Delta=b^2-4ac,\ x_1+x_2=-\tfrac ba,\ x_1x_2=\tfrac ca\]
+$\Delta>0$ two solutions (elbow up/down, two assembly modes); $\Delta=0$ one (reach boundary, singular); $\Delta<0$ none (unreachable). IK: $\cos q_2=\frac{x^2+y^2-L_1^2-L_2^2}{2L_1L_2}$; $|\cos q_2|>1$ out of reach. RR $L_1=L_2=1$, target $(1,1)$: $q_2=\pm90^\circ$. Servo $ms^2+bs+k$: $\Delta=b^2-4mk$.\\
+Cramer: $\alpha x+\beta y=e$, $\gamma x+\delta y=f$: $x=\frac{e\delta-\beta f}{\alpha\delta-\beta\gamma}$, $y=\frac{\alpha f-e\gamma}{\alpha\delta-\beta\gamma}$. Square and add removes an angle: $x^2+y^2=L_1^2+L_2^2+2L_1L_2c_2$. Complete the square: $x^2+bx+c=(x+\frac b2)^2+c-\frac{b^2}4$. \chk
+\end{fbx}
+
+\begin{fbx}[Chain rule, product rule, $\dot\Rm$, Lagrange partials \pg{W6 18--19, W7 15--17}]
+\hd{5. Calculus of joint angles}
+\[\tfrac d{dt}f(q_1,q_2)=\textstyle\sum_i\frac{\partial f}{\partial q_i}\dot q_i,\qquad\tfrac d{dt}(uv)=\dot uv+u\dot v\]
+\[\begin{array}{ll}\frac d{dt}\cos q_1=-\sin q_1\,\dot q_1&\frac d{dt}\sin q_1=\cos q_1\,\dot q_1\\[2pt]
+\frac d{dt}c_{12}=-s_{12}(\dot q_1+\dot q_2)&\frac d{dt}s_{12}=c_{12}(\dot q_1+\dot q_2)\\[2pt]
+\frac d{dt}\dot q^2=2\dot q\ddot q&\frac d{dt}(\cos q\,\dot q)=-\sin q\,\dot q^2+\cos q\,\ddot q\end{array}\]
+Inner rate: $\dot q_1+\dot q_2$ in $c_{12}$. RR tip: $\dot x=-L_1s_1\dot q_1-L_2s_{12}(\dot q_1+\dot q_2)$, $\dot y=L_1c_1\dot q_1+L_2c_{12}(\dot q_1+\dot q_2)$; $L_i=1$, $\mathbf q=(0,90^\circ)$, $\dot{\mathbf q}=(1,0)$: $(\dot x,\dot y)=(-1,1)=\boldsymbol\omega\times\mathbf r$. \chk
+\[\dot\Rm=[\boldsymbol\omega]_\times\Rm,\quad[\boldsymbol\omega]_\times=\dot\Rm\Rm^\top,\quad\tfrac d{d\theta}\Rm_z=\begin{bmatrix}-s\theta&-c\theta&0\\c\theta&-s\theta&0\\0&0&0\end{bmatrix}\]
+\[\mathcal L=K-P,\quad Q_i=\tfrac d{dt}\tfrac{\partial\mathcal L}{\partial\dot q_i}-\tfrac{\partial\mathcal L}{\partial q_i}\]
+Treat $q_i,\dot q_i$ as independent symbols for $\partial$; then differentiate $\partial\mathcal L/\partial\dot q_i$ in time. $K=\frac12\dot{\mathbf q}^\top\mathbf M\dot{\mathbf q}\Rightarrow\partial K/\partial\dot{\mathbf q}=\mathbf M\dot{\mathbf q}$. $Q_i$: N\,m (revolute), N (prismatic). Check, pendulum ($q$ from downward vertical): $Q=mL^2\ddot q+mgL\sin q$. \chk
+\end{fbx}
+
+\hd{6. Particle kinematics, dynamics, inertia}\nopagebreak[4]
+\begin{fbx}[Constant acceleration; circular motion; rigid body]
+\[v=u+at,\quad s=ut+\tfrac12at^2,\quad v^2=u^2+2as,\quad s=\tfrac12(u+v)t,\quad s=\textstyle\int v\,dt\]
+Same for rotation: $s\to\theta$, $v\to\omega$, $a\to\alpha$. Omit the unknown you do not need. Check: $u=2$, $v=8$, $s=15$: $t=2s/(u+v)=3$ s, $a=2$ m/s$^2$. \chk
+\[v=\omega r,\quad a_c=\tfrac{v^2}r=\omega^2r\ (\text{to centre}),\quad a_t=\alpha r,\quad|\mathbf a|=\sqrt{a_c^2+a_t^2}\]
+\[\mathbf v=\boldsymbol\omega\times\mathbf r,\qquad\mathbf v_P=\mathbf v_O+\boldsymbol\omega\times\mathbf r_{OP},\qquad\mathbf v_{B/A}=\mathbf v_B-\mathbf v_A\]
+Rolling wheel (radius $r$, rate $\dot\varphi$): centre $r\dot\varphi$, top $2r\dot\varphi$, contact point $0$ (no slip); diff-drive wheel at distance $a$: $u\pm a\dot\theta$. Check: $r=0.5$, $\omega=4$, $\alpha=2$: $a_c=8$, $a_t=1$, $|\mathbf a|=8.06$. \chk
+\end{fbx}
+\begin{fbx}[Newton, torque, energy, power]
+\[\mathbf F=m\mathbf a,\ \ \boldsymbol\tau=\mathbf r\times\mathbf F,\ \ \tau=I\alpha,\ \ \mathbf L=\mathbf I\boldsymbol\omega,\ \ \boldsymbol\tau=\dot{\mathbf L},\ \ W=\textstyle\int\mathbf F\!\cdot\!d\mathbf x=\int\tau\,d\theta\]
+\[K=\tfrac12mv^2+\tfrac12\boldsymbol\omega^\top\mathbf I\boldsymbol\omega\ (=\tfrac12I\omega^2),\quad P=mgh,\quad\text{power}=\tau\omega=Fv\]
+Units: N, N\,m, kg\,m$^2$, J, W; $g=9.81$ m/s$^2$; $h$ = height of the centre of mass. Frictionless swing: $K+P$ const. Check: $\mathbf r=(0.5,0,0)$, $\mathbf F=(0,10,0)$: $\boldsymbol\tau=(0,0,5)$ N\,m; at 20 rad/s: 100 W. \chk
+\end{fbx}
+\begin{fbx}[Inertia of standard bodies (about the centroid), parallel axis]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.38\linewidth}X@{}}\toprule
+Body (mass $m$) & Moment of inertia\\\midrule
+Point mass at distance $r$ & $mr^2$\\
+Rod, length $L$, axis $\perp$ rod & centre $\tfrac1{12}mL^2$; end $\tfrac13mL^2$\\
+Solid cylinder/disc, radius $r$, own axis & $\tfrac12mr^2$\\
+Solid cylinder ($r$, length $h$), diameter axis & $\tfrac1{12}m(3r^2+h^2)$; thin disc $\tfrac14mr^2$\\
+Thin ring/tube, own axis & $mr^2$\\
+Solid sphere; thin shell & $\tfrac25mr^2$; $\tfrac23mr^2$\\
+Box $a\times b\times c$, axis along $c$ & $\tfrac1{12}m(a^2+b^2)$; corner $\tfrac13m(a^2+b^2)$\\\bottomrule
+\end{tabularx}
+\[I=I_C+md^2\quad(\text{parallel axes},\ d=\text{distance between them})\]
+Never add inertias about different points. Gearbox ratio $N$ (motor:load): load sees $N^2I_m$ and torque $N\tau_m$. Check: $m=2$, $L=0.4$: centre $0.02667$, end $0.10667$ kg\,m$^2$. \chk
+\end{fbx}
+\begin{fbx}[Inertia tensor in full; tensor parallel axis \pg{W7 34--39}]
+\[{}^A\mathbf I=\begin{bmatrix}I_{xx}&I_{xy}&I_{xz}\\I_{xy}&I_{yy}&I_{yz}\\I_{xz}&I_{yz}&I_{zz}\end{bmatrix},\ \ \begin{aligned}I_{xx}&=\!\iiint(y^2+z^2)\rho\,dv, & I_{xy}&=-\!\iiint xy\,\rho\,dv\\ I_{yy}&=\!\iiint(x^2+z^2)\rho\,dv, & I_{yz}&=-\!\iiint yz\,\rho\,dv\\ I_{zz}&=\!\iiint(x^2+y^2)\rho\,dv, & I_{xz}&=-\!\iiint xz\,\rho\,dv\end{aligned}\]
+\[{}^A\mathbf I={}^C\mathbf I+m(\mathbf p^\top\mathbf p\,\mathbf 1_3-\mathbf p\mathbf p^\top)={}^C\mathbf I+m\begin{bmatrix}y^2+z^2&-xy&-xz\\-xy&x^2+z^2&-yz\\-xz&-yz&x^2+y^2\end{bmatrix},\ \ {}^B\mathbf I=\Rm\,{}^A\mathbf I\,\Rm^\top\]
+$\mathbf p=(x,y,z)$: centroid $C\to$ new origin $A$, in $\{A\}$ axes. Moments $\ge0$; products carry the minus sign; symmetric. Check: box $0.2{\times}0.3{\times}0.1$, $m=2$, corner frame: $\operatorname{diag}(0.01667,0.00833,0.02167)$ at the centroid becomes $\begin{bmatrix}0.06667&-0.03&-0.01\\-0.03&0.03333&-0.015\\-0.01&-0.015&0.08667\end{bmatrix}$. \chk
+\end{fbx}
+
+\hd{7. Second-order systems and stability}\nopagebreak[4]
+\begin{fbx}[$m\ddot x+b\dot x+kx=0$ \pg{W8 16--26}]
+\[ms^2+bs+k=0,\ \ \omega_n=\sqrt{\tfrac km},\ \ \zeta=\tfrac b{2\sqrt{mk}}\]
+\[s_{1,2}=\tfrac{-b\pm\sqrt{b^2-4mk}}{2m}=-\zeta\omega_n\pm\omega_n\sqrt{\zeta^2-1}\]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}X@{}}\toprule
+case & roots & $x(t)$ for $x(0)=x_0$, $\dot x(0)=v_0$\\\midrule
+over $\zeta>1$ & real $s_1\ne s_2$ & $A_1e^{s_1t}+A_2e^{s_2t}$; $A_1+A_2=x_0$, $s_1A_1+s_2A_2=v_0$\\[1pt]
+crit. $\zeta=1$ & double $-\omega_n$ & $(A_1+A_2t)e^{-\omega_nt}$; $A_1=x_0$, $A_2=v_0+\omega_nx_0$\\[1pt]
+under $\zeta<1$ & $\lambda\pm i\mu$ & $e^{\lambda t}(A_1\cos\mu t+A_2\sin\mu t)$; $A_1=x_0$, $A_2=\frac{v_0-\lambda x_0}\mu$\\\bottomrule
+\end{tabularx}
+$\lambda=-\zeta\omega_n$, $\mu=\omega_d=\omega_n\sqrt{1-\zeta^2}$. Unit-mass servo $\ddot E+k_v\dot E+k_pE=0$: $\omega_n=\sqrt{k_p}$, $\zeta=k_v/(2\sqrt{k_p})$, critical $k_v=2\sqrt{k_p}$ ($\omega_n=4$: $k_p=16$, $k_v=8$). Check: $m=1,b=2,k=5$: $\zeta=0.447$, $s=-1\pm2i$; $x_0=1,v_0=3$: $A_2=2$. $b=4,k=4$: $(1+2t)e^{-2t}$. \chk
+\[M_p=\exp\!\Big(\!-\tfrac{\pi\zeta}{\sqrt{1-\zeta^2}}\Big),\quad t_{\text{peak}}=\tfrac\pi{\omega_d},\quad t_s\approx\tfrac4{\zeta\omega_n}\ (2\%)\]
+1st order: $x=e^{-t/T_c}$ ($63.2\%$ at $T_c$).
+$M_p$: $\zeta=0.3$ 37.2\%; $0.5$ 16.3\%; $0.707$ 4.3\%; $\ge1$ none. Check ($m{=}1,b{=}2,k{=}5$): $M_p=20.8\%$, $t_{\text{peak}}=1.571$ s, $t_s\approx4$ s. \chk\\
+\textbf{Routh.} $s^2+a_1s+a_0$ stable iff $a_1,a_0>0$. Cubic $s^3+a_2s^2+a_1s+a_0$ stable iff $a_2,a_1,a_0>0$ \textbf{and} $a_2a_1>a_0$ (PID $s^3+k_vs^2+k_ps+k_i$: $k_vk_p>k_i$; equality: roots $\pm j\sqrt{k_p}$). Check: $s^3+3s^2+2s+c$ stable iff $0<c<6$. \chk
+\end{fbx}
+
+\begin{fbx}[Conversions and conventions used in this booklet]
+\hd{8. Units and sign conventions}
+\begin{tabularx}{\linewidth}{@{}XX@{}}
+$1$ rpm $=\frac{2\pi}{60}=0.10472$ rad/s & $1$ rad/s $=9.549$ rpm; $1$ Hz $=2\pi$ rad/s\\
+$1000$ mm $=1$ m & $1$ W $=1$ N\,m/s; N\,m $=$ J/rad\\
+\end{tabularx}
+Convert first: $120$ rpm $=12.57$ rad/s; $250$ mm/s $=0.25$ m/s. Gearbox $N=10$: motor $0.2$ N\,m at $300$ rad/s $\to$ load $2$ N\,m at $30$ rad/s. Jacobian row: m (revolute) or dimensionless (prismatic). \chk\\[2pt]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.22\linewidth}X@{}}\toprule
+Frames & right-handed, $z$ up; ${}^A\T_B$ = pose of $\{B\}$ in $\{A\}$\\
+Rotation & anticlockwise about the axis looking to the origin; radians in formulas\\
+Joints & revolute $q_i=\theta_i$ about $z_i$; prismatic $q_i=d_i$ along $z_i$\\
+Force, gravity & $Q_i>0$ along $+q_i$; $\mathbf g=(0,0,-9.81)$ in $\{0\}$\\
+Error & $\mathbf E=\mathbf q_d-\mathbf q$\\
+Wheeled & $u$ forward ($\hat x_C$), $v$ left ($\hat y_C$), $\dot\theta>0$ anticlockwise; $\dot\varphi_i>0$ rolls forward\\\bottomrule
+\end{tabularx}
+\end{fbx}
+
+\hd{9. Graph-search vocabulary (W12)}\nopagebreak[4]
+\begin{fbx}[Graph, cost, queue/stack/priority queue]
+$G=(V,E)$ nodes and edges; weight $w_e$; path cost $=\sum w_e$; tree: connected, no cycles, $|E|=|V|-1$. $g(n)$ = cheapest known cost start$\to n$; $h(n)$ = heuristic estimate $n\to$ goal (\emph{admissible}: never above the true cost); $f(n)=g(n)+h(n)$. Grid: 4-connected step $1$, 8-connected diagonal $\sqrt2=1.414$.
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.25\linewidth}X@{}}\toprule
+structure & removes next & used by\\\midrule
+queue (FIFO) & oldest added & BFS (fewest edges, not cheapest)\\
+stack (LIFO) & newest added & DFS (dives down a branch)\\
+priority queue & smallest $g$ or $f$ & Dijkstra ($g$), $A^*$ ($f$)\\\bottomrule
+\end{tabularx}
+Lists: open (frontier) and closed (expanded).
+\end{fbx}
+
+\hd{10. Notation}\nopagebreak[4]
+\begin{fbx}[Symbols used across the booklet]
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.27\linewidth}X@{}}\toprule
+symbol & meaning (week)\\\midrule
+$\{0\},\{E\},\{i\}$ & base/world, end-effector (tool), link frame $i$ (W2)\\
+$\{C\},\{O\}$ & chassis frame; world (odometry) frame (W10)\\
+${}^A\T_B,\ {}^A\Rm_B$ & pose ($4\times4$), orientation ($3\times3$) of $\{B\}$ in $\{A\}$\\
+${}^A\mathbf P,\ {}^A\mathbf P_B$ & point in $\{A\}$; origin of $\{B\}$ in $\{A\}$ (m)\\
+$\mathbf q,\dot{\mathbf q},\ddot{\mathbf q}$ & joint vector, rates, accelerations (rad or m)\\
+$\mathbf J$, $\boldsymbol\nu=(\boldsymbol\upsilon,\boldsymbol\omega)$ & ${}^0\boldsymbol\nu={}^0\mathbf J\dot{\mathbf q}$; linear (m/s) above angular (rad/s) (W6)\\
+$\mathbf M,\mathbf C,\mathbf g$ & mass matrix (symmetric pos. def.), velocity terms, gravity vector (W7)\\
+$\mathbf Q$ & joint torques/forces, $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g$ (W7--W9)\\
+$\mathbf E,\ k_p,k_v,k_i$ & servo error $\mathbf q_d-\mathbf q$; gains (W8--W9)\\
+$\boldsymbol\zeta=(u,v,\dot\theta)$ & chassis velocity in $\{C\}$ (W10)\\
+$\dot\varphi_i,\ r$ & wheel $i$ speed (rad/s); wheel radius (W10)\\
+$\beta_i,\ \gamma_i$ & drive direction from $\hat x_C$ (bicycle: steering); roller direction from wheel-plane normal ($\gamma=0$ standard wheel) (W10)\\
+$g,\ h,\ f$ & path cost so far, heuristic, $f=g+h$ (W12)\\\bottomrule
+\end{tabularx}
+\end{fbx}
+\end{multicols}

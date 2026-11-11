@@ -1,160 +1,244 @@
-\week{W7}{Manipulator dynamics}{7}
+\providecommand{\hdSeven}[1]{\par\vspace{2pt}\phantomsection\addcontentsline{toc}{subsection}{#1}{\sffamily\bfseries\normalsize\color{seccolor}#1}\par\nobreak\vspace{0.5pt}\nobreak}
+\week{W7}{Manipulator dynamics: Lagrange and Newton--Euler}{7}
 \begin{multicols}{3}
-\hd{Equations of motion \pg{6--14, 25--33}}
-\begin{fbx}[General form \pg{25}]
-\[\mathbf Q=\mathbf M(\mathbf q)\ddot{\mathbf q}+\mathbf C(\mathbf q,\dot{\mathbf q})+\mathbf g(\mathbf q)+\mathbf f(\dot{\mathbf q})+\mathbf J^\top\mathbf w\]
-\use{sizes $n{\times}1=(n{\times}n)(n{\times}1)+n{\times}1+\dots$. $\mathbf Q$: N\,m (revolute) or N (prismatic). $\mathbf f$ friction; $\mathbf w$ external wrench.}
+
+\hdSeven{Forward and inverse dynamics \pg{6--12}}
+\premise[inverse dynamics \pg{10}]{$\mathbf q,\dot{\mathbf q},\ddot{\mathbf q}$ (planned motion), mass data}{joint torques/forces $\mathbf Q$ (control, motor sizing; no integration)}
+\premise[forward dynamics \pg{9, 48}]{$\mathbf Q$, state $\mathbf q,\dot{\mathbf q}$, mass data}{$\ddot{\mathbf q}$ (needs $\mathbf M^{-1}$; integrate; simulation)}
+\textbf{Torque balances \pg{11}:} inertial ($\propto\ddot q$), centripetal, Coriolis (two rotating links), static load, gravity, friction.
+
+\hdSeven{Rigid body: COM, inertia tensor, Newton--Euler \pg{34--39}}\label{w7:inertia}
+COM $\mathbf p_C=\tfrac1m\iiint\mathbf r\rho\,dv$; $\{C\}$ at the COM, axes parallel to the link frame.
+\begin{fbx}[Inertia tensor in $\{A\}$, density $\rho$ \pg{36}]
+\[{}^A\mathbf I=\begin{bmatrix}I_{xx}&I_{xy}&I_{xz}\\I_{xy}&I_{yy}&I_{yz}\\I_{xz}&I_{yz}&I_{zz}\end{bmatrix},\ 
+\begin{aligned}I_{xx}&=\iiint(y^2+z^2)\rho\,dv, & I_{xy}&=-\iiint xy\rho\,dv\\
+I_{yy}&=\iiint(x^2+z^2)\rho\,dv, & I_{yz}&=-\iiint yz\rho\,dv\\
+I_{zz}&=\iiint(x^2+y^2)\rho\,dv, & I_{xz}&=-\iiint xz\rho\,dv\end{aligned}\]
+kg\,m$^2$; moments $\ge0$; products carry the minus sign; tensor changes with the frame \pg{39}. Parallel axis, standard bodies: p.\,\pageref{p:BASICS}.
 \end{fbx}
-\begin{tabularx}{\linewidth}{@{}lX@{}}\toprule
-\textbf{Inverse} & motion $(\mathbf q,\dot{\mathbf q},\ddot{\mathbf q})\to$ torques. For \emph{control}.\\
-\textbf{Forward} & torques $\to$ motion, $\ddot{\mathbf q}=\mathbf M^{-1}(\mathbf Q-\mathbf C-\mathbf g-\mathbf f-\mathbf J^\top\mathbf w)$, integrate. For \emph{simulation} \pg{48}.\\
-Task space & $\boldsymbol{\mathcal F}=\mathbf M_x\ddot{\mathbf x}+\mathbf C_x+\mathbf g_x$, $\mathbf Q=\mathbf J^\top\boldsymbol{\mathcal F}$ \pg{32}\\\bottomrule
-\end{tabularx}
-\begin{tabularx}{\linewidth}{@{}lXX@{}}\toprule
- & Lagrange & Newton--Euler\\\midrule
-basis & energy, robot as a whole & force/moment balance, link by link\\
-output & closed-form equations & numbers, iterative\\
-best for & analysis, control design & real-time inverse dynamics\\
-cost $n{=}6$ & 66\,394 mult., $O(n^4)$ & 547 mult., $O(n)$\\\bottomrule
-\end{tabularx}
-NE: $104n-77$ mult., $92n-70$ add. ($n{=}7$: $651$ mult.) \pg{47} \chk
+\begin{deriv}[cuboid $W,L,H$ (x,y,z), frame $\{A\}$ at a corner \pg{37--38}]
+$\rho=m/(WLH)$: $I_{xx}=\rho\!\int_0^W\!\!\int_0^L\!\!\int_0^H(y^2+z^2)dz\,dy\,dx=\rho W\big(\tfrac{L^3}3H+L\tfrac{H^3}3\big)=\tfrac{m(L^2+H^2)}3$; $I_{xy}=-\rho\tfrac{W^2}2\tfrac{L^2}2H=-\tfrac{mWL}4$. Others by cyclic permutation.
+\[\text{corner: }{}^A\mathbf I=\begin{bmatrix}\frac{m(L^2+H^2)}3&-\frac{mWL}4&-\frac{mHW}4\\-\frac{mWL}4&\frac{m(W^2+H^2)}3&-\frac{mHL}4\\-\frac{mHW}4&-\frac{mHL}4&\frac{m(L^2+W^2)}3\end{bmatrix}\]
+\[\text{centroid: }{}^C\mathbf I=\mathrm{diag}\Big(\tfrac{m(L^2+H^2)}{12},\tfrac{m(W^2+H^2)}{12},\tfrac{m(L^2+W^2)}{12}\Big)\]
+Ex.: $m=6$, $(W,L,H)=(0.2,0.3,0.1)$: centroid $\mathrm{diag}(0.050,0.025,0.065)$; corner $I_{xx}=0.200$, $I_{xy}=-0.090$, $I_{xz}=-0.030$, $I_{yz}=-0.045$ (parallel axis $0.05+6(0.15^2+0.05^2)=0.200$). \chk
+\end{deriv}
+\begin{slideerr}[p.\,37]
+Slide 37 prints $I_{xy}=+mWL/4$; slides 36, 38 give $-mWL/4$. Use the minus sign.
+\end{slideerr}
+\begin{fbx}[Newton and Euler \pg{34}]
+\[\mathbf F=m\dot{\boldsymbol\upsilon}_C,\qquad \mathbf N={}^C\mathbf I\dot{\boldsymbol\omega}+\boldsymbol\omega\times{}^C\mathbf I\boldsymbol\omega\]
+$\mathbf F,\mathbf N$ net force/moment about the COM; $\dot{\boldsymbol\upsilon}_C$ COM acceleration; all in one frame. $\boldsymbol\omega\times\mathbf I\boldsymbol\omega=\mathbf 0$ for planar motion.
+\end{fbx}
+\begin{worked}[W8 practical Q1: one link]
+$m=1$, ${}^1\mathbf P_C=(3,0,0)$, ${}^C\mathbf I=\mathrm{diag}(1,2,3)$, $q=bt+ct^2$. $\boldsymbol\omega=(0,0,b{+}2ct)$, $\dot{\boldsymbol\omega}=(0,0,2c)$. $\dot{\boldsymbol\upsilon}_C=\dot{\boldsymbol\omega}\times\mathbf P_C+\boldsymbol\omega\times(\boldsymbol\omega\times\mathbf P_C)=(0,6c,0)+(-3\dot q^2,0,0)$:
+\[\boxed{\dot{\boldsymbol\upsilon}_C=(-3(b+2ct)^2,\ 6c,\ 0)}\]
+$\mathbf N=(0,0,6c)$; $\tau=N_z+(\mathbf P_C\times\mathbf F)_z=6c+18c=\boxed{24c}$ N\,m $=(I_{zz}+m3^2)\ddot q$. ($b{=}1,c{=}0.5,t{=}1$: $\dot{\boldsymbol\upsilon}_C=(-12,3,0)$, $\tau=12$.) \chk
+\end{worked}
 
-\hd{Meaning of each term \pg{27--33}}
-\begin{itemize}
-\item $\mathbf M$: symmetric, positive definite (so invertible; KE $=\tfrac12\dot{\mathbf q}^\top\mathbf M\dot{\mathbf q}>0$). $M_{jj}$ = inertia joint $j$ feels; $M_{ij}$ ($i\ne j$) couples $\ddot q_j$ into torque $i$. PUMA 560: $M_{11}=3.659$, $M_{12}=-0.4044$.
-\item $\mathbf C$: centripetal (squares $\dot q_i^2$) + Coriolis (products $\dot q_i\dot q_j$, $i\ne j$) \pg{30}.
-\item $\mathbf g$: present at rest, usually dominant. PUMA 560 at rest: $[0,\,31.64,\,6.035,\,0,\,0.02825,\,0]$ N\,m; stretched out $[0,\,46.01,\,8.772,\dots]$; pointing up $[0,\,-0.7752,\,0.2489,\dots]$.
-\item Held still $\Rightarrow$ only $\mathbf g$. Constant joint speed $\Rightarrow$ $\mathbf C$ and $\mathbf g$.
-\item \added\ $\dot{\mathbf M}-2\mathbf C_{mat}$ skew-symmetric; energy conserved if $\mathbf Q=0$, no friction.
-\end{itemize}
-
-\hd{Lagrangian method \pg{15--24}}
+\hdSeven{Lagrange's method \pg{15--17}}
+\begin{fbx}[Energy of link $i$ \added]
+\[K_i=\tfrac12m_i\,\mathbf v_{C_i}^\top\mathbf v_{C_i}+\tfrac12\,{}^i\boldsymbol\omega_i^\top\,{}^{C_i}\mathbf I_i\,{}^i\boldsymbol\omega_i,\qquad P_i=m_ig\,h_{C_i}\]
+Point mass: drop the rotation term. Planar link: rotation term $\tfrac12I_{zz}\dot\theta^2$ with $\dot\theta$ the \emph{absolute} rate ($\dot q_1{+}\dot q_2$ for link 2). Zero of $h$ is free.
+\end{fbx}
 \begin{fbx}[Euler--Lagrange \pg{16--17}]
-\[\mathcal L=K-P,\qquad Q_i=\frac{d}{dt}\Big(\frac{\partial\mathcal L}{\partial\dot q_i}\Big)-\frac{\partial\mathcal L}{\partial q_i}\]
-\use{any arm. $K=\sum\tfrac12m_i\mathbf v_{C_i}^\top\mathbf v_{C_i}+\tfrac12\boldsymbol\omega_i^\top\mathbf I_i\boldsymbol\omega_i$ (drop 2nd term for point masses); $P=\sum m_igh_i$.}
+\[\mathcal L=K-P,\qquad Q_i=\frac d{dt}\frac{\partial\mathcal L}{\partial\dot q_i}-\frac{\partial\mathcal L}{\partial q_i}\]
+$Q_i$: torque (R, N\,m) or force (P, N). Internal reactions never appear \pg{14}.
 \end{fbx}
-\begin{recipe}[Equations of motion (W13 Q4)]
-\label{w7:lag}
+\begin{recipe}[Lagrange (W13 Q4)]\label{w7:lagrecipe}
 \begin{enumerate}
-\item Generalised coordinates $\mathbf q$ = joint variables. Draw gravity's direction.
-\item COM position of each link from FK; differentiate for velocities.
-\item Write $K$ and $P$ in full; $\mathcal L=K-P$.
-\item Per joint: $\partial\mathcal L/\partial\dot q_i\to d/dt$ (product rule on $\cos q_2\cdot\dot q_1$) $\to-\partial\mathcal L/\partial q_i$.
-\item Collect: $\mathbf M$ = coefficients of $\ddot q$; $\mathbf C$ = velocity products; $\mathbf g$ = the rest.
-\item Check: $\mathbf M$ symmetric, $M_{22}>0$, $\mathbf g$ has no $\dot q$, $\mathbf C=0$ at rest, units.
+\item Draw: $\{0\}$ ($x$ right, $y$ up), $q_i$ and where measured from, gravity.
+\item COM positions; differentiate; $v^2=\dot x^2+\dot y^2$.
+\item $K$ (translation + rotation), $P=\sum m_igh_i$ in full; $\mathcal L=K-P$.
+\item Per joint: $\partial\mathcal L/\partial\dot q_i$; $d/dt$ (product rule); $\partial\mathcal L/\partial q_i$; subtract.
+\item $\ddot q_j$ coefficients $\to\mathbf M$; $\dot q_j\dot q_k$ terms $\to\mathbf C$; no-$\dot q$ terms $\to\mathbf g$.
+\item Check: $\mathbf M=\mathbf M^\top$, $M_{ii}>0$; at rest only $\mathbf g$; arm horizontal.
 \end{enumerate}
 \end{recipe}
+Shortcut \added: $K=\tfrac12\dot{\mathbf q}^\top\mathbf M\dot{\mathbf q}$, so $Q_i=\sum_jM_{ij}\ddot q_j+\sum_{j,k}\big(\tfrac{\partial M_{ij}}{\partial q_k}-\tfrac12\tfrac{\partial M_{jk}}{\partial q_i}\big)\dot q_j\dot q_k+\tfrac{\partial P}{\partial q_i}$.
 
-\hd{Two-link arm (point masses) \pg{18--25}}
-Masses $m_1,m_2$ at tips of $L_1,L_2$; $q_1$ from horizontal, $q_2$ relative; gravity $-y$.
-\[x_2=L_1c_1+L_2c_{12},\quad y_2=L_1s_1+L_2s_{12}\]
+\sh{Single link: pendulum \added}\nopagebreak
+\begin{deriv}[$q$ from $x_0$, gravity $-y_0$, point mass $m$ at $\ell$ / rod with COM $\ell_c$]
+$K=\tfrac12m\ell^2\dot q^2$, $P=mg\ell s_q$: $\partial\mathcal L/\partial\dot q=m\ell^2\dot q$, $\partial\mathcal L/\partial q=-mg\ell c_q$.
+\[Q=m\ell^2\ddot q+mg\ell\cos q;\qquad\text{rod: }Q=(I_c+m\ell_c^2)\ddot q+mg\ell_c\cos q\]
+Uniform rod: $I_c+m\ell_c^2=m\ell^2/12+m\ell^2/4=m\ell^2/3$ (not $m\ell^2$, not $I_c$).\\
+Ex.: rod $m=2$, $\ell=0.6$, $q=30^\circ$, $\ddot q=4$: $Q=0.240(4)+5.886\cos30^\circ=6.057$ N\,m. Release from horizontal: $\dot q_{bottom}=\sqrt{2(5.886)/0.240}=7.004$ rad/s. \chk
+\end{deriv}
+
+\hdSeven{Planar 2R arm, point masses \pg{18--25}}
+\slidefig[0.62\linewidth]{w07-lec}{18}{29 151 643 162}{2R: $m_1,m_2$ at link tips; $q_1$ from $x_0$, $q_2$ relative; gravity $-y$}
+\premise[RR]{$L_i$, $m_i$ (tips), $q_1$ from $x_0$, $q_2$ relative, $g$ along $-y$}{$Q_1,Q_2$; $\mathbf M,\mathbf C,\mathbf g$}
+\begin{deriv}[1. energies \pg{19--22}]
+$x_1=L_1c_1$, $y_1=L_1s_1$: $K_1=\tfrac12m_1L_1^2\dot q_1^2$, $P_1=m_1gL_1s_1$.\\
+$x_2=L_1c_1+L_2c_{12}$, $y_2=L_1s_1+L_2s_{12}$;
+$\dot x_2=-L_1s_1\dot q_1-L_2s_{12}(\dot q_1{+}\dot q_2)$, $\dot y_2=L_1c_1\dot q_1+L_2c_{12}(\dot q_1{+}\dot q_2)$.\\
+$s_1s_{12}+c_1c_{12}=c_2\Rightarrow\dot x_2^2+\dot y_2^2=L_1^2\dot q_1^2+L_2^2(\dot q_1{+}\dot q_2)^2+2L_1L_2c_2\dot q_1(\dot q_1{+}\dot q_2)$.
 \[K_2=\tfrac12m_2\big[(L_1^2{+}2L_1L_2c_2{+}L_2^2)\dot q_1^2+2(L_2^2{+}L_1L_2c_2)\dot q_1\dot q_2+L_2^2\dot q_2^2\big]\]
-\[P=m_1gL_1s_1+m_2g(L_1s_1+L_2s_{12})\]
-\begin{fbx}[Result \pg{22--25}]
-\[M_{11}=m_1L_1^2+m_2(L_1^2+2L_1L_2c_2+L_2^2)\]
-\[M_{12}=M_{21}=m_2(L_1L_2c_2+L_2^2),\quad M_{22}=m_2L_2^2\]
-\[C_1=-m_2L_1L_2s_2(2\dot q_1\dot q_2+\dot q_2^2),\quad C_2=m_2L_1L_2s_2\dot q_1^2\]
-\[g_1=(m_1{+}m_2)gL_1c_1+m_2gL_2c_{12},\quad g_2=m_2gL_2c_{12}\]
-\use{$h=m_2L_1L_2s_2$: $\mathbf C=\begin{bmatrix}0&-h\\h&0\end{bmatrix}\begin{bmatrix}\dot q_1^2\\\dot q_2^2\end{bmatrix}+\begin{bmatrix}-2h\\0\end{bmatrix}\dot q_1\dot q_2$ (centripetal + Coriolis; \added\ this split, slide handwriting illegible). Elbow bends $\Rightarrow$ $M_{11},M_{12}$ change via $c_2$.}
+$P_2=m_2g(L_1s_1{+}L_2s_{12})$.
+$A=m_1L_1^2+m_2(L_1^2{+}2L_1L_2c_2{+}L_2^2)$, $B=m_2(L_1L_2c_2{+}L_2^2)$, $D=m_2L_2^2$:\ 
+$K=\tfrac12A\dot q_1^2+B\dot q_1\dot q_2+\tfrac12D\dot q_2^2$, $P=(m_1{+}m_2)gL_1s_1+m_2gL_2s_{12}$.
+\end{deriv}
+\begin{deriv}[2. Euler--Lagrange, joint 1]
+$\partial\mathcal L/\partial\dot q_1=A\dot q_1+B\dot q_2$; $\dot A=-2m_2L_1L_2s_2\dot q_2$, $\dot B=-m_2L_1L_2s_2\dot q_2$:
+\[\tfrac d{dt}\tfrac{\partial\mathcal L}{\partial\dot q_1}=A\ddot q_1+B\ddot q_2-2m_2L_1L_2s_2\dot q_1\dot q_2-m_2L_1L_2s_2\dot q_2^2\]
+$\partial\mathcal L/\partial q_1=-\partial P/\partial q_1=-[(m_1{+}m_2)gL_1c_1+m_2gL_2c_{12}]$ ($K$ has no $q_1$).
+\[Q_1=A\ddot q_1+B\ddot q_2-m_2L_1L_2s_2(2\dot q_1\dot q_2+\dot q_2^2)+(m_1{+}m_2)gL_1c_1+m_2gL_2c_{12}\]
+\end{deriv}
+\begin{deriv}[3. Euler--Lagrange, joint 2]
+$\partial\mathcal L/\partial\dot q_2=B\dot q_1+D\dot q_2$; $\tfrac d{dt}=B\ddot q_1+D\ddot q_2-m_2L_1L_2s_2\dot q_1\dot q_2$.\\
+$\partial\mathcal L/\partial q_2=\tfrac12\tfrac{\partial A}{\partial q_2}\dot q_1^2+\tfrac{\partial B}{\partial q_2}\dot q_1\dot q_2-\tfrac{\partial P}{\partial q_2}=-m_2L_1L_2s_2(\dot q_1^2+\dot q_1\dot q_2)-m_2gL_2c_{12}$.\\
+The $\dot q_1\dot q_2$ terms cancel:
+\[Q_2=B\ddot q_1+D\ddot q_2+m_2L_1L_2s_2\dot q_1^2+m_2gL_2c_{12}\]
+\end{deriv}
+\begin{fbx}[Result $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g$ \pg{24--25}]
+\[\mathbf M=\begin{bmatrix}m_1L_1^2{+}m_2(L_1^2{+}2L_1L_2c_2{+}L_2^2)&m_2(L_1L_2c_2{+}L_2^2)\\m_2(L_1L_2c_2{+}L_2^2)&m_2L_2^2\end{bmatrix}\]
+\[\mathbf C=\begin{bmatrix}-m_2L_1L_2s_2(2\dot q_1\dot q_2{+}\dot q_2^2)\\m_2L_1L_2s_2\dot q_1^2\end{bmatrix}\]
+\[\mathbf g=\begin{bmatrix}(m_1{+}m_2)gL_1c_1+m_2gL_2c_{12}\\m_2gL_2c_{12}\end{bmatrix}\]
+$c_{12}$ in $\mathbf g$: gravity on mass 2 acts at the absolute angle $q_1{+}q_2$.
 \end{fbx}
-\begin{worked}[2R torques]
-$m=(2,1)$ kg, $L=(1.0,0.8)$ m, $g=9.81$, $q=(30^\circ,45^\circ)$, $\dot q=(1,-0.5)$, $\ddot q=(0.5,2)$:\\
-$\mathbf M=\begin{bmatrix}4.7714&1.2057\\1.2057&0.6400\end{bmatrix}$, $\mathbf C=(0.4243,\,0.5657)$, $\mathbf g=(27.5183,\,2.0312)$\\
-$\mathbf Q=(32.7397,\ 4.4797)$ N\,m. NE gives the same. \chk\\
-By hand $\tau_2$: $M_{21}\ddot q_1{=}1.2057(0.5)$, $M_{22}\ddot q_2{=}0.64(2)$, $C_2{=}0.5657$, $g_2{=}0.8(9.81)\cos75^\circ{=}2.0312$; sum $4.4797$.
+\begin{worked}[$m=(2,1)$, $L=(1,0.8)$, $q=(30^\circ,45^\circ)$, $\dot q=(1,-0.5)$, $\ddot q=(0.5,2)$]
+$c_2=s_2=0.7071$, $h=m_2L_1L_2s_2=0.5657$. $M_{11}=4.7714$, $M_{12}=1.2057$, $M_{22}=0.64$. $C_1=-0.5657(2(1)(-0.5)+0.25)=0.4243$, $C_2=0.5657$. $g_1=3(9.81)\cos30^\circ+0.8(9.81)\cos75^\circ=27.518$, $g_2=2.031$.
+\begin{align*}Q_1&=2.3857+2.4114+0.4243+27.5183=\boxed{32.740}\\Q_2&=0.6028+1.28+0.5657+2.0312=\boxed{4.480}\ \text{N\,m}\end{align*}
+Power: $\dot{\mathbf q}^\top\mathbf Q=30.500$ W $=\dot K+\dot P=3.997+26.503$. \chk
 \end{worked}
 \begin{trap}
-$\mathcal L=K+P$. Missing cross term $2L_1L_2c_2$ in $v_2^2$. $g_2=\dots\sin(q_1{+}q_2)$ (with $q$ from the horizontal and gravity $-y$ it is $\cos$). Calling $\dot q_1\dot q_2$ centripetal (it is Coriolis). $M_{12}$ without the $L_2^2$. ``$\mathbf g$ depends on $\dot q$'', ``$\mathbf M$ diagonal'', ``forward dynamics is for control''. \chk
+$\mathcal L=K+P$; missing cross term $2L_1L_2c_2$; $g_2$ with $\sin$; calling $\dot q_1\dot q_2$ centripetal (it is Coriolis); no product rule on $\cos q_2\,\dot q$.
 \end{trap}
 
-\hd{RP arm (Craig; unit script)}
-Revolute $\theta_1$, prismatic $d_2$, link 1 COM at $l_1$, gravity $-y$:
-\[\tau_1=(m_1l_1^2{+}I_{zz1}{+}I_{zz2}{+}m_2d_2^2)\ddot\theta_1+2m_2d_2\dot\theta_1\dot d_2+(m_1l_1{+}m_2d_2)g\cos\theta_1\]
-\[f_2=m_2\ddot d_2-m_2d_2\dot\theta_1^2+m_2g\sin\theta_1\]
-$\mathbf M$ diagonal; $2m_2d_2\dot\theta_1\dot d_2$ Coriolis; $-m_2d_2\dot\theta_1^2$ centrifugal. Values $m=(2,1)$, $l_1=0.3$, $I_{zz}=(0.05,0.02)$, $\theta_1=0.7$, $d_2=0.6$, $\dot\theta_1=1.3$, $\dot d_2=-0.8$, $\ddot\theta_1=2.0$, $\ddot d_2=1.5$: $\tau_1=8.9757$ N\,m, $f_2=6.8058$ N. \chk
-
-\hd{Rigid body \pg{34--39}}
-\begin{fbx}[Newton and Euler \pg{34}]
-\[\mathbf F=m\dot{\mathbf v}_C,\qquad \mathbf N={}^C\mathbf I\dot{\boldsymbol\omega}+\boldsymbol\omega\times{}^C\mathbf I\boldsymbol\omega\]
-\use{per-link balance in Newton--Euler. $\boldsymbol\omega\times\mathbf I\boldsymbol\omega=0$ when $\boldsymbol\omega$ is along a principal axis.}
+\hdSeven{Structure of $\mathbf M$, $\mathbf C$, $\mathbf g$ and properties \pg{25--31}}
+\begin{fbx}[General equation \pg{25--26}]
+\[\underbrace{\mathbf Q}_{n\times1}=\underbrace{\mathbf M(\mathbf q)}_{n\times n}\ddot{\mathbf q}+\underbrace{\mathbf C(\mathbf q,\dot{\mathbf q})}_{\text{vel.\ products}}+\underbrace{\mathbf g(\mathbf q)}_{\text{gravity}}\ \big(+\mathbf f(\dot{\mathbf q})+\mathbf J^\top(\mathbf q)\mathbf w\big)\]
+$\mathbf f$ friction; $\mathbf J^\top\mathbf w$ torques balancing tool wrench $\mathbf w$. Forward: $\ddot{\mathbf q}=\mathbf M^{-1}(\mathbf Q-\mathbf C-\mathbf g-\mathbf f-\mathbf J^\top\mathbf w)$ \pg{48}. Task space: $\boldsymbol{\mathcal F}=\mathbf M_x\ddot{\mathbf x}+\mathbf C_x+\mathbf g_x$, $\mathbf Q=\mathbf J^\top\boldsymbol{\mathcal F}$ \pg{32}.
+\[\mathbf C=C(\mathbf q)[\dot{\mathbf q}^2]+B(\mathbf q)[\dot{\mathbf q}\dot{\mathbf q}]\ \pg{30}\]
+\[2R:\ \mathbf C=\begin{bmatrix}0&-h\\h&0\end{bmatrix}\begin{bmatrix}\dot q_1^2\\\dot q_2^2\end{bmatrix}+\begin{bmatrix}-2h\\0\end{bmatrix}[\dot q_1\dot q_2]\ \added\]
+Squares $\dot q_i^2$ = centripetal; products $\dot q_i\dot q_j$ ($i<j$, $n(n{-}1)/2$ of them) = Coriolis.
 \end{fbx}
-\begin{fbx}[Inertia tensor \pg{36}]
-$I_{xx}=\iiint(y^2{+}z^2)\rho\,dv$ (cyclic),\ $I_{xy}=-\iiint xy\rho\,dv$ (cyclic).\\
-Cuboid $W{\times}L{\times}H$ ($x,y,z$), centroid \pg{39}:
-\[{}^C\mathbf I=\tfrac m{12}\operatorname{diag}(L^2{+}H^2,\ W^2{+}H^2,\ L^2{+}W^2)\]
-Corner frame \pg{38}: $I_{xx}=\tfrac m3(L^2{+}H^2)$, $I_{yy}=\tfrac m3(W^2{+}H^2)$, $I_{zz}=\tfrac m3(L^2{+}W^2)$,\\
-$I_{xy}=-\tfrac{m}{4}WL$, $I_{xz}=-\tfrac m4HW$, $I_{yz}=-\tfrac m4HL$.
+\begin{fbx}[Properties \pg{28}, \added]
+$\mathbf M=\mathbf M^\top>0$ (since $K=\tfrac12\dot{\mathbf q}^\top\mathbf M\dot{\mathbf q}>0$), so $\mathbf M^{-1}$ exists; $\mathbf M,\mathbf g$ depend on $\mathbf q$ only; $\mathbf C$ is quadratic in $\dot{\mathbf q}$, zero at rest. With $\mathbf C=\mathbf C_m\dot{\mathbf q}$: $\dot{\mathbf M}-2\mathbf C_m$ skew-symmetric $\Rightarrow$ ($\mathbf Q=\mathbf 0$, no friction) $K+P$ const. 2R: $\det\mathbf M=m_2L_1^2L_2^2(m_1+m_2s_2^2)>0$; $\mathbf C_m=\begin{bmatrix}-h\dot q_2&-h(\dot q_1{+}\dot q_2)\\h\dot q_1&0\end{bmatrix}$. \chk\\
+PUMA 560 $\mathbf g$ (N\,m) \pg{27, 29}: rest $[0,31.64,6.035,0,0.02825,0]$; stretched $[0,46.01,8.772,0,0.02825,0]$; up $[0,-0.7752,0.2489,0,0,0]$ (largest at full reach).
 \end{fbx}
 
-\begin{fbx}[Parallel-axis theorem \added]
-\[{}^A\mathbf I={}^C\mathbf I+m\big(\mathbf p^\top\mathbf p\,\mathbf 1_3-\mathbf p\mathbf p^\top\big)\]
-\use{$\mathbf p$ = COM in $\{A\}$. With $\mathbf p=(W/2,L/2,H/2)$: centroid $\to$ corner. Same body, different frame, different tensor.}
-\end{fbx}
-\begin{worked}[box 6 kg, $0.2{\times}0.3{\times}0.1$ m]
-Centroid diag$(0.050,0.025,0.065)$. Corner $I_{xx}=6(0.09{+}0.01)/3=0.200$; $I_{xy}=-6(0.2)(0.3)/4=-0.090$ kg\,m$^2$. Parallel axis: $0.05+6(0.15^2{+}0.05^2)=0.200$. Full corner tensor: rows $(0.200,-0.090,-0.030)$, $(-0.090,0.100,-0.045)$, $(-0.030,-0.045,0.260)$. \chk
+\hdSeven{Scenarios: hold, accelerate, release \added}\label{w7:scenarios}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.36\linewidth}X@{}}
+\toprule situation & torque\\\midrule
+held still & $\mathbf Q=\mathbf g$ \pg{27}\\
+constant speed & $\mathbf Q=\mathbf C+\mathbf g$\\
+from rest ($\dot{\mathbf q}=\mathbf 0$) & $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf g$\\
+tool presses with $\mathbf w$ & $+\mathbf J^\top\mathbf w$ (state sign reading)\\
+$\mathbf Q$ given & $\ddot{\mathbf q}=\mathbf M^{-1}(\mathbf Q-\mathbf C-\mathbf g)$\\
+\bottomrule\end{tabularx}
+\begin{worked}[slide 2R above]
+Hold: $\mathbf g=(27.518,2.031)$; stretched ($q{=}0$): $(37.278,7.848)$. From rest, $\ddot{\mathbf q}=(0.5,2)$: $\mathbf Q=(32.315,3.914)$. Release, $\mathbf Q=\mathbf 0$ ($\det\mathbf M=1.600$): $\ddot{\mathbf q}=-\mathbf M^{-1}\mathbf g=(-9.477,14.679)$. Press $\mathbf w=(-5,12)$ N: $\mathbf J=\begin{bmatrix}-1.2727&-0.7727\\1.0731&0.2071\end{bmatrix}$, $\mathbf Q=\mathbf g+\mathbf J^\top\mathbf w=(46.759,8.380)$. \chk
 \end{worked}
-\begin{slideerr}[sign of $I_{xy}$]
-Slide 37 writes $I_{xy}=\iiint xy\rho\,dv=m\,WL/4$ without the minus; slide 38's matrix has $-mWL/4$. Slide 36 defines the off-diagonal entry with the minus. Put the minus in.
-\end{slideerr}
+\begin{trap}
+$\mathbf J\mathbf w$ for $\mathbf J^\top\mathbf w$; keeping $\mathbf C$ in a ``hold still'' answer.
+\end{trap}
 
-\hd{Iterative Newton--Euler \pg{40--46}}
-\begin{fbx}[Outward pass, $i=1\dots n$ (revolute)]
-$R={}^{i-1}_{\ \ i}\mathbf R$, $\mathbf P_i$ = origin of $\{i\}$ in $\{i{-}1\}$, $\hat Z$ joint axis:
-\[\boldsymbol\omega_i=R^\top\boldsymbol\omega_{i-1}+\dot q_i\hat Z\]
-\[\dot{\boldsymbol\omega}_i=R^\top\dot{\boldsymbol\omega}_{i-1}+R^\top\boldsymbol\omega_{i-1}\times\dot q_i\hat Z+\ddot q_i\hat Z\]
-\[\dot{\mathbf v}_i=R^\top\big(\dot{\boldsymbol\omega}_{i-1}\times\mathbf P_i+\boldsymbol\omega_{i-1}\times(\boldsymbol\omega_{i-1}\times\mathbf P_i)+\dot{\mathbf v}_{i-1}\big)\]
-\[\dot{\mathbf v}_{C_i}=\dot{\boldsymbol\omega}_i\times\mathbf P_{C_i}+\boldsymbol\omega_i\times(\boldsymbol\omega_i\times\mathbf P_{C_i})+\dot{\mathbf v}_i\]
-$\mathbf F_i=m_i\dot{\mathbf v}_{C_i}$, $\mathbf N_i=\mathbf I_i\dot{\boldsymbol\omega}_i+\boldsymbol\omega_i\times\mathbf I_i\boldsymbol\omega_i$.
-\use{prismatic: add $2\boldsymbol\omega_i\times\dot d_i\hat Z+\ddot d_i\hat Z$ to $\dot{\mathbf v}_i$, $\boldsymbol\omega$ unchanged.}
+\hdSeven{Prismatic joints: RP arm, PR arm \added}
+\begin{deriv}[RP: $\theta_1$ from $x_0$, slider $d_2$ along the arm; $m_1$ at $l_1$ ($I_{zz1}$), $m_2$ at $d_2$ ($I_{zz2}$)]
+$v_2^2=\dot d_2^2+d_2^2\dot\theta_1^2$. $K=\tfrac12(m_1l_1^2{+}I_{zz1}{+}I_{zz2}{+}m_2d_2^2)\dot\theta_1^2+\tfrac12m_2\dot d_2^2$, $P=(m_1l_1{+}m_2d_2)gs_1$.\\
+$\theta_1$: $\tfrac d{dt}\tfrac{\partial\mathcal L}{\partial\dot\theta_1}=(\cdot)\ddot\theta_1+2m_2d_2\dot d_2\dot\theta_1$; $\tfrac{\partial\mathcal L}{\partial\theta_1}=-(m_1l_1{+}m_2d_2)gc_1$.\ 
+$d_2$: $m_2\ddot d_2$; $\tfrac{\partial\mathcal L}{\partial d_2}=m_2d_2\dot\theta_1^2-m_2gs_1$.
+\[\begin{bmatrix}\tau_1\\f_2\end{bmatrix}=\mathbf M\begin{bmatrix}\ddot\theta_1\\\ddot d_2\end{bmatrix}+\mathbf C+\mathbf g,\quad\mathbf M=\begin{bmatrix}m_1l_1^2{+}I_{zz1}{+}I_{zz2}{+}m_2d_2^2&0\\0&m_2\end{bmatrix}\]
+\[\mathbf C=\begin{bmatrix}2m_2d_2\dot\theta_1\dot d_2\\-m_2d_2\dot\theta_1^2\end{bmatrix},\quad\mathbf g=\begin{bmatrix}(m_1l_1{+}m_2d_2)g\cos\theta_1\\m_2g\sin\theta_1\end{bmatrix}\]
+$\mathbf M$ diagonal yet $\mathbf C\ne\mathbf 0$ (Coriolis $2m_2d_2\dot\theta_1\dot d_2$; centrifugal $-m_2d_2\dot\theta_1^2$).
+\end{deriv}
+\begin{worked}[$m=(2,1)$, $l_1=0.3$, $I_{zz}=(0.05,0.02)$, $\theta_1=0.7$, $d_2=0.6$, $\dot\theta_1=1.3$, $\dot d_2=-0.8$, $\ddot\theta_1=2$, $\ddot d_2=1.5$]
+$M_{11}=0.61$: $\tau_1=1.220-1.248+9.004=\boxed{8.976}$ N\,m; $f_2=1.500-1.014+6.320=\boxed{6.806}$ N. Hold at $30^\circ$, $d_2=0.6$: $(10.195\text{ N\,m},4.905\text{ N})$. \chk
+\end{worked}
+\begin{trap}
+$K_2=\tfrac12m_2\dot d_2^2$ only; $\partial P/\partial d_2$ with $\cos\theta_1$; ``$\mathbf M$ diagonal so no Coriolis''.
+\end{trap}
+\textbf{Vertical slider} ($z$ up): $K=\tfrac12m\dot z^2$, $P=mgz$, $f=m(\ddot z+g)$ ($m=2$: hold $19.62$ N; $\ddot z=1.5$: $22.62$ N). \chk\\
+\textbf{PR arm} (cart $d_1$ mass $m_1$, massless link $L$, tip $m_2$, $\varphi$ from $x_0$): $K=\tfrac12(m_1{+}m_2)\dot d_1^2-m_2Ls_\varphi\dot d_1\dot\varphi+\tfrac12m_2L^2\dot\varphi^2$, $P=m_2gLs_\varphi$; the $\dot d_1\dot\varphi$ terms cancel in joint 2:
+\[\begin{bmatrix}F_1\\\tau_2\end{bmatrix}=\begin{bmatrix}m_1{+}m_2&-m_2Ls_\varphi\\-m_2Ls_\varphi&m_2L^2\end{bmatrix}\begin{bmatrix}\ddot d_1\\\ddot\varphi\end{bmatrix}+\begin{bmatrix}-m_2Lc_\varphi\dot\varphi^2\\0\end{bmatrix}+\begin{bmatrix}0\\m_2gLc_\varphi\end{bmatrix}\]
+Ex.: $m=(3,1)$, $L=0.5$, $\varphi=40^\circ$, $\dot d_1=1$, $\dot\varphi=2$, $\ddot d_1=0.5$, $\ddot\varphi=1$: $F_1=0.147$ N, $\tau_2=3.847$ N\,m. \chk
+
+\hdSeven{Iterative Newton--Euler \pg{40--46}}\label{w7:nepass}
+Per link, force and moment balance \pg{14, 41}. \textbf{Outward} (base$\to$tool): $\boldsymbol\omega,\dot{\boldsymbol\omega},\dot{\boldsymbol\upsilon}$, then $\mathbf F_i,\mathbf N_i$ \pg{43}. \textbf{Inward} (tool$\to$base): force/moment balance, then $Q_i$ \pg{44--45}.
+\premise[NE \pg{42}]{$\mathbf q,\dot{\mathbf q},\ddot{\mathbf q}$; frames ${}^i\mathbf P_{i+1}$, ${}^i_{i+1}\mathbf R$; $m_i$, ${}^i\mathbf P_{C_i}$, ${}^{C_i}\mathbf I_i$}{$\mathbf Q$}
+\slidefig[0.8\linewidth]{w07-lec}{45}{19 135 528 151}{link $i$: $\mathbf f_i,\mathbf n_i$ from link $i{-}1$ at $\{i\}$; $\mathbf f_{i+1},\mathbf n_{i+1}$ from link $i{+}1$; $\mathbf F_i,\mathbf N_i$ required by the motion}
+\begin{fbx}[Outward, $i=0\to n{-}1$, revolute $i{+}1$ \added; $\hat{\mathbf Z}=(0,0,1)^\top$]
+$\mathbf R={}^i_{i+1}\mathbf R$, $\mathbf P={}^i\mathbf P_{i+1}$; left side in $\{i{+}1\}$:
+\begin{align*}
+{}^{i+1}\boldsymbol\omega_{i+1}&=\mathbf R^\top{}^i\boldsymbol\omega_i+\dot q_{i+1}\hat{\mathbf Z}\\
+{}^{i+1}\dot{\boldsymbol\omega}_{i+1}&=\mathbf R^\top{}^i\dot{\boldsymbol\omega}_i+\mathbf R^\top{}^i\boldsymbol\omega_i\times\dot q_{i+1}\hat{\mathbf Z}\\&\quad+\ddot q_{i+1}\hat{\mathbf Z}\\
+{}^{i+1}\dot{\boldsymbol\upsilon}_{i+1}&=\mathbf R^\top\big({}^i\dot{\boldsymbol\omega}_i\times\mathbf P+{}^i\boldsymbol\omega_i\times({}^i\boldsymbol\omega_i\times\mathbf P)+{}^i\dot{\boldsymbol\upsilon}_i\big)\\
+\dot{\boldsymbol\upsilon}_C&=\dot{\boldsymbol\omega}\times\mathbf P_C+\boldsymbol\omega\times(\boldsymbol\omega\times\mathbf P_C)+\dot{\boldsymbol\upsilon}\\
+\mathbf F_{i+1}&=m_{i+1}\dot{\boldsymbol\upsilon}_C,\quad \mathbf N_{i+1}={}^C\mathbf I\dot{\boldsymbol\omega}+\boldsymbol\omega\times{}^C\mathbf I\boldsymbol\omega
+\end{align*}
+Start ${}^0\boldsymbol\omega_0=\dot{\boldsymbol\omega}_0=\mathbf 0$. Gravity trick: ${}^0\dot{\boldsymbol\upsilon}_0=(0,g,0)^\top$ (base accelerates up).
 \end{fbx}
-\begin{fbx}[Inward pass, $i=n\dots1$, $\mathbf f_{n+1}=\mathbf n_{n+1}=0$]
-$R'={}^{i}_{\ i+1}\mathbf R$:
-\[\mathbf f_i=R'\mathbf f_{i+1}+\mathbf F_i\]
-\[\mathbf n_i=\mathbf N_i+R'\mathbf n_{i+1}+\mathbf P_{C_i}\times\mathbf F_i+\mathbf P_{i+1}\times R'\mathbf f_{i+1}\]
-\[\tau_i=\mathbf n_i\cdot\hat Z\]
-\use{gravity trick: start with $\dot{\mathbf v}_0=(0,g,0)$ (base accelerates up) instead of adding gravity to each link. \added\ Matches Lagrange at 50 random states. \chk}
+\begin{fbx}[Prismatic joint $i{+}1$: lines that change \added]
+\begin{align*}
+{}^{i+1}\boldsymbol\omega_{i+1}&=\mathbf R^\top{}^i\boldsymbol\omega_i,\quad {}^{i+1}\dot{\boldsymbol\omega}_{i+1}=\mathbf R^\top{}^i\dot{\boldsymbol\omega}_i\\
+{}^{i+1}\dot{\boldsymbol\upsilon}_{i+1}&=\mathbf R^\top\big({}^i\dot{\boldsymbol\omega}_i\times\mathbf P+{}^i\boldsymbol\omega_i\times({}^i\boldsymbol\omega_i\times\mathbf P)+{}^i\dot{\boldsymbol\upsilon}_i\big)\\&\quad+2\,{}^{i+1}\boldsymbol\omega_{i+1}\times\dot d_{i+1}\hat{\mathbf Z}+\ddot d_{i+1}\hat{\mathbf Z}
+\end{align*}
+Inward unchanged, but $Q_i=\mathbf f_i^\top\hat{\mathbf Z}$.
 \end{fbx}
-\begin{slideerr}[NE slide 45]
-Slide 45 writes ${}^iT_{i+1}$ where a rotation ${}^i\mathbf R_{i+1}$ is meant, and its moment balance omits rotating $\mathbf n_{i+1}$ into $\{i\}$. Use Craig's equations above.
+\begin{fbx}[Inward, $i=n\to1$, $\mathbf f_{n+1}=\mathbf n_{n+1}=\mathbf 0$ \pg{44--45}]
+$\mathbf R'={}^i_{i+1}\mathbf R$; all in $\{i\}$:
+\begin{align*}
+\mathbf f_i&=\mathbf R'\mathbf f_{i+1}+\mathbf F_i\\
+\mathbf n_i&=\mathbf N_i+\mathbf R'\mathbf n_{i+1}+\mathbf P_{C_i}\times\mathbf F_i+\mathbf P_{i+1}\times\mathbf R'\mathbf f_{i+1}\\
+Q_i&=\mathbf n_i^\top\hat{\mathbf Z}\ (\text{R}),\quad Q_i=\mathbf f_i^\top\hat{\mathbf Z}\ (\text{P})
+\end{align*}
+Slide balances (p.\,45): $\mathbf F_i=\mathbf f_i-\mathbf R'\mathbf f_{i+1}$, $\mathbf N_i=\mathbf n_i-\mathbf R'\mathbf n_{i+1}-\mathbf P_{C_i}\times\mathbf f_i-(\mathbf P_{i+1}-\mathbf P_{C_i})\times\mathbf R'\mathbf f_{i+1}$; substitute $\mathbf f_i$: the $\mathbf P_{C_i}\times\mathbf R'\mathbf f_{i+1}$ terms cancel \added.
+\end{fbx}
+\begin{slideerr}[NE, p.\,45]
+Slide writes ${}^i\mathbf T_{i+1}$ in the force balance (a rotation ${}^i_{i+1}\mathbf R$ is meant); outward equations (p.\,43) are in words only; boxes are Craig's.
 \end{slideerr}
-NE is rarely derived by hand: expect ``explain the two passes and why NE is $O(n)$'' or ``$\dot{\mathbf v}_C$ for one link''.
-
-\hd{Worked: single link \pg{34}}
-$m=1$, ${}^1\mathbf P_C=[3,0,0]$, ${}^C\mathbf I=\operatorname{diag}(1,2,3)$, $q=bt+ct^2$. $\ddot q=2c$, $\dot{\boldsymbol\omega}=[0,0,2c]$.\\
-$\dot{\mathbf v}_C=[\,-3(b{+}2ct)^2,\ 6c,\ 0\,]$ (tangential $6c$, centripetal $-3\dot q^2$).\\
-$N_z=6c$, $\tau=N_z+3(6c)=24c$. Check $(I_{zz}{+}m\,3^2)\ddot q=12(2c)$. \chk
-
-\hd{3-link planar arm along a cubic (practical sheet Q3)}
-$L=(3,2,1)$ m, point masses $3,2,1$ kg at distal ends, vertical plane, gravity $-y$. Start tool pose $(5,1,90^\circ)$, goal $(-3,3,180^\circ)$, $T=2$ s.
-\begin{recipe}[Joint angles and torque history]
-\label{w7:cubic}
+\begin{recipe}[Newton--Euler by hand]
 \begin{enumerate}
-\item Wrist $=(x-L_3\cos\varphi,\ y-L_3\sin\varphi)$; 2-link IK: $\cos\theta_2=(w^2-L_1^2-L_2^2)/2L_1L_2$.
-\item Start: wrist $(5,0)$, $\cos\theta_2=1$ $\Rightarrow q_0=(0^\circ,0^\circ,90^\circ)$ (one solution, singular).
-\item Goal: wrist $(-2,3)$, $\cos\theta_2=0$; $\theta_2=+90^\circ$ gives $q_f=(90^\circ,90^\circ,0^\circ)$. Other elbow: $(157.38^\circ,-90^\circ,112.62^\circ)$.
-\item Rest-to-rest cubic: $a_2=3\Delta/T^2$, $a_3=-2\Delta/T^3$; $\Delta=(90^\circ,90^\circ,-90^\circ)$ gives $a_2=(67.5,67.5,-67.5)^\circ/\text{s}^2$, $a_3=(-22.5,-22.5,22.5)^\circ/\text{s}^3$. $|\ddot q(0)|=2.3562$ rad/s$^2$.
-\item $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g$ at each $t$ (build as for the 2R, with three tips).
-\item Check $t=0$: at rest so $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf g$; $g_1=9.81(3\cdot3+2\cdot5+1\cdot5)=235.44$.
+\item Frames with joint axes $z$; list ${}^i\mathbf P_{i+1}$, ${}^i_{i+1}\mathbf R$, ${}^i\mathbf P_{C_i}$, $m_i$, $\mathbf I_i$.
+\item ${}^0\boldsymbol\omega_0=\dot{\boldsymbol\omega}_0=\mathbf 0$, ${}^0\dot{\boldsymbol\upsilon}_0=(0,g,0)^\top$.
+\item Outward $i=1..n$: $\boldsymbol\omega_i,\dot{\boldsymbol\omega}_i,\dot{\boldsymbol\upsilon}_i,\dot{\boldsymbol\upsilon}_{C_i},\mathbf F_i,\mathbf N_i$ (point mass: $\mathbf N_i=\mathbf 0$).
+\item Inward $i=n..1$: $\mathbf f_i,\mathbf n_i$.
+\item $Q_i=\mathbf n_i\cdot\hat{\mathbf Z}$ (P: $\mathbf f_i\cdot\hat{\mathbf Z}$).
+\item Check: static case leaves only $\mathbf g$.
 \end{enumerate}
 \end{recipe}
-\begin{tabular}{@{}rcrrr@{}}\toprule
-$t$ (s) & $q$ ($^\circ$) & $\tau_1$ & $\tau_2$ & $\tau_3$ (N\,m)\\\midrule
-0 & (0,0,90) & 548.814 & 160.176 & 2.356\\
-1 & (45,45,45) & 70.817 & 20.781 & 5.078\\
-2 & (90,90,0) & $-$268.947 & $-$141.712 & $-$21.591\\\bottomrule
-\end{tabular}\\
-\chk\ $\tau(0)$ agrees with the W9 tab.
+\begin{deriv}[slide homework p.\,46: NE on the 2R point-mass arm]
+${}^0_1\mathbf R=R_z(q_1)$, ${}^1_2\mathbf R=R_z(q_2)$, ${}^1\mathbf P_2={}^1\mathbf P_{C_1}=(L_1,0,0)$, ${}^2\mathbf P_{C_2}=(L_2,0,0)$, $\mathbf N_i=\mathbf 0$. $a=-L_1\dot q_1^2+gs_1$, $b=L_1\ddot q_1+gc_1$.\\
+\textbf{Out.} ${}^1\dot{\boldsymbol\upsilon}_1=(gs_1,gc_1,0)$; ${}^1\dot{\boldsymbol\upsilon}_{C_1}=(a,b,0)$, $\mathbf F_1=m_1(a,b,0)$. ${}^2\dot{\boldsymbol\upsilon}_2=R_z(q_2)^\top(a,b,0)=(c_2a{+}s_2b,\,-s_2a{+}c_2b,0)$; ${}^2\boldsymbol\omega_2=(0,0,\dot q_1{+}\dot q_2)$; ${}^2\dot{\boldsymbol\upsilon}_{C_2}=(-L_2(\dot q_1{+}\dot q_2)^2,L_2(\ddot q_1{+}\ddot q_2),0)+{}^2\dot{\boldsymbol\upsilon}_2$; $\mathbf F_2=m_2\dot{\boldsymbol\upsilon}_{C_2}$.\\
+\textbf{In.} $\mathbf f_2=\mathbf F_2$, $\mathbf n_2=\mathbf P_{C_2}\times\mathbf F_2=(0,0,L_2F_{2y})$:
+\[Q_2=m_2L_2^2(\ddot q_1{+}\ddot q_2)+m_2L_1L_2c_2\ddot q_1+m_2L_1L_2s_2\dot q_1^2+m_2gL_2c_{12}\]
+(= Lagrange $Q_2$.)
+$\mathbf f_1=R_z(q_2)\mathbf f_2+\mathbf F_1$, $Q_1=Q_2+L_1F_{1y}+L_1(s_2F_{2x}+c_2F_{2y})$ = Lagrange $Q_1$ \chk.
+\end{deriv}
+\begin{worked}[NE numbers, same state as the Lagrange example]
+Link 1: $\boldsymbol\omega_1=(0,0,1)$, $\dot{\boldsymbol\omega}_1=(0,0,0.5)$, $\dot{\boldsymbol\upsilon}_1=(4.905,8.496,0)$, $\dot{\boldsymbol\upsilon}_{C_1}=(3.905,8.996,0)$, $\mathbf F_1=(7.810,17.991,0)$.
+Link 2: $\boldsymbol\omega_2=(0,0,0.5)$, $\dot{\boldsymbol\omega}_2=(0,0,2.5)$, $\dot{\boldsymbol\upsilon}_2=(9.122,3.600,0)$, $\dot{\boldsymbol\upsilon}_{C_2}=(8.922,5.600,0)=\mathbf f_2$; $\mathbf n_2=(0,0,4.480)$.
+$\mathbf f_1=(10.159,28.260,0)$, $\mathbf n_1=(0,0,32.740)$: $Q=(32.740,4.480)$, equal to Lagrange. \chk
+\end{worked}
 
-\hd{Quick-fire answers}
-\begin{itemize}
-\item \textbf{Why is $\mathbf M$ invertible?} Symmetric positive definite: $\tfrac12\dot{\mathbf q}^\top\mathbf M\dot{\mathbf q}>0$ for any motion.
-\item \textbf{Simulator vs computed-torque controller?} Simulator = forward (torques in, motion out). Controller = inverse (motion in, torques out).
-\item \textbf{Multiplications for NE, $n=7$?} $104(7)-77=651$.
-\item \textbf{Which terms survive when held still? at constant speed?} $\mathbf g$ only; $\mathbf C$ and $\mathbf g$.
-\end{itemize}
-\begin{trap}[student's 2R]
-``$\mathcal L=K+P$; $g_2=m_2gL_2\sin(q_1{+}q_2)$; $-2m_2L_1L_2s_2\dot q_1\dot q_2$ is centripetal; $M_{12}=m_2L_1L_2c_2$.'' Correct: $K-P$; $\cos(q_1{+}q_2)$; Coriolis; $M_{12}=m_2(L_1L_2c_2+L_2^2)$.
-\end{trap}
-\hd{Exam shape (W13 Q4)}
-Marks for: COM positions from FK; velocities by differentiating; $K$, $P$ in full; $\mathcal L=K-P$; one Euler--Lagrange line per joint; $\mathbf M,\mathbf C,\mathbf g$ identified; a physical check. Not on slides: the check list, $\dot{\mathbf M}-2\mathbf C$ skew-symmetry. Lost: $K+P$, dropped cross term, $d/dt$ taken before $\partial/\partial\dot q$, gravity sign.
+\hdSeven{Lagrange versus Newton--Euler \pg{12--14, 47}}\label{w7:twoway}
+\begin{twoway}{A. Lagrange (energy)}{B. Newton--Euler (forces)}
+Whole robot; no reactions \pg{14}. Needs COM positions, $K$, $P$. Closed-form $\mathbf M,\mathbf C,\mathbf g$: analysis, control design. Mult.\ $32n^4{+}86n^3{+}171n^2{+}53n{-}128$.
+\tcblower
+Link by link, out then in \pg{41}. Needs frames, $\mathbf P_i$, $\mathbf I_i$. Numerical, gives reactions. Real-time. Mult.\ $104n-77$.
+\end{twoway}
+Cost \pg{47}: $n=2$: 131 vs 1\,862; $n=3$: 235 vs 6\,484; $n=6$: 547 vs 66\,394 (adds 482 vs 51\,456). Same torques either way.
+
+\hdSeven{Exam questions}
+\textbf{W13 sample Q4} (derive the equations of motion, 3D RRR arm): solved on p.\,\pageref{p:SAMPLE}. If time runs out: give $\mathbf M$ and $\mathbf g$ correctly, set up $\mathbf C$. Marks not published; indicative, ~1 per step.
+\begin{examq}[Uniform links, 2R \mk{indicative 8}]
+Rods $m_1=3$, $\ell_1=0.6$; $m_2=2$, $\ell_2=0.4$ m ($I_c=m\ell^2/12$); $q_1$ from horizontal, $q_2$ relative, gravity $-y$. (a) $\mathbf M,\mathbf g$. (b) At rest, $q=(45^\circ,-30^\circ)$, $\ddot{\mathbf q}=(1,2)$: torques.
+\solution
+$I_1=m_1\ell_1^2/12=0.09$, $I_2=0.0267$. Link 1 about its end: $K_1=\tfrac12(I_1+m_1\ell_1^2/4)\dot q_1^2$. Link 2: $v_{C_2}^2=\ell_1^2\dot q_1^2+\tfrac{\ell_2^2}4(\dot q_1{+}\dot q_2)^2+\ell_1\ell_2c_2\dot q_1(\dot q_1{+}\dot q_2)$, $K_2=\tfrac12m_2v_{C_2}^2+\tfrac12I_2(\dot q_1{+}\dot q_2)^2$.
+\[M_{11}=I_1{+}\tfrac{m_1\ell_1^2}4{+}I_2{+}m_2\big(\ell_1^2{+}\tfrac{\ell_2^2}4{+}\ell_1\ell_2c_2\big)\]
+\[M_{12}=I_2{+}m_2\big(\tfrac{\ell_2^2}4{+}\tfrac{\ell_1\ell_2}2c_2\big),\quad M_{22}=I_2{+}\tfrac{m_2\ell_2^2}4\]
+\[g_1=\big(\tfrac{m_1\ell_1}2+m_2\ell_1\big)gc_1+\tfrac{m_2\ell_2}2gc_{12},\qquad g_2=\tfrac{m_2\ell_2}2gc_{12}\]
+(b) $\mathbf M=\begin{bmatrix}1.6024&0.3145\\0.3145&0.1067\end{bmatrix}$, $\mathbf g=(18.357,3.790)$, $\mathbf C=\mathbf 0$: $\boxed{\mathbf Q=(20.589,\ 4.318)\text{ N\,m}}$. Check $M_{22}=m_2\ell_2^2/3=0.1067$. \chk
+\end{examq}
+\begin{examq}[Spot the errors: RP arm \mk{indicative 5}]
+Revolute $\theta$ (from horizontal) then slider $d$, point mass $m_2=1.5$ at $d$, gravity $-y$. Student: ``$K=\tfrac12m_2\dot d^2$; $f_2=m_2\ddot d+m_2g\cos\theta$; $\tau_1=m_2gd\cos\theta$; $\mathbf M$ diagonal, so no Coriolis.'' Correct $f_2,\tau_1$ at $d=0.4$, $\dot d=0.3$, $\ddot d=0.5$, $\theta=0.9$, $\dot\theta=1.1$, $\ddot\theta=0.6$.
+\solution
+(1) $K=\tfrac12m_2(\dot d^2+d^2\dot\theta^2)$. (2) $\partial P/\partial d=m_2g\sin\theta$. (3) $\tau_1$ misses $m_2d^2\ddot\theta+2m_2d\dot d\dot\theta$. (4) Diagonal $\mathbf M$ removes only acceleration coupling.\\
+$f_2=1.5(0.5-0.4(1.21))+1.5(9.81)\sin0.9=\boxed{11.551}$ N; $\tau_1=0.144+0.396+3.659=\boxed{4.199}$ N\,m (student: 9.897 N, 3.659 N\,m). \chk
+\end{examq}
+\begin{examq}[Short explanations \mk{indicative 2 each}]
+(a) Forward vs inverse dynamics, one use each. (b) Why is $\mathbf M$ invertible? (c) Why NE for real time? (d) Non-zero terms held still / at constant speed? (e) Mult.\ for $n=5$.
+\solution
+(a) Inverse: $\mathbf q,\dot{\mathbf q},\ddot{\mathbf q}\to\mathbf Q$ (computed torque); forward: $\mathbf Q\to\ddot{\mathbf q}$ (simulation). (b) $K=\tfrac12\dot{\mathbf q}^\top\mathbf M\dot{\mathbf q}>0$, so $\mathbf M>0$, $\det\ne0$. (c) NE is $O(n)$; Lagrange $O(n^4)$ but gives symbolic structure; same torques. (d) Still: $\mathbf g$; constant speed: $\mathbf C+\mathbf g$. (e) NE $443$; Lagrange $35\,162$. \chk
+\end{examq}
 \end{multicols}

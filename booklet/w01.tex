@@ -1,126 +1,162 @@
-\week{W1}{Mechanisms, DoF, Grübler–Kutzbach}{1}
+\week{W1}{Mechanisms, degrees of freedom, mobility, workspace}{1}
 \begin{multicols}{3}
-\hd{Words and chain types \pg{18--26}}
-\textbf{Kinematics} = geometry of motion, no forces. \textbf{Dynamics} = statics (no acceleration) + kinetics (acceleration). \textbf{DoF} = number of independent parameters fixing the configuration \pg{27}. \textbf{Mobility} $M$ = DoF left after all joints act = minimum number of actuators \pg{39}.\\
-\textbf{Closed chain}: has a loop. \textbf{Open}: none. \textbf{Serial}: open, every link but first and last touches two others. \textbf{Parallel} \added: end effector joined to base by several chains (closed loops): delta, Stewart.\\
-Why loops \pg{26}: motors on the base so moving mass is small; larger load (legs share); interesting paths. A 6-joint arm is open and serial; a four-bar is closed and not serial.
 
-\hd{Rigid-body DoF and joints \pg{27--36}}
-Rigid body: \textbf{3 DoF in 2D}, \textbf{6 DoF in 3D}. Point in 2D: 2. Pendulum in 2D: 1.\par
-\begin{tabularx}{\linewidth}{@{}Xccc@{}}\toprule
-Joint & $F$ & cuts 3D & cuts 2D\\\midrule
-Revolute R, Prismatic P & 1 & 5 & 2\\
-Helical H & 1 & 5 & --\\
-Cylindrical C, Universal U & 2 & 4 & --\\
-Spherical S & 3 & 3 & --\\\bottomrule
+\hd{Definitions and chains \pg{18--26}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}X@{}}
+\toprule term & meaning\\\midrule
+Kinematics \pg{18} & motion geometry \emph{without} forces. Dynamics \pg{19}: forces needed to move; statics = at rest, kinetics = accelerating\\
+Mechanism \pg{21} & transfers/modifies motion and/or force from sources to outputs\\
+Kinematic chain \pg{22} & rigid bodies connected by joints; a mechanism = chain(s) from base to end effector\\
+Link / joint \pg{23} & link = rigid body; joint = connection allowing \emph{relative} motion. Base = link 0 (ground); end effector = tool link\\
+Open / serial \pg{25} & open: no closed loop. Serial: every link but first and last joins two others. $N=J+1$, $M=\sum F_i$\\
+Closed / parallel & closed: has a loop ($\ell\ge1$). Parallel: end effector tied to base by several chains (delta, Stewart) \added\\\bottomrule
 \end{tabularx}
-“Cuts” $=D-F$ constraints removed. Planar mechanisms use only R and P. Two free planar links $=3+3=6$; one R pin removes $3-1=2$, leaving 4 \pg{36} \chk.
-\begin{trap}
-Joint DoF $\neq$ mechanism mobility. Helical $=1$ (pitch ties turn to slide). A 2D body is 3, not 2.
-\end{trap}
+Serial vs parallel \pg{26}: serial = big workspace, easy FK, motors ride on arm. Parallel = motors on base, light, load shared, small workspace, easy IK, hard FK (W4).
+Six-joint arm: open, serial. Four-bar: closed, \emph{not} serial (no first/last link). Two fingers on one palm: open, not serial \added.
 
-\hd{Grübler–Kutzbach \pg{39--41}}
-\begin{fbx}[Mobility, form 2 (use this one)]
-\[M=D\,(N-J-1)+\sum_{i=1}^{J}F_i\]
-$D=3$ planar, $6$ spatial; $N$ = links \emph{including ground}; $J$ = joints; $F_i$ = DoF of joint $i$.
-\use{any count. Serial chain: $N=J+1$ so $M=\sum F_i$.}
+\hd{DoF of a body; joint types \pg{27--36}}
+\begin{fbx}[Degrees of freedom \pg{27}]
+DoF $=$ independent parameters fixing the configuration. Free body: $D=3$ (plane: $x,y,\theta$), $D=6$ (3D: $x,y,z$ + 3 rotations). Point in 2D: 2. Pendulum: 1 ($x^2+y^2=L^2$). Joint removes $D-F$:
+\[\text{constraints removed}=D-F\qquad(F=\text{DoF the joint allows}) \]
 \end{fbx}
-\begin{fbx}[Form 1 \pg{40} (same sum, grouped)]
-\[M_{3D}=6(N{-}1)-5P_1-4P_2-3P_3-2P_4-P_5,\quad M_{2D}=3(N{-}1)-2P_1-P_2\]
-$P_i$ = number of joints with $i$ DoF.
-\use{cross-check; each joint removes $D-F$.}
-\end{fbx}
-\begin{recipe}[Mobility count (W13 Q6, Q7)]
-\label{w1:gk}
-\begin{enumerate}
-\item $D$: all axes $\perp$ page $\Rightarrow3$. Any S, U, C or “still 3D” $\Rightarrow6$.
-\item Number links, \textbf{ground = 0}. Split every prismatic joint into two links (cylinder, rod).
-\item List every joint with its $F$; get $J$ and $\sum F_i$.
-\item Write $M=D(N-J-1)+\sum F_i$, then substitute.
-\item Check: $M\ge1$ for a machine; if $M\le0$ ask whether constraints are dependent.
-\end{enumerate}
-\end{recipe}
-
-\columnbreak
-\sh{Counts to know}
-\begin{tabularx}{\linewidth}{@{}Xcccc@{}}\toprule
-Mechanism & $D$ & $N$ & $J$ & $M$\\\midrule
-Planar serial RPR \pg{42} & 3 & 4 & 3 & 3\\
-Four-bar \pg{44} (nb Q2) & 3 & 4 & 4 & 1\\
-3-RPR parallel \pg{46} & 3 & 8 & 9 & 3\\
-Five-bar \added & 3 & 5 & 5 & 2\\
-Slider-crank \added & 3 & 4 & 4 & 1\\
-Stewart 6-UPS \pg{48} & 6 & 14 & 18 & 6\\
-Delta, plain & 6 & 11 & 15 & 9 $\to$ 3\\\bottomrule
+Why \added: plane: 2 points $=4$ coords, 1 fixed distance: $4-1=3$. Space: 3 points $=9$, 3 distances: $9-3=6$.\par
+\slidefig[0.62\linewidth]{w01-lec}{34}{192 97 48 43}{joints, slide 34 (top R, P, H; bottom C, U, S)}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.33\linewidth}cccX@{}}
+\toprule joint \pg{34} & sym. & $F$ & cuts 3D & cuts 2D\\\midrule
+Revolute (pin) & R & 1 & 5 & 2\\
+Prismatic (slider) & P & 1 & 5 & 2\\
+Helical (screw) & H & 1 & 5 & --\\
+Cylindrical & C & 2 & 4 & --\\
+Universal & U & 2 & 4 & --\\
+Spherical (ball) & S & 3 & 3 & --\\\bottomrule
 \end{tabularx}
-\begin{worked}[four-bar, 3-RPR]
-Four-bar: $3(4-4-1)+4=1$; form 1: $3(4-1)-2\cdot4=1$. 3-RPR: $N=1+1+3\cdot2=8$, $3(8-9-1)+9=3$. \chk
-\end{worked}
-\begin{worked}[Stewart, D = 6]
-$N=2+6\cdot2=14$, $J=18$, $\sum F=6(2+1+3)=36$: $6(14-18-1)+36=6$. One leg alone: $6(4-3-1)+6=6$. Six SPS legs give 12 (leg spins): the U blocks them \added. \chk
-\end{worked}
-\begin{worked}[delta, W13 Q7]
-$N=2+3\cdot3=11$, $J=3(1+4)=15$, $\sum F=3(1+4\cdot3)=39$. Plain: $6(11-15-1)+39=\mathbf 9$. Six rods spin freely: $R_M=6$, $R_C=0$:
-\[M=D(N{-}J{-}1)+\sum F_i+R_C-R_M=9+0-6=\mathbf 3\]
-Plain 9 if only plain G--K is quoted; 3 if the extended equation is given or the real platform DoF is asked. \chk
-\end{worked}
+Planar joint E (3 in 3D) is not on the slides \added. Planar mechanisms: R, P only.\par
+\textbf{Example \pg{36}.} Two planar bodies $3+3=6$; pin makes 2 points coincide ($x$ and $y$): $6-2=4$. \chk
 \begin{trap}
-(1) Forgetting ground: 3-RPR gives $0$, Stewart $0$. (2) $D=6$ on a planar drawing: four-bar $-2$. (3) $D=3$ for Stewart: $21$. (4) Constraints removed $=F$ (not $D-F$): four-bar $5$. (5) Prismatic counted as one link. (6) Stopping at 9 for the delta. \chk
-\end{trap}
-
-\hd{Where G--K fails \pg{49--51}}
-Three equal parallel legs (R at both ends), ground--legs--body: $N=5$, $J=6$, $M=3(5-1)-2\cdot6=0$, \textbf{but it moves: 1 DoF}. Rank of constraint Jacobian is 5, not 6: the third leg repeats a constraint. Delete a middle leg: $N=4$, $J=4$, $M=1$ (four-bar). \chk
-\begin{recipe}[“Did you notice anything odd?”]
-\label{w1:odd}
-\begin{enumerate}
-\item Do the count, show it ($M=0$).
-\item State: the mechanism visibly moves, 1 DoF.
-\item Reason (slide wording): G--K assumes \emph{independent} constraints; here one leg is redundant.
-\item Fix: remove one leg, recount ($N=4,J=4,M=1$).
-\item Caveat: only for equal, parallel legs; with unequal legs it locks and $0$ is right.
-\end{enumerate}
-\end{recipe}
-Hoberman \pg{51}: 24 links, 36 R: $3(24-36-1)+36=-3$ ($D{=}3$), $-42$ ($D{=}6$); both negative, yet it moves \added. \chk
-\begin{trap}
-False: “$M=0$ means it cannot move”; “G--K always gives the true mobility”. G--K is exact only for independent constraints; it can under-count (p.49) or over-count (delta, local spins).
+Body in 2D has 3 DoF, a \emph{point} 2. Joint DoF $F\neq$ mobility $M$.
 \end{trap}
 
 \columnbreak
-\hd{Actuation \pg{37--38}}
-Controllable DoF = actuated. Compare actuators with total DoF:
-\begin{tabularx}{\linewidth}{@{}lX@{}}\toprule
-equal & \textbf{fully actuated}\\
-fewer & \textbf{under-actuated}: cheaper, simpler, lighter, but not every DoF can be commanded \pg{38}\\
-more & \textbf{redundant} (slide wording)\\\bottomrule
+\hd{Controllable vs total DoF; actuation \pg{37--38}}
+\label{w1:act}
+Controllable DoF = actuated. controllable $=$ total: \textbf{fully actuated}; $<$: \textbf{under-actuated} (cheaper, lighter \pg{38}); $>$: \textbf{redundant} (slide wording). Needed motors $=M$ \pg{39}.\par
+\begin{tabularx}{\linewidth}{@{}Xccl@{}}
+\toprule example \added & motors & $M$ & name\\\midrule
+6R arm; 4 motors & 6; 4 & 6 & fully; under\\
+3-RPR, 3 P motors & 3 & 3 & fully\\
+4-RPR, 4 motors & 4 & 3 & redundant\\
+Stewart, 6 linear & 6 & 6 & fully\\
+delta, 3 base motors & 3 & 3 (not 9) & fully\\\bottomrule
 \end{tabularx}
-6R arm, 6 motors: fully; 4 motors: under. Stewart, 6 actuators: fully. Delta, 3 motors, real $M=3$: fully (plain 9 would wrongly say under). \chk
-\begin{slideerr}[redundant]
-Slide 37 says “controllable $>$ total $\Rightarrow$ redundant”, yet nb cell 8 calls a 7-DoF arm redundant (7 motors = 7 DoF). Standard meaning \added: more joint DoF than the task needs (7 $>$ 6 for a 3D pose; planar 3R positioning a point: $3>2$). Write “redundant: more joint DoF than the 6-DoF task” and say which meaning you use.
+\begin{slideerr}
+Slide 37: controllable $>$ total $\Rightarrow$ redundant, but notebook cell 8 calls a 7-DoF arm (7 motors) redundant. Usual meaning \added: kinematic redundancy ($M>$ task DoF, e.g.\ 7R for a 6-DoF pose). State which you use.
 \end{slideerr}
 
-\hd{Workspace \pg{52--57}}
-\textbf{Reachable} $W_R$: reached in $\ge1$ orientation. \textbf{Dexterous} $W_D$: reached in \emph{all} orientations. Set by link geometry and joint limits \pg{52}.
-\begin{fbx}[Relation \pg{57}]
-\[W_{D}\subseteq W_{R}\qquad(\text{i.e. }W_R\supseteq W_D)\]
-\use{answer “$W_R\supseteq W_D$”. $\subset$ strict and $\supset$ are traps (can be equal, e.g.\ both empty). $W_R\subseteq W_D$ is backwards.}
+\hd{Mobility: Gr\"ubler--Kutzbach \pg{39--41}}
+\label{w1:gk}
+\premise[mobility]{drawing: every link (ground included), every joint with type, planar or spatial}{mobility $M$ = DoF = minimum actuators \pg{39}}
+\begin{fbx}[G--K, form 1 \pg{40}]
+\[M_{3D}=6(N-1)-5P_1-4P_2-3P_3-2P_4-P_5,\qquad M_{2D}=3(N-1)-2P_1-P_2\]
+where $N$ = links incl.\ ground; $P_i$ = number of joints with $i$ DoF (coefficient $=D-i$).
 \end{fbx}
-\begin{fbx}[Planar 2R and 3R reach \added]
-2R: $|L_1-L_2|\le r\le L_1+L_2$. $L=(0.5,0.3)$: annulus $0.2\le r\le0.8$\,m.\\
-3R, equal links $L$: $W_R$ disc $r\le3L$; $W_D$ disc $r\le L$ (circle of radius $L$ about the tip must fit in $0\le|\mathbf w|\le2L$). $L=0.3$: $0.9$\,m and $0.3$\,m. \chk
-\use{fewer DoF than the pose (3 planar, 6 spatial) $\Rightarrow$ $W_D$ empty (any 2R arm).}
+\begin{fbx}[G--K, form 2 \pg{41}: W13 Q6, Q7]
+\[M=D\,(N-J-1)+\sum_{i=1}^{J}F_i=D(N-1)-DJ+\sum F_i\]
+where $D=3$ planar, $6$ spatial; $J$ = joints; $F_i$ = DoF of joint $i$ (1 for R, P, H; 2 C, U; 3 S). Handles C, U, S. Same as Lynch \& Park $m(N-1-J)+\sum f_i$ \added.
 \end{fbx}
-\begin{tabularx}{\linewidth}{@{}llX@{}}\toprule
-Arm & Joints & Workspace shape \pg{53--56}\\\midrule
-PUMA & RRR & thick spherical shell, wedge cut by joint limits\\
-SCARA & RRP & flat ring (annulus), thickened by vertical stroke\\
-Cylindrical & RPP & thick-walled cylinder sector\\
-Cartesian & PPP & box, edges = the three strokes\\\bottomrule
+\begin{deriv}[form 2 from form 1; loop view \added]
+$N-1$ moving links free: $D(N-1)$; joint $i$ removes $D-F_i$: $M=D(N-1)-\sum(D-F_i)=D(N-J-1)+\sum F_i$; grouping by $i$ gives form 1. With $\ell=J-N+1$ loops: $M=\sum F_i-D\ell$ (four-bar $4-3=1$; 3-RPR $9-3\cdot2=3$; Stewart $36-6\cdot5=6$). \chk
+\end{deriv}
+\begin{recipe}[Mobility count]
+\begin{enumerate}
+\item $D=3$ if all axes $\perp$ page; any S, U, C or ``still 3D'' $\Rightarrow D=6$.
+\item Number links, \textbf{ground $=0$} (all ground pivots = one link); a P joint joins two links (cylinder, rod), so R--P--R leg has 2 links.
+\item List joints with $F_i$: get $J$, $\sum F_i$.
+\item $M=D(N-J-1)+\sum F_i$, show substitution; planar cross-check with form 1.
+\item Check: $M\ge1$ for a machine; serial $M=\sum F_i$; $M\le0$ $\Rightarrow$ dependent constraints?
+\end{enumerate}
+\end{recipe}
+\begin{fbx}[Extended G--K (W13 p.16; W4)]
+\[M=D(N-J-1)+\sum F_i+R_C-R_M\]
+where $R_C=\sum F_i-\sum_k u_k$ over-constraints ($u_k$ = unique DoFs of loop $k$, as printed); $R_M$ = local mobility (DoF that do not move the output, e.g.\ rod spins).
+\end{fbx}
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{44}{58 130 614 146}{four-bar}\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{46}{67 119 470 162}{3-RPR}\end{minipage}\par
+\hd*{Slide examples (all \chk)}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xccccc@{}}
+\toprule example & $D$ & $N$ & $J$ & $\sum F$ & $M$\\\midrule
+RPR serial \pg{42} & 3 & 4 & 3 & 3 & 3\\
+four-bar \pg{44} & 3 & 4 & 4 & 4 & 1\\
+3-RPR \pg{46}, Q6 & 3 & 8 & 9 & 9 & 3\\
+Stewart 6-UPS \pg{48} \added & 6 & 14 & 18 & 36 & 6\\
+delta, Q7 (W13 p.15) & 6 & 11 & 15 & 39 & 9; 3\\
+3 equal legs \pg{49} & 3 & 5 & 6 & 6 & 0 (true 1)\\
+Hoberman \pg{51} & 3 & 24 & 36 & 36 & $-3$\\\bottomrule
 \end{tabularx}
-Shapes read from the slide figures.
+RPR: $3(4-3-1)+3=3$; form 1 $3\cdot3-2\cdot3=3$. Four-bar: ground drawn twice is one link; $3(4-4-1)+4=1$ (8 constraints on 9 freedoms). 3-RPR: $N=1+1+3\cdot2$; $3(8-9-1)+9=3$. Stewart: per leg U, P, S $(2+1+3)$; $6(14-18-1)+36=6$; six SPS give 12 (legs spin). Delta: $N=2+3\cdot3$, per leg R + 4 S; $9+0-6=3$, $R_M=6$ rod spins; platform translates $x,y,z$. Hoberman: $6(24-36-1)+36=-42$ if $D=6$.\par
+Task DoF $m$: 2 point in plane, 3 planar pose or point in 3D, 6 3D pose. $M<m$ cannot do it, $M=m$ exact, $M>m$ redundant. 3-RPS ($D=6$, $N=8$, $J=9$, $\sum F=15$): $M=3$ \added.
 
-\hd{What the unit covers \pg{58--62}}
-FK (W2): $\mathbf q\to$ pose. IK (W3): pose $\to\mathbf q$. Velocity (W6), dynamics (W7--W9), trajectories (W5). Pose = 3 + 3 numbers = a $4\times4$ homogeneous matrix. Frames: {B} base, {W} wrist, {T} tool, {S} station, {G} goal, {C} camera \pg{61}.
+\hd{Where G--K fails \pg{49--51}}
+\label{w1:odd}
+G--K assumes \emph{independent} constraints (p.49), sees only $N,J,F_i$, never lengths. Slide 49: body on three equal parallel legs (R both ends), $M=0$ but it moves, 1 DoF: delete one middle leg, $N=4,J=4$, $M=1$. Unequal legs: rank 6, locks, 0 is right. It also over-counts (delta spins).
+\slidefig[0.7\linewidth]{w01-lec}{49}{58 205 499 146}{three equal parallel legs}
+\begin{recipe}[``Did you notice anything odd?'']
+\begin{enumerate}
+\item Count, show $M=0$ (or $<0$). 2. State: it moves, 1 DoF.
+\item Reason: constraints dependent, one leg redundant. 4. Remove it, recount: $M=1$. 5. Caveat: equal parallel legs only.
+\end{enumerate}
+\end{recipe}
+\begin{trap}
+False: ``$M\le0$ means it cannot move'' and ``G--K always gives true DoF''.
+\end{trap}
 
-\hd{Practical (optional)}
-\texttt{test.py}: CoppeliaSim remote API, drives joint \texttt{/Joint1} to $60^\circ$ for 3\,s; one revolute joint. No saved outputs.
+\columnbreak
+\hd{Workspace and robot configurations \pg{52--57}}
+Set by geometry (link lengths) and joint limits \pg{52}.
+\begin{fbx}[Reachable and dexterous \pg{57}]
+\begin{gather*}W_D\subseteq W_R,\qquad 2\mathrm R:\ |L_1-L_2|\le r\le L_1+L_2\\
+3\mathrm R\ (\text{equal }L):\ W_R:\ r\le3L,\quad W_D:\ r\le L\end{gather*}
+$W_R$: points reached in one orientation; $W_D$: in all orientations; $r$ = tool distance from base axis. Answer $W_R\supseteq W_D$ (strict $\subset$ is a trap: both can be empty).
+\end{fbx}
+$W_D$ derivation \added: wrist $\mathbf w=\mathbf p-L(\cos\varphi,\sin\varphi)$ must satisfy $|\mathbf w|\le2L$ for every $\varphi$: $r+L\le2L$; for some $\varphi$: $r-L\le2L$. 2R: $W_D$ empty (2 DoF cannot set point and angle). $L=(0.5,0.3)$: annulus $0.2\le r\le0.8$ m. \chk
+\begin{recipe}[Sketch a workspace]
+\begin{enumerate}
+\item Centre on first joint axis. 2. Fold (min $r$), stretch (max $r$). 3. Sweep spinning joints: annulus $\to$ ring/shell; P adds stroke. 4. Limits cut wedges. 5. State $W_R$, $W_D$ (empty if DoF $<$ pose).
+\end{enumerate}
+\end{recipe}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.08\linewidth}X@{}}
+\toprule arm \pg{53--56} & joints & workspace\\\midrule
+PUMA & RRR & thick spherical shell (waist limit cuts wedge)\\
+SCARA & RRP & flat ring, thick by vertical stroke\\
+cylindrical & RPP & thick-walled sector (R angle, P height, P radius)\\
+Cartesian & PPP & box, edges = strokes\\
+spherical \added & RRP & thick shell (P sets radius range)\\\bottomrule
+\end{tabularx}
+Each has $M=6(4-3-1)+3=3$ in 3D: position only. \chk\par
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{53}{346 76 38 135}{RRR shell}\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{54}{384 108 38 194}{RRP ring}\end{minipage}\\[2pt]
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{55}{394 108 77 113}{RPP sector}\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}\slidefig[\linewidth]{w01-lec}{56}{365 162 38 162}{PPP box}\end{minipage}
+
+\hd{Next topics; notebook Q1--Q7}
+Manipulation problems \pg{59--62}: FK joints$\to$pose (W2), IK pose$\to$joints (W3), velocity (W6), dynamics (W7--W9), trajectories (W5). Pose = 3 + 3 numbers, $4\times4$ \pg{62}; frames \{B\} base, \{W\} wrist, \{T\} tool, \{S\} station, \{G\} goal. Pose has 6 numbers: 6-DoF arm minimum.\par
+\textbf{nb:} Q1 rigid body 2D: 3 (point: 2). Q2 four-bar: $3(4-1)-2\cdot4=1$. Q3 planar parallel: $3(8-1)-2\cdot9=3$. Q4 (assumed p.49 system) $N=5$, $P_1=6$: 0. Q5 odd: moves, 1 DoF, dependent constraints. Q6 workspaces: table above. Q7 $W_R\supseteq W_D$.\par
+\textbf{W13 sample Q6} (3-RPR mobility) and \textbf{Q7} (delta mobility): solved on p.\,\pageref{p:SAMPLE}.
+
+\hd{Exam-style questions}
+\textit{Marks not published; about 1 per step: right $D$, $N$ with ground, every $F_i$, substitution, answer, one sentence on plain vs real DoF.}
+\begin{examq}[Derive and count a Watt six-bar \mk{marks assumed 6}]
+(a) Derive G--K form 2. (b) Planar Watt six-bar: 6 links (ground incl.), 7 R: find $M$. (c) Which slip gives $-5$?
+\solution
+(a) $D(N-1)-\sum(D-F_i)=D(N-J-1)+\sum F_i$. (b) $3(6-7-1)+7=\boxed1$; form 1 $3\cdot5-2\cdot7=1$. (c) $D=6$ on a planar drawing; ($N=5$, ground forgotten: $-2$). \chk
+\end{examq}
+\begin{examq}[Odd mechanism, actuation \mk{marks assumed 4}]
+(a) Define fully/under-actuated/redundant. (b) Body on three equal parallel R--R links: G--K gives 0 but it moves; explain.
+\solution
+(a) controllable $=,<,>$ total; 6R arm with 6 motors fully, 4 motors under. (b) $N=5$, $J=6$: $M=\boxed0$; constraints dependent; remove one leg: $M=\boxed1$. \chk
+\end{examq}
+\begin{examq}[Workspace of planar 3R \mk{marks assumed 6}]
+$L=(0.5,0.3,0.2)$ m, no limits: find $W_R$, $W_D$.
+\solution
+Wrist $\mathbf w=\mathbf p-L_3(\cos\varphi,\sin\varphi)$ in 2R annulus $[0.2,0.8]$. $W_R$: $r\le0.8+0.2=\boxed{1.0}$ m disc. $W_D$: $r+0.2\le0.8$ and $r-0.2\ge0.2$: ring $\boxed{0.4\le r\le0.6}$ m. Check: equal links give $r\le L$. \chk
+\end{examq}
 \end{multicols}

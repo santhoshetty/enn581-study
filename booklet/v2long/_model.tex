@@ -1,0 +1,103 @@
+% MODEL PAGE: shows every booklet element once. Copy the patterns, not the content.
+\week{W0}{Model section: how a week is laid out}{0}
+\begin{multicols}{2}
+
+\hd{Proximal DH link transform \pg{28}}
+\premise[forward kinematics]{joint variables $\mathbf q=(\theta_1,\dots,\theta_n)$ (revolute) or $d_i$ (prismatic), link lengths, DH table}{pose of the tool frame in the base frame, ${}^0\T_E$ (position $x,y,z$ and orientation ${}^0\Rm_E$)}
+
+\slidefig[0.5\linewidth]{w02-lec}{28}{77 108 518 130}{the four proximal DH parameters between axis $i-1$ and axis $i$}
+
+\begin{fbx}[Link transform, proximal (Craig) DH \pg{28}]
+\[{}^{i-1}T_i=R_{x_{i-1}}(\alpha_{i-1})\,t_{x_{i-1}}(a_{i-1})\,R_{z_i}(\theta_i)\,t_{z_i}(d_i)
+=\begin{bmatrix}c\theta_i&-s\theta_i&0&a_{i-1}\\ s\theta_ic\alpha_{i-1}&c\theta_ic\alpha_{i-1}&-s\alpha_{i-1}&-s\alpha_{i-1}d_i\\ s\theta_is\alpha_{i-1}&c\theta_is\alpha_{i-1}&c\alpha_{i-1}&c\alpha_{i-1}d_i\\0&0&0&1\end{bmatrix}\]
+\begin{symbols}
+$a_{i-1}$ & link length: distance from $z_{i-1}$ to $z_i$ measured along $x_{i-1}$ & m\\
+$\alpha_{i-1}$ & link twist: angle from $z_{i-1}$ to $z_i$ about $x_{i-1}$ & rad\\
+$d_i$ & link offset: distance from $x_{i-1}$ to $x_i$ along $z_i$ (variable if joint $i$ is prismatic) & m\\
+$\theta_i$ & joint angle: angle from $x_{i-1}$ to $x_i$ about $z_i$ (variable if joint $i$ is revolute) & rad\\
+$c\theta_i,s\theta_i$ & $\cos\theta_i$, $\sin\theta_i$ & --\\
+\end{symbols}
+\use{one row of the DH table gives one ${}^{i-1}T_i$; then ${}^0T_n={}^0T_1\,{}^1T_2\cdots{}^{n-1}T_n$.}
+\end{fbx}
+
+\begin{deriv}[of the link transform \added]
+Multiply the four elementary moves left to right (each is about/along the \emph{current} frame):
+\[R_x(\alpha)\,t_x(a)=\begin{bmatrix}1&0&0&a\\0&c\alpha&-s\alpha&0\\0&s\alpha&c\alpha&0\\0&0&0&1\end{bmatrix},\qquad
+R_z(\theta)\,t_z(d)=\begin{bmatrix}c\theta&-s\theta&0&0\\s\theta&c\theta&0&0\\0&0&1&d\\0&0&0&1\end{bmatrix}\]
+and their product is the matrix in the box above.
+\end{deriv}
+
+\begin{recipe}[FK of a serial arm with DH]
+\begin{enumerate}
+\item Draw the arm; mark every joint axis $z_i$.
+\item Fill the DH table row by row ($a_{i-1},\alpha_{i-1},d_i,\theta_i$).
+\item Write each ${}^{i-1}T_i$ in full; multiply.
+\item Check: at $\mathbf q=\mathbf 0$ the result must match your drawing.
+\end{enumerate}
+\end{recipe}
+
+\begin{twoway}{A. ETS (walk the arm)}{B. DH table}
+Planar RR: ${}^0T_E=R_z(\theta_1)\,t_x(L_1)\,R_z(\theta_2)\,t_x(L_2)$.
+\tcblower
+\begin{tabular}{@{}ccccc@{}}\toprule $i$&$a_{i-1}$&$\alpha_{i-1}$&$d_i$&$\theta_i$\\\midrule 1&0&0&0&$\theta_1$\\ 2&$L_1$&0&0&$\theta_2$\\\bottomrule\end{tabular}\\ plus tool ${}^2T_E=t_x(L_2)$.
+\end{twoway}
+
+\begin{worked}[planar RR, full matrix]
+\[{}^0T_E=\begin{bmatrix}c_{12}&-s_{12}&0&L_1c_1+L_2c_{12}\\ s_{12}&c_{12}&0&L_1s_1+L_2s_{12}\\0&0&1&0\\0&0&0&1\end{bmatrix}\]
+$L_1=L_2=1$, $\theta=(90^\circ,-90^\circ)$: $(x,y)=(1,1)$. \chk
+\end{worked}
+
+\begin{trap}
+Using $\theta_2$ alone instead of $\theta_1+\theta_2$ for the second link.
+\end{trap}
+
+\begin{slideerr}
+Example only: say what the slide prints, what is right, and how you checked.
+\end{slideerr}
+
+
+\hd{Block diagram: partitioned (computed-torque) control}
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[sgn,anchor=east] (qdd) at (0,1.0) {$\ddot{\mathbf q}_d$};
+\node[sgn,anchor=east] (qd1) at (0,0) {$\dot{\mathbf q}_d$};
+\node[sgn,anchor=east] (qd0) at (0,-1.0) {$\mathbf q_d$};
+\node[sumj] (sv) at (1.0,0) {};
+\node[sumj] (sp) at (1.6,-1.0) {};
+\node[svblk] (kv) at (2.7,0) {$\mathbf K_v$};
+\node[svblk] (kp) at (2.7,-1.0) {$\mathbf K_p$};
+\node[sumj] (st) at (4.0,0) {};
+\node[mbblk] (al) at (5.4,0) {$\boldsymbol\alpha=\mathbf M(\mathbf q)$};
+\node[sumj] (sb) at (6.9,0) {};
+\node[mbblk] (be) at (6.9,1.1) {$\boldsymbol\beta=\mathbf C(\mathbf q,\dot{\mathbf q})+\mathbf g(\mathbf q)+\mathbf f(\dot{\mathbf q})$};
+\node[plant] (rb) at (8.3,0) {Robot};
+\draw[sig] (qd1) -- node[sgn,above,pos=0.8]{$+$} (sv);
+\draw[sig] (qd0) -- node[sgn,above,pos=0.85]{$+$} (sp);
+\draw[sig] (sv) -- node[sgn,above]{$\dot{\mathbf E}$} (kv);
+\draw[sig] (sp) -- node[sgn,above]{$\mathbf E$} (kp);
+\draw[sig] (kv) -- node[sgn,above,pos=0.7]{$+$} (st);
+\draw[sig] (kp) -| node[sgn,right,pos=0.85]{$+$} (st);
+\draw[sig] (qdd) -| node[sgn,right,pos=0.9]{$+$} (st);
+\draw[sig] (st) -- node[sgn,above]{$\acute{\mathbf Q}$} (al);
+\draw[sig] (al) -- node[sgn,above,pos=0.6]{$+$} (sb);
+\draw[sig] (be) -- node[sgn,right,pos=0.6]{$+$} (sb);
+\draw[sig] (sb) -- node[sgn,above]{$\mathbf Q$} (rb);
+\draw[sig] (rb.east) -- ++(0.7,0) node[sgn,right]{$\mathbf q,\dot{\mathbf q}$};
+\draw[sig] ($(rb.east)+(0.35,0)$) |- (1.0,-1.7) -- node[sgn,left,pos=0.8]{$-$} (sv) node[sgn,pos=0.3,left]{$\dot{\mathbf q}$};
+\draw[sig] ($(rb.east)+(0.35,0)$) |- (1.6,-2.1) -- node[sgn,right,pos=0.8]{$-$} (sp) node[sgn,pos=0.4,right]{$\mathbf q$};
+\draw[sig] (5.4,-2.1) -- (al.south);
+\node[grpsv,fit=(sv)(sp)(kv)(kp)(st)] (gsv) {};
+\node[grplab,text=svcol,anchor=south west] at (gsv.north west) {SERVO-BASED};
+\node[grpmb,fit=(al)(sb)(be)] (gmb) {};
+\node[grplab,text=mbcol,anchor=north east] at (gmb.south east) {MODEL-BASED};
+\end{tikzpicture}
+\end{center}
+\cdlegend
+\drawncap{after the W9 slides; symbols as on the slides}
+
+\begin{examq}[(W3-style) \mk{marks not published}]
+Question text exactly as an exam would word it.
+\solution
+Every line of the solution; final answer boxed: $\boxed{x=1}$. Check at a simple pose.
+\end{examq}
+\end{multicols}

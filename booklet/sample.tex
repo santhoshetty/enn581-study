@@ -1,0 +1,179 @@
+% W13 sample questions solved -- the ONLY place these solutions appear (weeks point here). Booklet v3 (condensed). Numbers: vcheck/v2_w01..v2_w10.py.
+\providecommand{\wXx}[1]{{}^{C}x_{W_{#1}}}\providecommand{\wXy}[1]{{}^{C}y_{W_{#1}}}\providecommand{\wXz}{\boldsymbol\zeta}\providecommand{\wXn}{\boldsymbol\nu}\providecommand{\wXp}{\dot{\boldsymbol\varphi}}
+\makeatletter
+\newcommand{\qhd}[1]{\par\nobreak\vspace{2pt}\nobreak\phantomsection\addcontentsline{toc}{subsection}{#1}{\sffamily\bfseries\normalsize\color{seccolor}#1}\par\nobreak\vspace{0.5pt}\nobreak}
+\makeatother
+\bpart{SAMPLE}{W13 sample questions, solved}{17}
+\begin{multicols}{3}
+\setlength{\arraycolsep}{2pt}
+{\small The ten W13 questions, in order. Marks not published; indicative, $\sim$1 per step. Method and traps: see the week.\par}
+\qhd{Sample Q1 \textmd{\small(W2, p.\,\pageref{p:W2})}}
+\begin{examq}[W13 Q1: FK of an RRR arm by ETS \pg{4--5 of W13}]
+Write ${}^S\T_T$ for the RRR arm; show intermediate frames. ($L_1,L_2$ vertical, $L_3$ upper arm, $L_4$ forearm; $L=(0.6,0.5,0.4,0.3)$ m.)
+\slidefig[0.5\linewidth]{w13-lec}{4}{29 86 326 205}{Q1 arm, lecturer's frames}
+\solution
+$\{S\}$ on base, $z_S$ up. Joints 2, 3 lift the arm = \emph{negative} about $+y$. At $\theta=\mathbf0$: $x_T$ along forearm, $y_T$ up. ETS (W13 p.4); $c_{23}=\cos(\theta_2{+}\theta_3)$:
+\[\begin{gathered}{}^S\T_T={}^S\T_1{}^1\T_2{}^2\T_3{}^3\T_T\\=\Rm_z(\theta_1)\,t_z(L_1{+}L_2)\,\Rm_y(-\theta_2)\,t_x(L_3)\,\Rm_y(-\theta_3)\,t_x(L_4)\,\Rm_x(90^\circ)\end{gathered}\]
+\end{examq}
+\begin{examq}[Q1 (cont.): the four elementary frames]
+\[{}^S\T_1=\begin{bmatrix}c_1&-s_1&0&0\\s_1&c_1&0&0\\0&0&1&0\\0&0&0&1\end{bmatrix}\ {}^1\T_2=\begin{bmatrix}c_2&0&-s_2&0\\0&1&0&0\\s_2&0&c_2&L_1{+}L_2\\0&0&0&1\end{bmatrix}\]
+\[{}^2\T_3=\begin{bmatrix}c_3&0&-s_3&L_3\\0&1&0&0\\s_3&0&c_3&0\\0&0&0&1\end{bmatrix}\ {}^3\T_T=\begin{bmatrix}1&0&0&L_4\\0&0&-1&0\\0&1&0&0\\0&0&0&1\end{bmatrix}\]
+\end{examq}
+\begin{examq}[Q1 (cont.): product, result, check]
+\[{}^S\T_3={}^S\T_1{}^1\T_2{}^2\T_3=\begin{bmatrix}c_1c_{23}&-s_1&-c_1s_{23}&c_1c_2L_3\\s_1c_{23}&c_1&-s_1s_{23}&s_1c_2L_3\\s_{23}&0&c_{23}&L_1{+}L_2{+}s_2L_3\\0&0&0&1\end{bmatrix}\]
+(${}^S\T_2$ has rotation $\Rm_z\Rm_y(-\theta_2)$ at $(0,0,L_1{+}L_2)$.) Last factor: $\Rm_x(90^\circ)$ sends column 2 to $+$col 3, col 3 to $-$col 2; $t_x(L_4)$ adds $L_4\cdot$col 1. With $r=L_3c_2+L_4c_{23}$:
+\[\boxed{{}^S\T_T=\begin{bmatrix}c_1c_{23}&-c_1s_{23}&s_1&c_1r\\s_1c_{23}&-s_1s_{23}&-c_1&s_1r\\s_{23}&c_{23}&0&L_1{+}L_2{+}L_3s_2{+}L_4s_{23}\\0&0&0&1\end{bmatrix}}\]
+\end{examq}
+\begin{examq}[Q1 (cont.): check, numbers]
+\textbf{Check} $\theta=\mathbf0$: tip $(L_3{+}L_4,0,L_1{+}L_2)$, $x_T=x_S$, $y_T=z_S$. $\theta_2=90^\circ,\theta_3=0$: arm straight up. \textbf{Numbers} $\theta=(30,20,40)^\circ$: $\{2\}$ at $(0,0,1.1)$, $\{3\}$ at $(0.3255,0.1879,1.2368)$,
+\[{}^S\T_T=\begin{bmatrix}0.4330&-0.7500&0.5000&0.4554\\0.2500&-0.4330&-0.8660&0.2629\\0.8660&0.5000&0&1.4966\\0&0&0&1\end{bmatrix}\ \chk\]
+\textbf{Marks lost:} $\Rm_y(+\theta_2)$; dropping $\Rm_x(90^\circ)$; no intermediate frames.
+\end{examq}
+\qhd{Sample Q2 \textmd{\small(W3, p.\,\pageref{p:W3})}}
+\begin{examq}[W13 Q2: sketch the workspace]
+Sketch the workspace of the Q1 arm; no joint limits, ignore collisions.
+\slidefig[0.45\linewidth]{w13-lec}{6}{38 97 96 135}{lecturer's ``donut'': ring in the side view}
+\solution
+Shoulder $O=(0,0,L_1{+}L_2)$. Joints 2, 3 = planar RR (links $L_3,L_4$) in a vertical plane through $z_S$; cosine rule: $\rho=\sqrt{L_3^2+L_4^2+2L_3L_4\cos\theta_3}\in[\,|L_3{-}L_4|,\,L_3{+}L_4]$ from $O$; $\theta_2$ free $\Rightarrow$ full annulus; joint 1 spins the plane about $z_S\ni O$.\\
+\textbf{Result:} \textbf{spherical shell centred on $O$}, radii $|L_3{-}L_4|\le\rho\le L_3{+}L_4$ ($0.1\le\rho\le0.7$ m); $L_1,L_2$ only lift the centre. $L_3=L_4$: solid ball. Dexterous workspace empty.
+\begin{center}
+\begin{tikzpicture}[scale=0.55]
+\def\R{1.75}\def\r{0.25}
+\fill[g2,even odd rule] (0,2.6) circle (\R) (0,2.6) circle (\r);
+\draw[line width=0.6pt] (0,2.6) circle (\R); \draw[line width=0.6pt] (0,2.6) circle (\r);
+\draw[line width=0.8pt] (-1,0)--(1,0); \draw[line width=0.8pt] (0,0)--(0,2.6);
+\fill (0,2.6) circle (0.06); \node[font=\scriptsize,anchor=west] at (0.1,2.35) {$O$};
+\draw[<->,line width=0.4pt] (-0.25,0.05)--(-0.25,2.55) node[midway,left,font=\scriptsize]{$L_1{+}L_2$};
+\draw[->,line width=0.4pt] (0,2.6)--(\R,2.6) node[pos=0.6,above,font=\scriptsize]{$L_3{+}L_4$};
+\node[font=\scriptsize] at (0,-0.45) {side view ($x_Sz_S$): ring about $O$};
+\end{tikzpicture}
+\end{center}
+Top view: disc of radius $L_3{+}L_4$. \textbf{Check:} $\theta_2=\theta_3=0$: tip $(L_3{+}L_4,0,L_1{+}L_2)$ on the outer sphere; $\theta_3=\pi$: $\rho=|L_3{-}L_4|$ (500 random poses: $\rho\in[0.1,0.7]$). \chk
+\end{examq}
+\qhd{Sample Q3 \textmd{\small(W3, p.\,\pageref{p:W3})}}
+\begin{examq}[W13 Q3: IK of the Q1 arm, given $(x_T,y_T,z_T)$]
+\solution
+FK (Q1): $\mathbf p_T=(c_1r,\,s_1r,\,L_1{+}L_2{+}L_3s_2{+}L_4s_{23})$, $r=L_3c_2+L_4c_{23}$.\\
+\textbf{Top view:} $\theta_1=\atantwo(y_T,x_T)$, $r=+\sqrt{x_T^2+y_T^2}$; branch 2: $\theta_1+\pi$, $r=-\sqrt{x_T^2+y_T^2}$ (atan2, not $\tan^{-1}$).\\
+\end{examq}
+\begin{examq}[Q3 (cont.): side view, branches, numbers]
+\textbf{Side view:} planar RR, $z'=z_T-L_1-L_2$: $r=L_3c_2+L_4c_{23}$, $z'=L_3s_2+L_4s_{23}$. Square, add:
+\[\cos\theta_3=\frac{r^2+z'^2-L_3^2-L_4^2}{2L_3L_4},\qquad\theta_3=\atantwo\big(\pm\sqrt{1-\cos^2\theta_3},\cos\theta_3\big)\]
+$r=(L_3{+}L_4c_3)c_2-(L_4s_3)s_2$, $z'=(L_4s_3)c_2+(L_3{+}L_4c_3)s_2$:
+\[\theta_2=\atantwo(z',r)-\atantwo(L_4\sin\theta_3,\ L_3+L_4\cos\theta_3)\]
+$2\times2=4$ solutions; none if $|\cos\theta_3|>1$ (outside the Q2 shell); on the surface the elbow branches merge; $x_T=y_T=0$: $\theta_1$ free.\\
+\textbf{Numbers:} $L=(0.6,0.5,0.4,0.3)$, $\mathbf p_T=(0.4554,0.2629,1.4966)$: $\theta_1=30^\circ$, $r=0.5259$, $z'=0.3966$; $\cos\theta_3=\frac{0.2766+0.1573-0.16-0.09}{0.24}=0.7660$, $\theta_3=\pm40^\circ$; $\atantwo(z',r)=37.024^\circ$, $\mu=\pm17.024^\circ$. $(\theta_1,\theta_2,\theta_3)$ in deg:
+\[(30,\,20,\,40),\ (30,\,54.047,\,-40),\ (-150,\,125.953,\,40),\ (-150,\,160,\,-40)\]
+Each reproduces $\mathbf p_T$ by FK (first = Q1 pose). $(0.5,0.5,1.8)$ is $0.995>0.7$ m from the shoulder: no solution. \chk
+\end{examq}
+\qhd{Sample Q4 \textmd{\small(W7, p.\,\pageref{p:W7})}}
+\begin{examq}[W13 Q4 (a): equations of motion, 3D RRR arm]
+\slidefig[0.5\linewidth]{w13-lec}{8}{48 108 610 200}{W13 p.\,8: red dots = $m_1$ shoulder, $m_2$ elbow, $m_3$ tool}
+Mass, inertias, COM positions given; derive the equations of motion.
+\solution
+\textbf{Set-up.} $z_S$ up, $g$ along $-z_S$; $\theta_1$ about $z_S$; arm plane vertical; shoulder height $H=L_1{+}L_2$; $\theta_2$ = upper-arm elevation, forearm elevation $\theta_2{+}\theta_3$ (angles from vertical: swap $c\leftrightarrow s$). Point masses first; $m_1$ on the axis adds only a constant to $P$. $\rho$ = distance from $z_S$, $h$ = height.\\
+\textbf{Positions.} $\rho_2=L_3c_2$, $h_2=H+L_3s_2$; $\rho_3=L_3c_2+L_4c_{23}$, $h_3=H+L_3s_2+L_4s_{23}$.\\
+\textbf{Velocity.} $v^2=\dot\rho^2+\dot h^2+\rho^2\dot\theta_1^2$. $\dot\rho_2^2+\dot h_2^2=L_3^2\dot\theta_2^2$; $\dot\rho_3^2+\dot h_3^2=L_3^2\dot\theta_2^2+L_4^2(\dot\theta_2{+}\dot\theta_3)^2+2L_3L_4c_3\dot\theta_2(\dot\theta_2{+}\dot\theta_3)$.
+\begin{align*}K&=\tfrac12(m_2\rho_2^2+m_3\rho_3^2)\dot\theta_1^2+\tfrac12\big[(m_2{+}m_3)L_3^2+m_3L_4^2+2m_3L_3L_4c_3\big]\dot\theta_2^2\\&\ +m_3(L_4^2+L_3L_4c_3)\dot\theta_2\dot\theta_3+\tfrac12m_3L_4^2\dot\theta_3^2\\
+P&=m_2g(H{+}L_3s_2)+m_3g(H{+}L_3s_2{+}L_4s_{23}),\ \ \mathcal L=K-P\end{align*}
+$M_{11}=m_2\rho_2^2+m_3\rho_3^2$; $M_{22}=(m_2{+}m_3)L_3^2+m_3L_4^2+2m_3L_3L_4c_3$; $M_{23}=m_3(L_4^2+L_3L_4c_3)$; $M_{33}=m_3L_4^2$; $M_{12}=M_{13}=0$.
+\end{examq}
+\begin{examq}[Q4 (b): Euler--Lagrange]
+\textbf{Joint 1:} $\partial\mathcal L/\partial\theta_1=0$; $\frac d{dt}(M_{11}\dot\theta_1)=M_{11}\ddot\theta_1+\dot M_{11}\dot\theta_1$, $\dot M_{11}=2m_2\rho_2\dot\rho_2+2m_3\rho_3\dot\rho_3$, $\dot\rho_2=-L_3s_2\dot\theta_2$, $\dot\rho_3=-L_3s_2\dot\theta_2-L_4s_{23}(\dot\theta_2{+}\dot\theta_3)$:
+\[Q_1=M_{11}\ddot\theta_1-2\dot\theta_1\big[m_2\rho_2L_3s_2\dot\theta_2+m_3\rho_3(L_3s_2\dot\theta_2+L_4s_{23}(\dot\theta_2{+}\dot\theta_3))\big]\]
+\textbf{Joint 2:} $\frac d{dt}\frac{\partial\mathcal L}{\partial\dot\theta_2}=M_{22}\ddot\theta_2+M_{23}\ddot\theta_3-m_3L_3L_4s_3\dot\theta_3(2\dot\theta_2{+}\dot\theta_3)$; $\frac{\partial\mathcal L}{\partial\theta_2}=\tfrac12\dot\theta_1^2\frac{\partial M_{11}}{\partial\theta_2}-g[(m_2{+}m_3)L_3c_2+m_3L_4c_{23}]$, $\tfrac12\frac{\partial M_{11}}{\partial\theta_2}=-[m_2\rho_2L_3s_2+m_3\rho_3(L_3s_2{+}L_4s_{23})]$:
+\begin{multline*}Q_2=M_{22}\ddot\theta_2+M_{23}\ddot\theta_3+\dot\theta_1^2[m_2\rho_2L_3s_2+m_3\rho_3(L_3s_2{+}L_4s_{23})]\\-m_3L_3L_4s_3(2\dot\theta_2\dot\theta_3+\dot\theta_3^2)+g[(m_2{+}m_3)L_3c_2+m_3L_4c_{23}]\end{multline*}
+\textbf{Joint 3:} $\frac d{dt}\frac{\partial\mathcal L}{\partial\dot\theta_3}=M_{23}\ddot\theta_2+M_{33}\ddot\theta_3-m_3L_3L_4s_3\dot\theta_3\dot\theta_2$; $\frac{\partial K}{\partial\theta_3}=-m_3\rho_3L_4s_{23}\dot\theta_1^2-m_3L_3L_4s_3(\dot\theta_2^2{+}\dot\theta_2\dot\theta_3)$; $\frac{\partial P}{\partial\theta_3}=m_3gL_4c_{23}$; $\dot\theta_2\dot\theta_3$ terms cancel:
+\[Q_3=M_{23}\ddot\theta_2+M_{33}\ddot\theta_3+m_3\rho_3L_4s_{23}\dot\theta_1^2+m_3L_3L_4s_3\dot\theta_2^2+gm_3L_4c_{23}\]
+\end{examq}
+\begin{examq}[Q4 (c): $\mathbf M,\mathbf C,\mathbf g$, general links, numbers]
+\[\mathbf M=\begin{bmatrix}M_{11}&0&0\\0&M_{22}&M_{23}\\0&M_{23}&M_{33}\end{bmatrix},\ \mathbf g=\begin{bmatrix}0\\g[(m_2{+}m_3)L_3c_2+m_3L_4c_{23}]\\gm_3L_4c_{23}\end{bmatrix}\]
+$\mathbf C=(V_1,V_2,V_3)^\top$ = velocity terms of $Q_{1,2,3}$. Centrifugal: squares; Coriolis: products ($\dot\theta_1\dot\theta_{2,3}$ in $V_1$, $\dot\theta_2\dot\theta_3$ in $V_2$). Gravity loads joints 2, 3 only.\\
+\end{examq}
+\begin{examq}[Q4 (d): general links (inertias, COM positions)]
+\textbf{General links} (COM at $l_2$ from shoulder, $l_3$ from elbow; $I_2,I_3\perp$ link through COM, $I_1$ column about $z_S$): $L_3\to l_2$ in link 2's terms, $L_4\to l_3$ in link 3's (keep $L_3$ in $\rho_3$), $\rho_2=l_2c_2$, $\rho_3=L_3c_2+l_3c_{23}$:
+\begin{gather*}M_{11}=I_1+m_2\rho_2^2+m_3\rho_3^2+I_2c_2^2+I_3c_{23}^2\\ M_{22}=m_2l_2^2+I_2+m_3(L_3^2{+}l_3^2{+}2L_3l_3c_3)+I_3\\
+M_{23}=m_3(l_3^2+L_3l_3c_3)+I_3,\quad M_{33}=m_3l_3^2+I_3\\ \mathbf g=\begin{bmatrix}0\\g[(m_2l_2{+}m_3L_3)c_2+m_3l_3c_{23}]\\gm_3l_3c_{23}\end{bmatrix}\end{gather*}
+\begin{multline*}V_1=-2\dot\theta_1\big[m_2\rho_2l_2s_2\dot\theta_2+m_3\rho_3(L_3s_2\dot\theta_2+l_3s_{23}(\dot\theta_2{+}\dot\theta_3))\\+I_2c_2s_2\dot\theta_2+I_3c_{23}s_{23}(\dot\theta_2{+}\dot\theta_3)\big]\end{multline*}
+\begin{multline*}V_2=\dot\theta_1^2\big[m_2\rho_2l_2s_2+m_3\rho_3(L_3s_2{+}l_3s_{23})+I_2c_2s_2+I_3c_{23}s_{23}\big]\\-m_3L_3l_3s_3(2\dot\theta_2\dot\theta_3{+}\dot\theta_3^2)\end{multline*}
+\[V_3=\dot\theta_1^2\big[m_3\rho_3l_3s_{23}+I_3c_{23}s_{23}\big]+m_3L_3l_3s_3\dot\theta_2^2\]
+Red-dot case: $l_2=L_3$, $l_3=L_4$, $I_2=I_3=0$.\\
+\end{examq}
+\begin{examq}[Q4 (e): numbers]
+\textbf{Numbers} (point masses) $m_2=2$, $m_3=1$ kg, $L_3=0.6$, $L_4=0.4$ m, $\boldsymbol\theta=(20,30,-40)^\circ$, $\dot{\boldsymbol\theta}=(1,0.5,-0.5)$, $\ddot{\boldsymbol\theta}=(0.2,1,0.5)$: $\rho_2=0.5196$, $\rho_3=0.9135$ m,
+\[\mathbf M=\begin{bmatrix}1.3746&0&0\\0&1.6077&0.3439\\0&0.3439&0.1600\end{bmatrix},\ \mathbf C=\begin{bmatrix}-0.5858\\0.4838\\-0.1020\end{bmatrix},\ \mathbf g=\begin{bmatrix}0\\19.157\\3.864\end{bmatrix}\]
+$Q_1=\boxed{-0.311}$; $Q_2=\boxed{21.420}$; $Q_3=\boxed{4.186}$ N\,m. At rest $\mathbf Q=\mathbf g$; stretched horizontal: $(0,21.582,3.924)$ N\,m. \textbf{Checks:} $\mathbf M$ symmetric positive definite; $\dot{\boldsymbol\theta}^\top\mathbf Q=8.306$ W $=\dot K+\dot P$. \chk
+\end{examq}
+\qhd{Sample Q5 \textmd{\small(W4, p.\,\pageref{p:W4})}}
+\begin{examq}[W13 Q5: four-bar IK]
+\slidefig[0.6\linewidth]{w13-lec}{9}{0 76 48 92}{W13 p.\,9: K and $\phi$ given; find $\theta_1,\varphi_1,\varphi_2,\varphi_3$}
+$L_0=1.0$, $L_1=0.5$, $L_3=0.6$; coupler $a=0.2$, $b=0.25$ m; K $=(0.3710,0.4678)$ m in {S}; $\phi=-0.600^\circ$. Find $\theta_1,\varphi_1,\varphi_2,\varphi_3$.
+\solution
+{S} at left pivot, {D} at $(L_0,0)$, angles ccw from $+x$. Left chain: $x=L_1c_{\theta_1}+a\cos(\theta_1{+}\varphi_2)$, $y=L_1s_{\theta_1}+a\sin(\theta_1{+}\varphi_2)$, $\theta_1+\varphi_2=\phi$. So $L_1\cos\theta_1=x-a\cos\phi$, $L_1\sin\theta_1=y-a\sin\phi$: $\theta_1=\atantwo(0.4699,0.1710)=\boxed{70.0^\circ}$; $\varphi_2=\phi-\theta_1=\boxed{289.4^\circ}$ ($-70.6^\circ$).\\
+Right chain, $\varphi_1+\varphi_3=\phi+\pi$: $L_3\cos\varphi_1=x-L_0+b\cos\phi=-0.3790$, $L_3\sin\varphi_1=y+b\sin\phi=0.4652$: $\varphi_1=\atantwo(0.4652,-0.3790)=\boxed{129.2^\circ}$; $\varphi_3=\phi+\pi-\varphi_1=\boxed{50.2^\circ}$.\\
+\textbf{Check:} $\lVert(-0.379,0.4652)\rVert=0.600=L_3$; $\theta_1+\varphi_2=359.4^\circ=\varphi_1+\varphi_3+180^\circ$. Each leg is solved alone with atan2. The slide's printed $\varphi_3=\varphi_1-\phi+\pi$ gives $309.8^\circ$: K misses by 0.4 m.
+\end{examq}
+\qhd{Sample Q6 \textmd{\small(W1, p.\,\pageref{p:W1})}}
+\begin{examq}[W13 Q6: mobility of the planar 3-RPR]
+\slidefig[0.5\linewidth]{w13-lec}{13}{48 113 480 157}{W13 pp.12--13: links 1 ground, 2 platform, 3--4, 5--6, 7--8 legs}
+Find the mobility of the planar parallel manipulator (three R--P--R legs).
+\solution
+$M=D(N-J-1)+\sum F_i$, planar $D=3$. $N=8$ (ground, platform, 2 links per leg: 3,4; 5,6; 7,8). $J=9$ (R,P,R per leg), $\sum F_i=9$.
+\[M=3(8-9-1)+9=\boxed{3}\qquad(3(8-1)-2\cdot9=3)\]
+Platform $x,y,$ rotation, driven by 3 actuators. Check: forgetting ground ($N=7$) gives $0$. \chk
+\end{examq}
+\qhd{Sample Q7 \textmd{\small(W4, p.\,\pageref{p:W4})}}
+\begin{examq}[W13 Q7: delta mobility, plain vs extended]
+\slidefig[0.5\linewidth]{w13-lec}{14}{0 76 67 108}{W13 p.\,14: delta and joint graph (B, R, S, S, M)}
+Delta: base, 3 R joints, each followed by a parallelogram of 2 bars with S joints at both ends, moving platform. (a) Plain G--K. (b) Platform has 3 translational DoF: reconcile with extended G--K.
+\solution
+(a) $D=6$, $N=1+3+6+1=11$, $J=3+3\cdot4=15$, $\sum F_i=3(1+4\cdot3)=39$:
+\[M=6(11-15-1)+39=\boxed{9}\]
+(b) Each of the 6 bars spins about its own axis (S joints at both ends): $R_M=6$; no repeated constraint, $R_C=0$:
+\[M=6(11-15-1)+39+0-6=\boxed{3}\]
+Plain G--K counts the 6 internal bar spins as motion; $3$ = 3 motors = 3 platform translations.
+\end{examq}
+\qhd{Sample Q8 \textmd{\small(W5, p.\,\pageref{p:W5})}}
+\begin{examq}[W13 Q8: symbolic via-point cubics]
+\slidefig[0.6\linewidth]{w13-lec}{18}{29 68 48 146}{W13 p.\,18: $\theta_1=a_0{+}a_1t{+}a_2t^2{+}a_3t^3$, $\theta_2=b_0{+}\dots{+}b_3t^3$}
+\solution
+\textbf{Assume:} rest at start and end, each segment on its own clock, equal durations $t_f$.\\
+\textbf{8 conditions:} $\theta_1(0)=\theta_0$, $\dot\theta_1(0)=0$, $\theta_1(t_f)=\theta_v$, $\theta_2(0)=\theta_v$, $\theta_2(t_f)=\theta_g$, $\dot\theta_2(t_f)=0$, $\dot\theta_1(t_f)=\dot\theta_2(0)$, $\ddot\theta_1(t_f)=\ddot\theta_2(0)$.\\
+\textbf{1.} $a_0=\theta_0$, $a_1=0$, $b_0=\theta_v$; $w=\dot\theta_2(0)=\dot\theta_1(t_f)$.\\
+\textbf{2.} Segment 1 (end speeds $0,w$; $\Delta=\theta_v-\theta_0$): $a_2=\frac{3\Delta-wt_f}{t_f^2}$, $a_3=\frac{-2\Delta+wt_f}{t_f^3}$. Segment 2 (speeds $w,0$; $\Delta'=\theta_g-\theta_v$): $b_1=w$, $b_2=\frac{3\Delta'-2wt_f}{t_f^2}$, $b_3=\frac{-2\Delta'+wt_f}{t_f^3}$.\\
+\end{examq}
+\begin{examq}[Q8 (cont.): acceleration match, results]
+\textbf{3.} $\ddot\theta_1(t_f)=2a_2+6a_3t_f=\frac{-6\Delta+4wt_f}{t_f^2}$, $\ddot\theta_2(0)=2b_2=\frac{6\Delta'-4wt_f}{t_f^2}$; equal: $\boxed{w=\dfrac{3(\theta_g-\theta_0)}{4t_f}}$.\\
+\textbf{4.} Substitute:
+\[\boxed{\begin{aligned}
+a_2&=\tfrac{12\theta_v-3\theta_g-9\theta_0}{4t_f^2}, & a_3&=\tfrac{-8\theta_v+3\theta_g+5\theta_0}{4t_f^3},\\
+b_1&=\tfrac{3(\theta_g-\theta_0)}{4t_f}, & b_2&=\tfrac{-12\theta_v+6\theta_g+6\theta_0}{4t_f^2},\ b_3=\tfrac{8\theta_v-5\theta_g-3\theta_0}{4t_f^3}\end{aligned}}\]
+\textbf{Check} $\theta=(10,40,20)^\circ$, $t_f=1$: $w=7.5$, $\theta_1=10+82.5t^2-52.5t^3$, $\theta_2=40+7.5t-75t^2+47.5t^3$; $\theta_1(1)=40$, $\theta_2(1)=20$, $\ddot\theta_1(1)=-150=\ddot\theta_2(0)$. Variant $(0,40,30)^\circ$: $w=22.5$, $97.5t^2-57.5t^3$, $40+22.5t-75t^2+42.5t^3$; peak $55.11^\circ$/s at $0.565$ s. \chk\\
+\textbf{Slips:} one cubic for both; $a_1\ne0$; total time for $t_f$; no acceleration condition ($w$ undetermined).
+\end{examq}
+\qhd{Sample Q9 \textmd{\small(W5, p.\,\pageref{p:W5})}}
+\begin{examq}[W13 Q9: cubic for a prismatic joint]
+\slidefig[0.6\linewidth]{w13-lec}{19}{38 308 48 130}{W13 p.\,19}
+\solution
+$q=d$ (m): $d(0)=0.02$, $d(0.8)=0.15$, $\dot d(0)=\dot d(0.8)=0$; $\Delta d=0.13$, $t_F=0.8$ s. $a_0=0.02$, $a_1=0$, $a_2=\frac{3(0.13)}{0.8^2}=0.609375$, $a_3=\frac{-2(0.13)}{0.8^3}=-0.5078125$.
+\[\boxed{d=0.02+0.609375t^2-0.5078125t^3\ \text{m}}\]\[\dot d=1.21875t-1.5234375t^2\ \text{m/s}\]
+\textbf{Check:} $d(0.8)=0.02+0.39-0.26=0.15$; $\dot d(0.8)=0.975-0.975=0$. Peak $1.5\Delta d/t_F=0.24375$ m/s at $0.4$ s ($d=0.085$ m); end accelerations $\pm1.21875$ m/s$^2$. \chk\\
+\textbf{Slips:} $a_3/t_F^2$; cm/m mixed; no $a_0$.
+\end{examq}
+\qhd{Sample Q10 \textmd{\small(W10, p.\,\pageref{p:W10})}}
+\begin{examq}[W13 Q10: omnidirectional 3-wheel robot]
+\slidefig[0.5\linewidth]{w13-lec}{20}{29 151 634 119}{W13 p.\,20}
+Three driven omni wheels (rollers $\perp$ drive), equilateral triangle, centre to each vertex $d$. Derive $(\dot\varphi_1,\dot\varphi_2,\dot\varphi_3)$ vs chassis $(u,v,\dot\theta)$. Holonomic? Wheel speeds for $u=0.2$ m/s, $d=0.10$, $r=0.05$ m.
+\solution
+\textbf{Setup.} $\{C\}$ at centre, $\hat x_C$ right, $\hat y_C$ up. $W_1(0,d)$, $W_2(\tfrac{\sqrt3}2d,-\tfrac d2)$, $W_3(-\tfrac{\sqrt3}2d,-\tfrac d2)$; drive directions (clockwise as drawn) $\beta_1=0^\circ$, $\beta_2=-120^\circ$, $\beta_3=120^\circ$; $\gamma_i=0$.\\
+\textbf{Slide \pg{36}:} $\dot\varphi_i=\begin{bmatrix}\frac1r&\frac{\tan\gamma_i}r\end{bmatrix}\mathbf R(\beta_i)^\top\begin{bmatrix}1&0&-\wXy i\\0&1&\wXx i\end{bmatrix}\wXz$; $\gamma_i=0$: $r\dot\varphi_i=\cos\beta_i(u-\dot\theta\wXy i)+\sin\beta_i(v+\dot\theta\wXx i)$.\\
+\end{examq}
+\begin{examq}[Q10 (cont.): rows, matrix, inverse, numbers]
+\textbf{Rows:} $r\dot\varphi_1=u-d\dot\theta$; $r\dot\varphi_2=-\frac12(u+\frac d2\dot\theta)-\frac{\sqrt3}2(v+\frac{\sqrt3}2d\dot\theta)=-\frac12u-\frac{\sqrt3}2v-d\dot\theta$; $r\dot\varphi_3=-\frac12u+\frac{\sqrt3}2v-d\dot\theta$.
+\[\boxed{\begin{bmatrix}\dot\varphi_1\\\dot\varphi_2\\\dot\varphi_3\end{bmatrix}=\frac1r\begin{bmatrix}1&0&-d\\-\frac12&-\frac{\sqrt3}2&-d\\-\frac12&\frac{\sqrt3}2&-d\end{bmatrix}\begin{bmatrix}u\\v\\\dot\theta\end{bmatrix}}\]
+$\det=\tfrac{3\sqrt3}2d\ne0$; $\wXz=\frac r3\begin{bmatrix}2&-1&-1\\0&-\sqrt3&\sqrt3\\-\frac1d&-\frac1d&-\frac1d\end{bmatrix}\wXp$; world frame $\wXn=\mathbf J(\theta)\wXz$.\\
+\textbf{Holonomic:} Swedish wheels give no no-slide row: $u,v,\dot\theta$ free, $\delta_m=3$.\\
+\textbf{Numbers:} $\dot\varphi=\frac1{0.05}(0.2,-0.1,-0.1)=\boxed{(4,-2,-2)\ \text{rad/s}}$.\\
+\textbf{Check:} wheel 1 carries all of $u$; wheels 2, 3 see $-\frac12u$; pure spin: $-d\dot\theta/r$ on each; pure translation: speeds sum to $0$. \chk
+\end{examq}
+\end{multicols}

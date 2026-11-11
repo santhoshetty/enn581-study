@@ -1,0 +1,93 @@
+% ---------- Fast lookup (front matter) ----------
+\bpart[INDEX]{START}{Fast lookup: if the question says \dots}{1}
+\begin{multicols}{3}
+\hd*{If the question says\dots\ go to}
+\lookup{“transformation matrix”, “indicate frames”, ETS}{p.\,\pageref{r:fk}, \pageref{p:W2}}
+\lookup{“DH table”, “link parameters”}{p.\,\pageref{r:dh}, \pageref{p:W2}}
+\lookup{“sketch the workspace”}{p.\,\pageref{r:ws}, \pageref{p:W3}}
+\lookup{“derive the inverse kinematics”}{p.\,\pageref{r:ik}, \pageref{p:W3}}
+\lookup{“how many solutions”}{p.\,\pageref{r:ik}}
+\lookup{“mobility”, “degrees of freedom”, Grübler}{p.\,\pageref{r:gk}, \pageref{p:W1}, \pageref{p:W4}}
+\lookup{“parallel”, “four-bar”, “loop closure”}{p.\,\pageref{r:fourbar}, \pageref{p:W4}}
+\lookup{“cubic”, “via point”, “spline”, “blend”}{p.\,\pageref{r:cubic}, \pageref{p:W5}}
+\lookup{“Jacobian”, “singularity”, “joint torques for a force”}{p.\,\pageref{r:jac}, \pageref{p:W6}}
+\lookup{“equations of motion”, Lagrange}{p.\,\pageref{r:lag}, \pageref{p:W7}}
+\lookup{“inertia tensor”, “Newton–Euler”}{p.\,\pageref{p:W7}}
+\lookup{“critically damped”, “gains”, “steady-state error”}{p.\,\pageref{r:ctrl}, \pageref{p:W8}}
+\lookup{“computed torque”, “partitioned”, “force control”}{p.\,\pageref{r:ctrl}, \pageref{p:W9}}
+\lookup{“wheel speeds”, “omni”, “differential drive”, ICR}{p.\,\pageref{r:wheel}, \pageref{p:W10}}
+\lookup{“holonomic”}{p.\,\pageref{p:W10}}
+\lookup{“dynamics of a mobile robot”}{p.\,\pageref{p:W11}}
+\lookup{“A*”, “Dijkstra”, “PRM”, “RRT”, “C-space”}{p.\,\pageref{r:plan}, \pageref{p:W12}}
+\lookup{“what is given / what to find”}{p.\,\pageref{p:START2}}
+\lookup{“trace a circle / line / square” (joint rates)}{p.\,\pageref{p:W6}}
+\lookup{“drive a circle / rectangle” (wheel speeds)}{p.\,\pageref{p:W10}}
+\lookup{“block diagram”, “model-based”, “servo”}{p.\,\pageref{p:W8}, \pageref{p:W9}}
+\lookup{“BFS”, “DFS”, open/closed list}{p.\,\pageref{p:W12}}
+\lookup{RR, RP, RRP, SCARA, Puma, Panda: tables, ETS}{p.\,\pageref{p:ROBOTS}}
+\lookup{skew matrix, cross product, $s=ut+\frac12at^2$, $\atantwo$}{p.\,\pageref{p:BASICS}}
+\lookup{the W13 sample questions, solved}{p.\,\pageref{p:SAMPLE}}
+\lookup{trig identities, rotations, inertia of shapes}{p.\,\pageref{p:BASICS}}
+
+\columnbreak
+\hd*{Answer layout (method marks)}
+\begin{enumerate}
+\item \textbf{Draw and define}: frames, axes, positive angle directions, assumptions (no joint limits; point masses; rest to rest; $\gamma=0$).
+\item \textbf{State the general tool} before using it: ETS, cosine rule, Euler–Lagrange, G–K, boundary conditions.
+\item \textbf{Substitute and simplify}, one step per line, symbols first, numbers last, with units.
+\item \textbf{Box the result}; list \emph{every} branch (IK) or mode (four-bar).
+\item \textbf{Sanity check} at $\theta=0$, $t=0$, or a symmetric case. Write ``check:''.
+\end{enumerate}
+\hd*{Time (2 hours)}
+Read all questions first (5 min). Split time by marks. Leave 10 min to check signs and units. If stuck: write the set-up and the equation you would solve, then move on.
+
+\hd*{Ten checks before you hand in}
+\begin{enumerate}
+\item Calculator in \textbf{radians}? Angles labelled ° or rad?
+\item atan2, not $\tan^{-1}(y/x)$ (quadrant).
+\item Both IK branches (and ``no solution if $|\cos|>1$'').
+\item Order of matrix products (right = about the current frame).
+\item Transposes: $\Rm^{-1}=\Rm^\top$; inverse $\T^{-1}=[\Rm^\top\ \ -\Rm^\top\mathbf t]$.
+\item $\mathcal L=K-P$; gravity sign; product rule in $\frac{d}{dt}$.
+\item $k_v^2=4k_p$ for critical damping (unit mass).
+\item Ground counted as a link; $D=3$ planar, 6 spatial.
+\item Wheel row: $-\dot\theta\,{}^Cy$ in the $x$ part, $+\dot\theta\,{}^Cx$ in the $y$ part.
+\item Units: mm vs m; rad/s vs rpm; N\,m vs N.
+\end{enumerate}
+
+\columnbreak
+\hd*{Notation}
+\begin{tabular}{@{}p{0.27\linewidth}p{0.66\linewidth}@{}}
+$\tr{A}{B}$ & pose of $\{B\}$ in $\{A\}$; $^A\mathbf P=\tr AB\,{}^B\mathbf P$\\
+$^A\Rm_B$ & columns = B's axes written in A\\
+$R_x,R_y,R_z$,\newline $t_x,t_y,t_z$ & elementary transforms (ETS)\\
+$a_{i-1},\alpha_{i-1},d_i,\theta_i$ & proximal (Craig) DH\\
+$c_i,s_i,c_{ij}$ & $\cos\theta_i$, $\sin\theta_i$, $\cos(\theta_i{+}\theta_j)$\\
+$\mathbf J$ & Jacobian: $\dot{\mathbf x}=\mathbf J\dot{\mathbf q}$; $\boldsymbol\tau=\mathbf J^\top\mathbf F$\\
+$\mathbf M,\mathbf C,\mathbf g$ & $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g$\\
+$E=q_d-q$ & servo error (desired minus actual)\\
+$M,D,N,J,F_i$ & mobility; 3/6; links incl.\ ground; joints; joint DoF\\
+$R_C,R_M$ & over-constraints (add); local mobility (subtract)\\
+$u,v,\dot\theta$ & chassis velocity in $\{C\}$; $\dot\varphi_i$ wheel spin\\
+$\beta_i,\gamma_i$ & wheel drive angle from $x_C$; roller angle\\
+$g,h,f$ & A*: cost so far, heuristic, $f=g+h$\\
+\end{tabular}
+
+\hd*{Elementary rotations}
+{\small\[R_x(\theta)=\begin{bmatrix}1&0&0\\0&c&-s\\0&s&c\end{bmatrix}
+R_y(\theta)=\begin{bmatrix}c&0&s\\0&1&0\\-s&0&c\end{bmatrix}
+R_z(\theta)=\begin{bmatrix}c&-s&0\\s&c&0\\0&0&1\end{bmatrix}\]}
+\use{$R_y$'s minus sign is bottom-left. A translation $t_x(a)$ is $\mathbf I$ with $a$ in row 1, column 4.}
+
+\hd*{Sample-paper map (W13 revision): solved in full on p.\,\pageref{p:SAMPLE}}
+\begin{tabular}{@{}lll@{}}
+Q1 FK of RRR (ETS) & W2 & p.\,\pageref{r:fk}\\
+Q2 workspace sketch & W3 & p.\,\pageref{r:ws}\\
+Q3 IK derivation & W3 & p.\,\pageref{r:ik}\\
+Q4 equations of motion & W7 & p.\,\pageref{r:lag}\\
+Q5 four-bar IK & W4 & p.\,\pageref{r:fourbar}\\
+Q6–Q7 mobility & W1, W4 & p.\,\pageref{r:gk}\\
+Q8–Q9 cubic splines & W5 & p.\,\pageref{r:cubic}\\
+Q10 omni robot & W10 & p.\,\pageref{r:wheel}\\
+\end{tabular}
+\end{multicols}

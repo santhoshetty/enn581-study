@@ -1,0 +1,129 @@
+\week{W8}{Control 1: second-order error dynamics, PD/PID}{8}
+\begin{multicols}{3}
+\hd{Open vs closed loop, error \pg{8--14}}
+\begin{fbx}[Servo error \pg{13}]
+\[E=\mathbf q_d-\mathbf q,\qquad \dot E=\dot{\mathbf q}_d-\dot{\mathbf q}\quad(\text{desired}-\text{actual})\]
+\use{every later formula assumes this sign. Open loop = inverse dynamics $\mathbf Q=\mathbf M\ddot{\mathbf q}+\mathbf C+\mathbf g$ with no measurement of the output \pg{11}; closed loop feeds back $\mathbf q,\dot{\mathbf q}$ \pg{12}.}
+\end{fbx}
+Open loop fails: wrong model, outside disturbance, wrong start state. Unit mass: $\ddot E=0\Rightarrow E=E(0)+\dot E(0)t$, so a 0.1 rad offset stays 0.1 rad. \chk\ Independent joint control \pg{14}: $n$ single-joint loops, coupling ignored.
+
+\hd{Spring--mass--damper \pg{16--26}}
+\begin{fbx}[Characteristic equation \pg{16--17}]
+\[m\ddot x+b\dot x+kx=0,\quad ms^2+bs+k=0,\quad s_{1,2}=\frac{-b\pm\sqrt{b^2-4mk}}{2m}\]
+\use{test $b^2-4mk$ with \emph{strict} inequalities; $=0$ is critical.}
+\end{fbx}
+\begin{tabularx}{\linewidth}{@{}lcX@{}}\toprule
+$b^2{-}4mk$ & case & $x(t)$\\\midrule
+$>0$ & over (real, unequal) \pg{18} & $A_1e^{s_1t}{+}A_2e^{s_2t}$\\
+$<0$ & under (complex $\lambda\pm i\mu$) \pg{21} & $e^{\lambda t}(A_1\cos\mu t{+}A_2\sin\mu t)$\\
+$=0$ & critical $s=-\tfrac b{2m}$ \pg{24} & $(A_1{+}A_2t)e^{-bt/2m}$\\\bottomrule
+\end{tabularx}
+$\lambda=-\tfrac b{2m}$, $\mu=\tfrac{\sqrt{4mk-b^2}}{2m}$ \added. Constants from $x(0),\dot x(0)$: unequal $A_1{+}A_2$, $s_1A_1{+}s_2A_2$; complex $A_1$, $\lambda A_1{+}\mu A_2$; equal $A_1$, $sA_1{+}A_2$. \added\ $\omega_n=\sqrt{k/m}$, $\zeta=\tfrac b{2\sqrt{mk}}$ ($>1$ over, $=1$ crit., $<1$ under).
+\begin{worked}[deck examples, $x(0)=-1$, $\dot x(0)=0$ \pg{19, 22, 25}]
+Over $m,b,k=1,3,2$: disc $=1$, $s=-1,-2$, $x=-2e^{-t}+e^{-2t}$, $x(1)=-0.6004$.\\
+Under $1,1,1$: $\lambda=-\tfrac12$, $\mu=\tfrac{\sqrt3}2$, $A_2=-0.5774$; first peak $+0.1630$ at $t=2\pi/\sqrt3=3.628$ s (16.3\%), trough $-0.027$ at 7.26 s.\\
+Critical $1,4,4$: $s=-2$ twice, $x=(-1-2t)e^{-2t}$.\\
+2\% settling: critical $2.92$ s $<$ over $4.60$ s $<$ under $8.08$ s. \chk
+\end{worked}
+\begin{recipe}[Classify and solve $x(t)$]
+\label{w8:smd}
+\begin{enumerate}
+\item $ms^2+bs+k=0$; compute $b^2-4mk$; name the case.
+\item Roots ($\lambda\pm i\mu$ if complex); write the matching form.
+\item Two initial-condition equations; solve the $2{\times}2$ for $A_1,A_2$.
+\item Check $x(0),\dot x(0)$ from the final formula and $x\to0$.
+\end{enumerate}
+\end{recipe}
+\begin{worked}[P8.1]
+$m,b,k=1,5,6$, $x(0)=2$: disc $=1$, $s=-2,-3$; $A_1{+}A_2=2$, $-2A_1{-}3A_2=0$ $\Rightarrow$ $A_1=6$, $A_2=-4$, $x(1)=0.6129$. \chk
+\end{worked}
+\begin{trap}
+$\lambda=-b/m$ (it is $-b/2m$). $\dot x(0)=0\Rightarrow A_2=0$ (only if $\lambda=0$). Slide p.26's hand sketch shows over-damped slowest; the exact solutions say under-damped is slowest here. Trust the equations: only ``critical is fastest without overshoot'' is safe.
+\end{trap}
+
+\columnbreak
+\hd{PD control \pg{27--32}}
+\begin{fbx}[PD on the raw plant \pg{29, 32}]
+\[m\ddot x+b\dot x+kx=f,\ f=-k_px-k_v\dot x\ \Rightarrow\ m\ddot x+\underbrace{(b{+}k_v)}_{b'}\dot x+\underbrace{(k{+}k_p)}_{k'}x=0\]
+\use{critical when $b'^2=4mk'$. Never forget the plant's own $b$ and $k$. $k_p$: N/m, $k_v$: N\,s/m.}
+\end{fbx}
+\begin{worked}
+$m=2,b=3,k=8$ (under: $9-64<0$), $k_p=10$: $k'=18$, $b'=\sqrt{4\cdot2\cdot18}=12$, $k_v=9$, double pole $-3$. Trap: $2\sqrt{k_p}=6.32$ stays under-damped (disc $-57.05$); wrong answers 12, 6.32. \chk
+\end{worked}
+
+\hd{Control-law partitioning \pg{33--37}}
+\begin{fbx}[Model-based + servo \pg{33--36}]
+\[f=\alpha f'+\beta,\ \ \alpha=m,\ \beta=b\dot x+kx\ \Rightarrow\ \ddot x=f'\ \ (\text{unit mass})\]
+\[f'=-k_v\dot x-k_px\ \Rightarrow\ \ddot x+k_v\dot x+k_px=0,\quad s^2+k_vs+k_p=0\]
+\[\textbf{critical: } k_v^2=4k_p\ \Longleftrightarrow\ k_v=2\sqrt{k_p}\]
+\use{regulation to 0. After partitioning $f'$ is an acceleration: $k_p$ in s$^{-2}$, $k_v$ in s$^{-1}$. Poles $p_1,p_2$: $k_v=-(p_1{+}p_2)$, $k_p=p_1p_2$ \added.}
+\end{fbx}
+\begin{slideerr}[p.36 critical damping]
+Slide p.36 prints $k_p^2=4k_v$: subscripts swapped. Correct: $k_v^2=4k_p$ (agrees with p.32's $b'^2=4mk'$). With the slide's rule $k_p=16\Rightarrow k_v=64$ gives roots $-63.75,-0.25$ (heavily over-damped); correct $k_v=8$, double root $-4$. Test: $s^2+2s+1$ has $k_v=2,k_p=1$; $k_p^2=4k_v$ would need $1=8$. \chk
+\end{slideerr}
+\begin{recipe}[Partitioned force at a state (P8.3)]
+\label{w8:part}
+\begin{enumerate}
+\item Plant $m\ddot x+b\dot x+kx=f$; set $f=\alpha f'+\beta$; $\alpha=m$, $\beta=b\dot x+kx$.
+\item Servo $f'=-k_v\dot x-k_px$ (tracking: section below).
+\item Closed loop $\ddot x+k_v\dot x+k_px=0$; critical $k_v^2=4k_p$.
+\item Force $f=mf'+b\dot x+kx$. Label both portions on the block diagram.
+\item Check: $\ddot x=(f-b\dot x-kx)/m$ must equal $f'$.
+\end{enumerate}
+\end{recipe}
+\begin{worked}
+$m,b,k=2,3,8$; $k_p=25$, $k_v=10$ (critical, pole $-5$); $x=0.5$, $\dot x=1$: $f'=-10-12.5=-22.5$; $f=2(-22.5)+3+4=-38$ N; plant $\ddot x=(-38-3-4)/2=-22.5$ \checkmark. \chk
+\end{worked}
+\begin{fbx}[Wrong model \added]
+$\hat b\ne b$: $\ddot x+\big(k_v+\tfrac{b-\hat b}m\big)\dot x+k_px=0$. $\hat m\ne m$: both gains scaled by $\hat m/m$.\\
+$\hat b=1$ (true 3), $m=2$: $k_v^{eff}=11$, $121>100$: slightly over-damped. $\hat m=1.5$: $s^2+7.5s+18.75$, $56.25-75<0$: under-damped. \chk
+\end{fbx}
+
+\hd{Choosing gains \added}
+\begin{fbx}[$\omega_n,\zeta$ \added]
+\[\omega_n=\sqrt{k_p},\ \ \zeta=\frac{k_v}{2\sqrt{k_p}},\ \ s=-\zeta\omega_n\pm\omega_n\sqrt{\zeta^2-1}\]
+\[\text{overshoot (}0<\zeta<1\text{)}=\exp\!\big(-\pi\zeta/\sqrt{1-\zeta^2}\big)\]
+\use{critical, speed $\omega_n$: $k_p=\omega_n^2$, $k_v=2\omega_n$. Given $\zeta$: $k_v=2\zeta\omega_n$. Doubling $k_p$ (fixed $k_v$): $\zeta\to\zeta/\sqrt2$, $\omega_n\to\sqrt2\,\omega_n$.}
+\end{fbx}
+(a) $\omega_n=10$ crit.: $k_p=100$, $k_v=20$. (b) $\zeta=0.7,\omega_n=8$: $64$, $11.2$. (c) $k_p=25,k_v=6$: $\zeta=0.6$, poles $-3\pm4i$, overshoot $9.48\%$. (d) poles $-2,-8$: $k_p=16$, $k_v=10$, $\zeta=1.25$. \chk\\
+$k_p=25$: $k_v=4$: $\zeta=0.4$, poles $-2\pm4.58i$, 25.4\%; $k_v=10$: $-5$ double; $k_v=20$: $-1.34,-18.66$ (slow pole dominates, slower than critical). \chk
+
+\hd{Trajectory following \pg{38--40}}
+\begin{fbx}[Servo law with feed-forward \pg{39}]
+\[f'=\ddot x_d+k_v\dot E+k_pE\ \Rightarrow\ \ddot E+k_v\dot E+k_pE=0,\quad f=mf'+b\dot x+kx\]
+\use{needs $x_d,\dot x_d,\ddot x_d$ (smooth, twice differentiable). Without $\ddot x_d$: constant $a$ leaves $E_{ss}=a/k_p$.}
+\end{fbx}
+$k_p=100,k_v=20$, $E(0)=0.5$, $\dot E(0)=0$: $E=E_0(1+10t)e^{-10t}$, $E(0.5)=0.0202$ m. No FF on $x_d=t^2$: $E_{ss}=2/100=0.02$ m. \chk
+
+\hd{Disturbance and PID \pg{41--45}}
+\begin{fbx}[Steady-state error under a constant disturbance \pg{42--43}]
+\[\ddot E+k_v\dot E+k_pE=\frac{f_{dist}}m\ \Rightarrow\ E_{ss}=\frac{f_{dist}}{k_p\,m}\]
+\use{$f_{dist}$ enters the force junction with a minus; $E=x_d-x$ flips it. $k_v,b,k$ do not appear. Tolerance $E_{max}$: $k_p\ge f_{dist}/(mE_{max})$, then $k_v=2\sqrt{k_p}$.}
+\end{fbx}
+\begin{recipe}[Steady-state error and its cure]
+\label{w8:sse}
+\begin{enumerate}
+\item Error equation with $f_{dist}/m$ on the right. Set $\ddot E=\dot E=0$.
+\item $E_{ss}=f_{dist}/(k_pm)$; PD cannot reach 0 unless $k_p\to\infty$.
+\item Cure: integral action. $f'=\ddot x_d+k_v\dot E+k_pE+k_i\!\int\!E\,dt$.
+\item Differentiate: $\dddot E+k_v\ddot E+k_p\dot E+k_iE=\dot f_{dist}/m$; steady state $k_iE=0\Rightarrow E=0$.
+\item Stable only if $k_vk_p>k_i$ (poly $s^3+k_vs^2+k_ps+k_i$; \added).
+\end{enumerate}
+\end{recipe}
+\begin{worked}
+$f_{dist}=10$, $m=2$, $k_p=25$: $E_{ss}=0.2$ m; $m=5$: $0.08$ m. $E_{ss}\le5$ mm: $k_p\ge1000$, $k_v=63.25$. PID $k_p{=}25$, $k_v{=}10$, $k_i{=}40$: roots $-7.335$, $-1.332\pm1.918i$; $\int E\to10/(2\cdot40)=0.125$. $k_i{=}250$: $(s+10)(s^2+25)$, oscillation at 5 rad/s; $k_i{=}300$ unstable. \chk
+\end{worked}
+\begin{trap}
+``$E_{ss}$ independent of $m$'', ``$E_{ss}=f/k_v$'', ``raising $k_v$ cuts the steady error'', ``PD removes it'', ``integral never hurts''.
+\end{trap}
+
+\hd{DC motor and gearbox \pg{46--50}}
+\begin{fbx}[Reflected inertia \pg{49--50}]
+\[Q_m=k_4i_a,\quad I_m\ddot q_m=k_4i_a-c_m\dot q_m,\quad \dot q_m=\eta\dot q_{axle}\]
+\[Q=(I+\eta^2I_m)\ddot q+(c+\eta^2c_m)\dot q,\qquad Q_m=Q/\eta,\quad i_a=Q_m/k_4\]
+\use{$\eta>1$: motor faster than axle. Not $\eta$, not $\eta I_m$. $\eta\cdot\eta$: inertia torque $I_m\eta\ddot q$, counted $\eta$ times at the axle. p.51 is blank: no combined PID+motor formula.}
+\end{fbx}
+\begin{worked}
+$\eta=50$, $I_m=2{\times}10^{-5}$, $I=0.04$, $c=0.1$, $c_m=10^{-4}$, $k_4=0.04$; $\ddot q=10$, $\dot q=2$: $I_{eff}=0.04{+}0.05=0.09$, $c_{eff}=0.35$, $Q=0.9+0.7=1.6$ N\,m, $Q_m=0.032$, $i_a=0.8$ A, motor speed $100$ rad/s. Wrong: 1.6 (no $\div\eta$), 0.012 (no $\eta^2$). \chk
+\end{worked}
+\end{multicols}
